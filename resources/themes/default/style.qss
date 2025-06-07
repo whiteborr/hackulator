@@ -22,14 +22,12 @@ QLabel#TitleLabel {
    2. Info / Terminal Panel
 ----------------------------------------- */
 QTextEdit#InfoPanel {
-    /* **FIX**: Set background to solid black and use the new font */
     background-color: black;
-    font-family: "Neuropol"; /* Use the font name loaded by QFontDatabase */
-    border: 1px solid #506478;
+    /* **FIX**: Changed font name to match the loaded font family */
+    font-family: "Neuropol X";
+    border: none;
     border-radius: 10px;
     padding: 25px;
-    /* NOTE: The color of the text itself is set via HTML in the python code,
-       which allows for different colors for titles and descriptions. */
 }
 
 

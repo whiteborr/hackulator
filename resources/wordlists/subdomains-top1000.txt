@@ -7,3 +7,6 @@ staging
 api
 test
 admin
+mx
+mx01
+smpt
