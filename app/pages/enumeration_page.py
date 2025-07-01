@@ -70,6 +70,50 @@ class EnumerationPage(QWidget):
             {"id": "dns_xfer",     "text": "XFER",     "rect": (135, 458, 105, 30)},
             {"id": "dns_nslookup", "text": "NSLOOKUP", "rect": (135, 518, 105, 30)},
         ]
+        
+        self.port_tools_data = [
+            {"id": "port_tcp",     "text": "TCP SCAN",  "rect": (135, 225, 105, 30)},
+            {"id": "port_sweep",   "text": "SWEEP",     "rect": (135, 283, 105, 30)},
+            {"id": "port_top",     "text": "TOP PORTS", "rect": (135, 341, 105, 30)},
+            {"id": "port_service", "text": "SERVICE",   "rect": (135, 398, 105, 30)},
+        ]
+        
+        self.smb_tools_data = [
+            {"id": "smb_scan",     "text": "SMB SCAN",  "rect": (135, 225, 105, 30)},
+            {"id": "smb_netbios",  "text": "NETBIOS",   "rect": (135, 283, 105, 30)},
+            {"id": "smb_os",       "text": "OS DETECT", "rect": (135, 341, 105, 30)},
+            {"id": "smb_range",    "text": "RANGE",     "rect": (135, 398, 105, 30)},
+        ]
+        
+        self.smtp_tools_data = [
+            {"id": "smtp_vrfy",    "text": "VRFY",      "rect": (135, 225, 105, 30)},
+            {"id": "smtp_expn",    "text": "EXPN",      "rect": (135, 283, 105, 30)},
+            {"id": "smtp_rcpt",    "text": "RCPT TO",   "rect": (135, 341, 105, 30)},
+        ]
+        
+        self.snmp_tools_data = [
+            {"id": "snmp_scan",    "text": "SCAN",      "rect": (135, 225, 105, 30)},
+            {"id": "snmp_comm",    "text": "COMMUNITY", "rect": (135, 283, 105, 30)},
+            {"id": "snmp_walk",    "text": "WALK",      "rect": (135, 341, 105, 30)},
+            {"id": "snmp_range",   "text": "RANGE",     "rect": (135, 398, 105, 30)},
+        ]
+        
+        self.http_tools_data = [
+            {"id": "http_finger",  "text": "FINGERPRINT", "rect": (135, 225, 105, 30)},
+            {"id": "http_ssl",     "text": "SSL SCAN",   "rect": (135, 283, 105, 30)},
+            {"id": "http_dir",     "text": "DIR SCAN",   "rect": (135, 341, 105, 30)},
+        ]
+        
+        self.api_tools_data = [
+            {"id": "api_discover", "text": "DISCOVER",   "rect": (135, 225, 105, 30)},
+            {"id": "api_methods",  "text": "METHODS",    "rect": (135, 283, 105, 30)},
+            {"id": "api_auth",     "text": "AUTH TEST",  "rect": (135, 341, 105, 30)},
+        ]
+        
+        self.db_tools_data = [
+            {"id": "db_scan",      "text": "DB SCAN",    "rect": (135, 225, 105, 30)},
+            {"id": "db_detailed",  "text": "DETAILED",   "rect": (135, 283, 105, 30)},
+        ]
 
         # --- Create Main Menu Widgets ---
         self.main_title = QLabel("Enumeration Tools", self)
@@ -91,6 +135,20 @@ class EnumerationPage(QWidget):
 
             if tool["id"] == "dns_enum":
                 button.clicked.connect(lambda: self.set_submenu_active(True))
+            elif tool["id"] == "port_scan":
+                button.clicked.connect(lambda: self.set_submenu_active(True, "port_scan"))
+            elif tool["id"] == "smb_enum":
+                button.clicked.connect(lambda: self.set_submenu_active(True, "smb_enum"))
+            elif tool["id"] == "smtp_enum":
+                button.clicked.connect(lambda: self.set_submenu_active(True, "smtp_enum"))
+            elif tool["id"] == "snmp_enum":
+                button.clicked.connect(lambda: self.set_submenu_active(True, "snmp_enum"))
+            elif tool["id"] == "http_fingerprint":
+                button.clicked.connect(lambda: self.set_submenu_active(True, "http_fingerprint"))
+            elif tool["id"] == "api_enum":
+                button.clicked.connect(lambda: self.set_submenu_active(True, "api_enum"))
+            elif tool["id"] == "db_enum":
+                button.clicked.connect(lambda: self.set_submenu_active(True, "db_enum"))
             
             button.enter_signal.connect(self.update_info_panel)
             button.leave_signal.connect(self.clear_info_panel)
@@ -151,8 +209,95 @@ class EnumerationPage(QWidget):
                 button.clicked.connect(self.run_host_wordlist_scan)
             self.dns_tool_buttons.append(button)
         
+        self.port_tool_buttons = []
+        for tool_data in self.port_tools_data:
+            button = QPushButton(tool_data["text"], self)
+            button.setProperty("class", "dnsToolButton")
+            if tool_data["id"] == "port_tcp":
+                button.clicked.connect(self.run_port_scan)
+            elif tool_data["id"] == "port_sweep":
+                button.clicked.connect(self.run_port_sweep)
+            elif tool_data["id"] == "port_top":
+                button.clicked.connect(self.run_top_ports)
+            elif tool_data["id"] == "port_service":
+                button.clicked.connect(self.run_service_scan)
+            self.port_tool_buttons.append(button)
+        
+        self.smb_tool_buttons = []
+        for tool_data in self.smb_tools_data:
+            button = QPushButton(tool_data["text"], self)
+            button.setProperty("class", "dnsToolButton")
+            if tool_data["id"] == "smb_scan":
+                button.clicked.connect(self.run_smb_scan)
+            elif tool_data["id"] == "smb_netbios":
+                button.clicked.connect(self.run_netbios_scan)
+            elif tool_data["id"] == "smb_os":
+                button.clicked.connect(self.run_smb_os_detect)
+            elif tool_data["id"] == "smb_range":
+                button.clicked.connect(self.run_smb_range)
+            self.smb_tool_buttons.append(button)
+        
+        # Create tool buttons for other enumeration types
+        self.smtp_tool_buttons = []
+        for tool_data in self.smtp_tools_data:
+            button = QPushButton(tool_data["text"], self)
+            button.setProperty("class", "dnsToolButton")
+            if tool_data["id"] == "smtp_vrfy":
+                button.clicked.connect(self.run_smtp_enum)
+            self.smtp_tool_buttons.append(button)
+        
+        self.snmp_tool_buttons = []
+        for tool_data in self.snmp_tools_data:
+            button = QPushButton(tool_data["text"], self)
+            button.setProperty("class", "dnsToolButton")
+            if tool_data["id"] == "snmp_scan":
+                button.clicked.connect(self.run_snmp_scan)
+            elif tool_data["id"] == "snmp_comm":
+                button.clicked.connect(self.run_snmp_community)
+            elif tool_data["id"] == "snmp_walk":
+                button.clicked.connect(self.run_snmp_walk)
+            elif tool_data["id"] == "snmp_range":
+                button.clicked.connect(self.run_snmp_range)
+            self.snmp_tool_buttons.append(button)
+        
+        self.http_tool_buttons = []
+        for tool_data in self.http_tools_data:
+            button = QPushButton(tool_data["text"], self)
+            button.setProperty("class", "dnsToolButton")
+            if tool_data["id"] == "http_finger":
+                button.clicked.connect(self.run_http_fingerprint)
+            elif tool_data["id"] == "http_ssl":
+                button.clicked.connect(self.run_http_ssl)
+            elif tool_data["id"] == "http_dir":
+                button.clicked.connect(self.run_http_dir)
+            self.http_tool_buttons.append(button)
+        
+        self.api_tool_buttons = []
+        for tool_data in self.api_tools_data:
+            button = QPushButton(tool_data["text"], self)
+            button.setProperty("class", "dnsToolButton")
+            if tool_data["id"] == "api_discover":
+                button.clicked.connect(self.run_api_discover)
+            elif tool_data["id"] == "api_methods":
+                button.clicked.connect(self.run_api_methods)
+            elif tool_data["id"] == "api_auth":
+                button.clicked.connect(self.run_api_auth)
+            self.api_tool_buttons.append(button)
+        
+        self.db_tool_buttons = []
+        for tool_data in self.db_tools_data:
+            button = QPushButton(tool_data["text"], self)
+            button.setProperty("class", "dnsToolButton")
+            if tool_data["id"] == "db_scan":
+                button.clicked.connect(self.run_db_scan)
+            elif tool_data["id"] == "db_detailed":
+                button.clicked.connect(self.run_db_detailed)
+            self.db_tool_buttons.append(button)
+        
         # **FIX**: Removed the separate wildcard status label
-        self.submenu_widgets = [self.dns_back_button, self.target_input, self.dns_terminal_output, self.wordlist_combo, self.record_type_container, self.export_combo, self.export_button, self.progress_widget] + self.dns_tool_buttons
+        self.submenu_widgets = [self.dns_back_button, self.target_input, self.dns_terminal_output, self.wordlist_combo, self.record_type_container, self.export_combo, self.export_button, self.progress_widget] + self.dns_tool_buttons + self.port_tool_buttons + self.smb_tool_buttons + self.smtp_tool_buttons + self.snmp_tool_buttons + self.http_tool_buttons + self.api_tool_buttons + self.db_tool_buttons
+        
+        self.current_submenu = "dns"
         
         self.setup_shortcuts()
         self.resizeEvent(None) 
@@ -201,10 +346,67 @@ class EnumerationPage(QWidget):
             if filename.endswith(".txt"):
                 self.wordlist_combo.addItem(filename, str(wordlist_dir / filename))
 
-    def set_submenu_active(self, active):
+    def set_submenu_active(self, active, submenu_type="dns"):
         self.is_submenu_active = active
+        self.current_submenu = submenu_type
+        
         for widget in self.main_widgets: widget.setVisible(not active)
-        for widget in self.submenu_widgets: widget.setVisible(active)
+        
+        # Show/hide common submenu widgets
+        common_widgets = [self.dns_back_button, self.target_input, self.dns_terminal_output, self.export_combo, self.export_button, self.progress_widget]
+        for widget in common_widgets: widget.setVisible(active)
+        
+        # Show/hide specific tool buttons and controls
+        if active:
+            if submenu_type == "dns":
+                for widget in self.dns_tool_buttons: widget.setVisible(True)
+                self.wordlist_combo.setVisible(True)
+                self.record_type_container.setVisible(True)
+                for widget in self.port_tool_buttons: widget.setVisible(False)
+                for widget in self.smb_tool_buttons: widget.setVisible(False)
+            elif submenu_type == "port_scan":
+                for widget in self.port_tool_buttons: widget.setVisible(True)
+                self.wordlist_combo.setVisible(False)
+                self.record_type_container.setVisible(False)
+                for widget in self.dns_tool_buttons: widget.setVisible(False)
+                for widget in self.smb_tool_buttons: widget.setVisible(False)
+            elif submenu_type == "smb_enum":
+                for widget in self.smb_tool_buttons: widget.setVisible(True)
+                self.wordlist_combo.setVisible(False)
+                self.record_type_container.setVisible(False)
+                for widget in self.dns_tool_buttons: widget.setVisible(False)
+                for widget in self.port_tool_buttons: widget.setVisible(False)
+                self.hide_other_tools(["smb"])
+            elif submenu_type == "smtp_enum":
+                for widget in self.smtp_tool_buttons: widget.setVisible(True)
+                self.wordlist_combo.setVisible(True)
+                self.record_type_container.setVisible(False)
+                self.hide_other_tools(["smtp"])
+            elif submenu_type == "snmp_enum":
+                for widget in self.snmp_tool_buttons: widget.setVisible(True)
+                self.wordlist_combo.setVisible(False)
+                self.record_type_container.setVisible(False)
+                self.hide_other_tools(["snmp"])
+            elif submenu_type == "http_fingerprint":
+                for widget in self.http_tool_buttons: widget.setVisible(True)
+                self.wordlist_combo.setVisible(False)
+                self.record_type_container.setVisible(False)
+                self.hide_other_tools(["http"])
+            elif submenu_type == "api_enum":
+                for widget in self.api_tool_buttons: widget.setVisible(True)
+                self.wordlist_combo.setVisible(False)
+                self.record_type_container.setVisible(False)
+                self.hide_other_tools(["api"])
+            elif submenu_type == "db_enum":
+                for widget in self.db_tool_buttons: widget.setVisible(True)
+                self.wordlist_combo.setVisible(False)
+                self.record_type_container.setVisible(False)
+                self.hide_other_tools(["db"])
+        else:
+            self.hide_all_tool_buttons()
+            self.wordlist_combo.setVisible(False)
+            self.record_type_container.setVisible(False)
+        
         if self.main_tool_buttons: self.main_tool_buttons[0].setVisible(True)
         self.update_background()
 
@@ -265,6 +467,34 @@ class EnumerationPage(QWidget):
 
         for i, button in enumerate(self.dns_tool_buttons):
             x, y, w, h = self.dns_tools_data[i]["rect"]
+            button.setGeometry(x, y, w, h)
+        
+        for i, button in enumerate(self.port_tool_buttons):
+            x, y, w, h = self.port_tools_data[i]["rect"]
+            button.setGeometry(x, y, w, h)
+        
+        for i, button in enumerate(self.smb_tool_buttons):
+            x, y, w, h = self.smb_tools_data[i]["rect"]
+            button.setGeometry(x, y, w, h)
+        
+        for i, button in enumerate(self.smtp_tool_buttons):
+            x, y, w, h = self.smtp_tools_data[i]["rect"]
+            button.setGeometry(x, y, w, h)
+        
+        for i, button in enumerate(self.snmp_tool_buttons):
+            x, y, w, h = self.snmp_tools_data[i]["rect"]
+            button.setGeometry(x, y, w, h)
+        
+        for i, button in enumerate(self.http_tool_buttons):
+            x, y, w, h = self.http_tools_data[i]["rect"]
+            button.setGeometry(x, y, w, h)
+        
+        for i, button in enumerate(self.api_tool_buttons):
+            x, y, w, h = self.api_tools_data[i]["rect"]
+            button.setGeometry(x, y, w, h)
+        
+        for i, button in enumerate(self.db_tool_buttons):
+            x, y, w, h = self.db_tools_data[i]["rect"]
             button.setGeometry(x, y, w, h)
         
     def update_info_panel(self, title, description):
@@ -408,6 +638,338 @@ class EnumerationPage(QWidget):
         else:
             self.navigate_signal.emit("home")
     
+    def hide_other_tools(self, keep_visible):
+        all_tools = {
+            "dns": self.dns_tool_buttons,
+            "port": self.port_tool_buttons, 
+            "smb": self.smb_tool_buttons,
+            "smtp": self.smtp_tool_buttons,
+            "snmp": self.snmp_tool_buttons,
+            "http": self.http_tool_buttons,
+            "api": self.api_tool_buttons,
+            "db": self.db_tool_buttons
+        }
+        
+        for tool_type, buttons in all_tools.items():
+            visible = tool_type in keep_visible
+            for button in buttons:
+                button.setVisible(visible)
+    
+    def hide_all_tool_buttons(self):
+        all_buttons = (self.dns_tool_buttons + self.port_tool_buttons + self.smb_tool_buttons + 
+                      self.smtp_tool_buttons + self.snmp_tool_buttons + self.http_tool_buttons + 
+                      self.api_tool_buttons + self.db_tool_buttons)
+        for button in all_buttons:
+            button.setVisible(False)
+    
     def set_buttons_enabled(self, enabled):
-        for button in self.dns_tool_buttons: button.setEnabled(enabled)
+        all_buttons = (self.dns_tool_buttons + self.port_tool_buttons + self.smb_tool_buttons + 
+                      self.smtp_tool_buttons + self.snmp_tool_buttons + self.http_tool_buttons + 
+                      self.api_tool_buttons + self.db_tool_buttons)
+        for button in all_buttons:
+            button.setEnabled(enabled)
         self.scan_shortcut.setEnabled(enabled)
+    
+    # Port Scanning Methods
+    def run_port_scan(self):
+        target = self.target_input.text().strip()
+        if not target:
+            self.dns_terminal_output.setHtml("<p style='color: #FF4500;'>[ERROR] Please enter a target IP</p>")
+            return
+        
+        self.dns_terminal_output.clear()
+        self.set_buttons_enabled(False)
+        self.append_terminal_output(f"<p style='color: #64C8FF;'>[*] Starting TCP scan on {target}</p>")
+        
+        import subprocess
+        import threading
+        
+        def run_scan():
+            try:
+                cmd = ["python", "tools/port_scanner.py", target, "-p", "1-1000"]
+                result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(self.main_window.project_root))
+                self.append_terminal_output(f"<pre style='color: #DCDCDC;'>{result.stdout}</pre>")
+                if result.stderr:
+                    self.append_terminal_output(f"<p style='color: #FF4500;'>{result.stderr}</p>")
+            except Exception as e:
+                self.append_terminal_output(f"<p style='color: #FF4500;'>[ERROR] {str(e)}</p>")
+            finally:
+                self.set_buttons_enabled(True)
+        
+        threading.Thread(target=run_scan, daemon=True).start()
+    
+    def run_port_sweep(self):
+        target = self.target_input.text().strip()
+        if not target:
+            self.dns_terminal_output.setHtml("<p style='color: #FF4500;'>[ERROR] Please enter a network range</p>")
+            return
+        
+        self.dns_terminal_output.clear()
+        self.set_buttons_enabled(False)
+        self.append_terminal_output(f"<p style='color: #64C8FF;'>[*] Starting network sweep on {target}</p>")
+        
+        import subprocess
+        import threading
+        
+        def run_scan():
+            try:
+                cmd = ["python", "tools/port_scanner.py", target, "--sweep"]
+                result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(self.main_window.project_root))
+                self.append_terminal_output(f"<pre style='color: #DCDCDC;'>{result.stdout}</pre>")
+                if result.stderr:
+                    self.append_terminal_output(f"<p style='color: #FF4500;'>{result.stderr}</p>")
+            except Exception as e:
+                self.append_terminal_output(f"<p style='color: #FF4500;'>[ERROR] {str(e)}</p>")
+            finally:
+                self.set_buttons_enabled(True)
+        
+        threading.Thread(target=run_scan, daemon=True).start()
+    
+    def run_top_ports(self):
+        target = self.target_input.text().strip()
+        if not target:
+            self.dns_terminal_output.setHtml("<p style='color: #FF4500;'>[ERROR] Please enter a target IP</p>")
+            return
+        
+        self.dns_terminal_output.clear()
+        self.set_buttons_enabled(False)
+        self.append_terminal_output(f"<p style='color: #64C8FF;'>[*] Scanning top 20 ports on {target}</p>")
+        
+        import subprocess
+        import threading
+        
+        def run_scan():
+            try:
+                cmd = ["python", "tools/port_scanner.py", target, "--top-ports", "20"]
+                result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(self.main_window.project_root))
+                self.append_terminal_output(f"<pre style='color: #DCDCDC;'>{result.stdout}</pre>")
+                if result.stderr:
+                    self.append_terminal_output(f"<p style='color: #FF4500;'>{result.stderr}</p>")
+            except Exception as e:
+                self.append_terminal_output(f"<p style='color: #FF4500;'>[ERROR] {str(e)}</p>")
+            finally:
+                self.set_buttons_enabled(True)
+        
+        threading.Thread(target=run_scan, daemon=True).start()
+    
+    def run_service_scan(self):
+        target = self.target_input.text().strip()
+        if not target:
+            self.dns_terminal_output.setHtml("<p style='color: #FF4500;'>[ERROR] Please enter a target IP</p>")
+            return
+        
+        self.dns_terminal_output.clear()
+        self.set_buttons_enabled(False)
+        self.append_terminal_output(f"<p style='color: #64C8FF;'>[*] Scanning with service detection on {target}</p>")
+        
+        import subprocess
+        import threading
+        
+        def run_scan():
+            try:
+                cmd = ["python", "tools/port_scanner.py", target, "--top-ports", "20", "--service-detect"]
+                result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(self.main_window.project_root))
+                self.append_terminal_output(f"<pre style='color: #DCDCDC;'>{result.stdout}</pre>")
+                if result.stderr:
+                    self.append_terminal_output(f"<p style='color: #FF4500;'>{result.stderr}</p>")
+            except Exception as e:
+                self.append_terminal_output(f"<p style='color: #FF4500;'>[ERROR] {str(e)}</p>")
+            finally:
+                self.set_buttons_enabled(True)
+        
+        threading.Thread(target=run_scan, daemon=True).start()
+    
+    # SMB Enumeration Methods
+    def run_smb_scan(self):
+        target = self.target_input.text().strip()
+        if not target:
+            self.dns_terminal_output.setHtml("<p style='color: #FF4500;'>[ERROR] Please enter a target IP</p>")
+            return
+        
+        self.dns_terminal_output.clear()
+        self.set_buttons_enabled(False)
+        self.append_terminal_output(f"<p style='color: #64C8FF;'>[*] Scanning SMB ports on {target}</p>")
+        
+        import subprocess
+        import threading
+        
+        def run_scan():
+            try:
+                cmd = ["python", "tools/smb_enum.py", target]
+                result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(self.main_window.project_root))
+                self.append_terminal_output(f"<pre style='color: #DCDCDC;'>{result.stdout}</pre>")
+                if result.stderr:
+                    self.append_terminal_output(f"<p style='color: #FF4500;'>{result.stderr}</p>")
+            except Exception as e:
+                self.append_terminal_output(f"<p style='color: #FF4500;'>[ERROR] {str(e)}</p>")
+            finally:
+                self.set_buttons_enabled(True)
+        
+        threading.Thread(target=run_scan, daemon=True).start()
+    
+    def run_netbios_scan(self):
+        target = self.target_input.text().strip()
+        if not target:
+            self.dns_terminal_output.setHtml("<p style='color: #FF4500;'>[ERROR] Please enter a target IP</p>")
+            return
+        
+        self.dns_terminal_output.clear()
+        self.set_buttons_enabled(False)
+        self.append_terminal_output(f"<p style='color: #64C8FF;'>[*] NetBIOS enumeration on {target}</p>")
+        
+        import subprocess
+        import threading
+        
+        def run_scan():
+            try:
+                cmd = ["python", "tools/smb_enum.py", target, "--netbios"]
+                result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(self.main_window.project_root))
+                self.append_terminal_output(f"<pre style='color: #DCDCDC;'>{result.stdout}</pre>")
+                if result.stderr:
+                    self.append_terminal_output(f"<p style='color: #FF4500;'>{result.stderr}</p>")
+            except Exception as e:
+                self.append_terminal_output(f"<p style='color: #FF4500;'>[ERROR] {str(e)}</p>")
+            finally:
+                self.set_buttons_enabled(True)
+        
+        threading.Thread(target=run_scan, daemon=True).start()
+    
+    def run_smb_os_detect(self):
+        target = self.target_input.text().strip()
+        if not target:
+            self.dns_terminal_output.setHtml("<p style='color: #FF4500;'>[ERROR] Please enter a target IP</p>")
+            return
+        
+        self.dns_terminal_output.clear()
+        self.set_buttons_enabled(False)
+        self.append_terminal_output(f"<p style='color: #64C8FF;'>[*] SMB OS detection on {target}</p>")
+        
+        import subprocess
+        import threading
+        
+        def run_scan():
+            try:
+                cmd = ["python", "tools/smb_enum.py", target, "--os-detect"]
+                result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(self.main_window.project_root))
+                self.append_terminal_output(f"<pre style='color: #DCDCDC;'>{result.stdout}</pre>")
+                if result.stderr:
+                    self.append_terminal_output(f"<p style='color: #FF4500;'>{result.stderr}</p>")
+            except Exception as e:
+                self.append_terminal_output(f"<p style='color: #FF4500;'>[ERROR] {str(e)}</p>")
+            finally:
+                self.set_buttons_enabled(True)
+        
+        threading.Thread(target=run_scan, daemon=True).start()
+    
+    def run_smb_range(self):
+        target = self.target_input.text().strip()
+        if not target:
+            self.dns_terminal_output.setHtml("<p style='color: #FF4500;'>[ERROR] Please enter a network range (e.g., 192.168.1)</p>")
+            return
+        
+        self.dns_terminal_output.clear()
+        self.set_buttons_enabled(False)
+        self.append_terminal_output(f"<p style='color: #64C8FF;'>[*] SMB range scan on {target}.1-254</p>")
+        
+        import subprocess
+        import threading
+        
+        def run_scan():
+            try:
+                cmd = ["python", "tools/smb_enum.py", target, "--range"]
+                result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(self.main_window.project_root))
+                self.append_terminal_output(f"<pre style='color: #DCDCDC;'>{result.stdout}</pre>")
+                if result.stderr:
+                    self.append_terminal_output(f"<p style='color: #FF4500;'>{result.stderr}</p>")
+            except Exception as e:
+                self.append_terminal_output(f"<p style='color: #FF4500;'>[ERROR] {str(e)}</p>")
+            finally:
+                self.set_buttons_enabled(True)
+        
+        threading.Thread(target=run_scan, daemon=True).start()
+    
+    def run_smtp_enum(self):
+        target = self.target_input.text().strip()
+        if not target: return self.show_error("Please enter target")
+        domain = target.split('.')[0] if '.' in target else "example.com"
+        wordlist = self.wordlist_combo.currentData() or "resources/wordlists/subdomains-top1000.txt"
+        self.run_tool_command(["python", "tools/smtp_enum.py", target, "--domain", domain, "--wordlist", wordlist], f"SMTP enumeration on {target}")
+    
+    def run_snmp_scan(self):
+        target = self.target_input.text().strip()
+        if not target: return self.show_error("Please enter a target IP")
+        self.run_tool_command(["python", "tools/snmp_enum.py", target], f"SNMP scan on {target}")
+    
+    def run_snmp_community(self):
+        target = self.target_input.text().strip()
+        if not target: return self.show_error("Please enter a target IP")
+        self.run_tool_command(["python", "tools/snmp_enum.py", target, "--community", "public"], f"SNMP community test on {target}")
+    
+    def run_snmp_walk(self):
+        target = self.target_input.text().strip()
+        if not target: return self.show_error("Please enter a target IP")
+        self.run_tool_command(["python", "tools/snmp_enum.py", target, "--walk"], f"SNMP walk on {target}")
+    
+    def run_snmp_range(self):
+        target = self.target_input.text().strip()
+        if not target: return self.show_error("Please enter a network range")
+        self.run_tool_command(["python", "tools/snmp_enum.py", target, "--range"], f"SNMP range scan on {target}")
+    
+    def run_http_fingerprint(self):
+        target = self.target_input.text().strip()
+        if not target: return self.show_error("Please enter a target")
+        self.run_tool_command(["python", "tools/http_enum.py", target], f"HTTP fingerprinting on {target}")
+    
+    def run_http_ssl(self):
+        target = self.target_input.text().strip()
+        if not target: return self.show_error("Please enter a target")
+        self.run_tool_command(["python", "tools/http_enum.py", target, "--https", "--ssl-scan"], f"SSL scan on {target}")
+    
+    def run_http_dir(self):
+        target = self.target_input.text().strip()
+        if not target: return self.show_error("Please enter a target")
+        self.run_tool_command(["python", "tools/http_enum.py", target, "--dir-scan"], f"Directory scan on {target}")
+    
+    def run_api_discover(self):
+        target = self.target_input.text().strip()
+        if not target: return self.show_error("Please enter a target")
+        self.run_tool_command(["python", "tools/api_enum.py", target], f"API discovery on {target}")
+    
+    def run_api_methods(self):
+        target = self.target_input.text().strip()
+        if not target: return self.show_error("Please enter a target")
+        self.run_tool_command(["python", "tools/api_enum.py", target, "--methods"], f"API methods test on {target}")
+    
+    def run_api_auth(self):
+        target = self.target_input.text().strip()
+        if not target: return self.show_error("Please enter a target")
+        self.run_tool_command(["python", "tools/api_enum.py", target, "--auth-bypass"], f"API auth bypass test on {target}")
+    
+    def run_db_scan(self):
+        target = self.target_input.text().strip()
+        if not target: return self.show_error("Please enter a target IP")
+        self.run_tool_command(["python", "tools/db_enum.py", target], f"Database scan on {target}")
+    
+    def run_db_detailed(self):
+        target = self.target_input.text().strip()
+        if not target: return self.show_error("Please enter a target IP")
+        self.run_tool_command(["python", "tools/db_enum.py", target, "--detailed"], f"Detailed database scan on {target}")
+    
+    def show_error(self, message):
+        self.dns_terminal_output.setHtml(f"<p style='color: #FF4500;'>[ERROR] {message}</p>")
+    
+    def run_tool_command(self, cmd, description):
+        self.dns_terminal_output.clear()
+        self.set_buttons_enabled(False)
+        self.append_terminal_output(f"<p style='color: #64C8FF;'>[*] {description}</p>")
+        
+        import subprocess, threading
+        def run_scan():
+            try:
+                result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(self.main_window.project_root))
+                self.append_terminal_output(f"<pre style='color: #DCDCDC;'>{result.stdout}</pre>")
+                if result.stderr: self.append_terminal_output(f"<p style='color: #FF4500;'>{result.stderr}</p>")
+            except Exception as e:
+                self.append_terminal_output(f"<p style='color: #FF4500;'>[ERROR] {str(e)}</p>")
+            finally: self.set_buttons_enabled(True)
+        threading.Thread(target=run_scan, daemon=True).start()
