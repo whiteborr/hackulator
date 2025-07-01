@@ -3,9 +3,12 @@ import logging
 import os
 from PyQt6.QtWidgets import QWidget, QPushButton, QLabel, QLineEdit, QTextEdit, QComboBox, QCheckBox, QHBoxLayout
 from PyQt6.QtCore import pyqtSignal, QSize, Qt
-from PyQt6.QtGui import QPixmap, QIcon, QFont, QTextCursor
+from PyQt6.QtGui import QPixmap, QIcon, QFont, QTextCursor, QShortcut, QKeySequence
 
 from app.core import custom_scripts
+from app.core.validators import InputValidator, ValidationError
+from app.core.exporter import exporter
+from app.widgets.progress_widget import ProgressWidget
 
 # ============================================================================
 # Custom HoverButton Widget (for displaying info on hover)
@@ -108,6 +111,10 @@ class EnumerationPage(QWidget):
         self.dns_terminal_output.setObjectName("InfoPanel")
         self.dns_terminal_output.setReadOnly(True)
         
+        # Progress widget
+        self.progress_widget = ProgressWidget(self)
+        self.progress_widget.setVisible(False)
+        
         self.wordlist_combo = QComboBox(self)
         self.wordlist_combo.setProperty("class", "wordlistCombo")
         self.populate_wordlists()
@@ -121,6 +128,20 @@ class EnumerationPage(QWidget):
             if record_type == 'A': checkbox.setChecked(True)
             self.record_type_layout.addWidget(checkbox)
             self.record_type_checkboxes[record_type] = checkbox
+        
+        # Export controls
+        self.export_combo = QComboBox(self)
+        self.export_combo.setProperty("class", "exportCombo")
+        self.export_combo.addItems(["JSON", "CSV", "XML"])
+        
+        self.export_button = QPushButton("Export Results", self)
+        self.export_button.setProperty("class", "exportButton")
+        self.export_button.clicked.connect(self.export_results)
+        self.export_button.setEnabled(False)  # Disabled until results available
+        
+        # Store last scan results for export
+        self.last_scan_results = {}
+        self.last_scan_target = ""
 
         self.dns_tool_buttons = []
         for tool_data in self.dns_tools_data:
@@ -131,8 +152,9 @@ class EnumerationPage(QWidget):
             self.dns_tool_buttons.append(button)
         
         # **FIX**: Removed the separate wildcard status label
-        self.submenu_widgets = [self.dns_back_button, self.target_input, self.dns_terminal_output, self.wordlist_combo, self.record_type_container] + self.dns_tool_buttons
+        self.submenu_widgets = [self.dns_back_button, self.target_input, self.dns_terminal_output, self.wordlist_combo, self.record_type_container, self.export_combo, self.export_button, self.progress_widget] + self.dns_tool_buttons
         
+        self.setup_shortcuts()
         self.resizeEvent(None) 
         self.set_submenu_active(False)
         self.apply_theme()
@@ -227,6 +249,19 @@ class EnumerationPage(QWidget):
         self.target_input.setGeometry(target_x, controls_y, target_width, control_height)
         self.wordlist_combo.setGeometry(wordlist_x, controls_y, wordlist_width, control_height)
         self.record_type_container.setGeometry(checkbox_x, controls_y, checkbox_width, control_height)
+        
+        # Progress widget positioning
+        progress_y = controls_y + control_height + 15
+        progress_height = 60
+        self.progress_widget.setGeometry(target_x, progress_y, term_w, progress_height)
+        
+        # Export controls positioning
+        export_y = progress_y + progress_height + 15
+        export_combo_width = 100
+        export_button_width = 120
+        
+        self.export_combo.setGeometry(target_x, export_y, export_combo_width, control_height)
+        self.export_button.setGeometry(target_x + export_combo_width + 15, export_y, export_button_width, control_height)
 
         for i, button in enumerate(self.dns_tool_buttons):
             x, y, w, h = self.dns_tools_data[i]["rect"]
@@ -246,20 +281,44 @@ class EnumerationPage(QWidget):
         wordlist_path = self.wordlist_combo.currentData()
         selected_types = [rtype for rtype, cb in self.record_type_checkboxes.items() if cb.isChecked()]
 
-        if not all([target, wordlist_path, selected_types]):
-            self.dns_terminal_output.setHtml("<p style='color: #FF4500;'>! Please fill all fields.</p>")
+        # Validate domain input
+        domain_valid, domain_result = InputValidator.validate_domain(target)
+        if not domain_valid:
+            self.dns_terminal_output.setHtml(f"<p style='color: #FF4500;'>[ERROR] Invalid domain: {domain_result}</p>")
             return
+        target = domain_result  # Use sanitized domain
+        
+        # Validate wordlist path
+        wordlist_valid, wordlist_error, validated_path = InputValidator.validate_wordlist_path(wordlist_path)
+        if not wordlist_valid:
+            self.dns_terminal_output.setHtml(f"<p style='color: #FF4500;'>[ERROR] Wordlist validation failed: {wordlist_error}</p>")
+            return
+        wordlist_path = validated_path  # Use validated path
+        
+        # Validate record types
+        types_valid, types_error, validated_types = InputValidator.validate_record_types(selected_types)
+        if not types_valid:
+            self.dns_terminal_output.setHtml(f"<p style='color: #FF4500;'>[ERROR] Record type validation failed: {types_error}</p>")
+            return
+        selected_types = validated_types  # Use validated types
         
         self.dns_terminal_output.clear()
         self.set_buttons_enabled(False)
+        self.progress_widget.setVisible(True)
+        self.progress_widget.reset_progress()
 
-        # **FIX**: Pass the wildcard callback to the script runner.
+        # Store current scan info for export
+        self.last_scan_target = target
+        
         custom_scripts.enumerate_hostnames(
             target=target, wordlist_path=wordlist_path, record_types=selected_types,
             output_callback=self.append_terminal_output,
             status_callback=self.update_status,
             finished_callback=self.on_script_finished,
-            wildcard_callback=self.update_wildcard_status
+            wildcard_callback=self.update_wildcard_status,
+            results_callback=self.store_scan_results,
+            progress_callback=self.update_progress,
+            progress_start_callback=self.start_progress
         )
 
     def append_terminal_output(self, text):
@@ -284,9 +343,71 @@ class EnumerationPage(QWidget):
             cursor.removeSelectedText()
             cursor.insertHtml(text + "<br>")
 
+    def store_scan_results(self, results):
+        """Store scan results for export functionality"""
+        self.last_scan_results = results
+        self.export_button.setEnabled(bool(results))
+    
+    def export_results(self):
+        """Export the last scan results"""
+        if not self.last_scan_results:
+            self.append_terminal_output("<p style='color: #FF4500;'>[ERROR] No scan results to export</p>")
+            return
+        
+        format_type = self.export_combo.currentText().lower()
+        success, filepath, message = exporter.export_results(
+            self.last_scan_results, 
+            self.last_scan_target, 
+            format_type
+        )
+        
+        if success:
+            self.append_terminal_output(f"<p style='color: #00FF41;'>[✓] Results exported to: {filepath}</p>")
+        else:
+            self.append_terminal_output(f"<p style='color: #FF4500;'>[ERROR] Export failed: {message}</p>")
+    
+    def start_progress(self, total_items):
+        """Start progress tracking"""
+        self.progress_widget.start_progress(total_items, "Enumerating hostnames...")
+    
+    def update_progress(self, completed_items, results_found):
+        """Update progress tracking"""
+        self.progress_widget.update_progress(completed_items, results_found)
+    
     def on_script_finished(self):
         self.set_buttons_enabled(True)
+        self.progress_widget.finish_progress("Scan Complete")
         self.append_terminal_output("<br><p style='color: #64C8FF;'>--- Scan Finished ---</p>")
 
+    def setup_shortcuts(self):
+        """Setup keyboard shortcuts"""
+        # F5 - Start scan
+        self.scan_shortcut = QShortcut(QKeySequence("F5"), self)
+        self.scan_shortcut.activated.connect(self.run_host_wordlist_scan)
+        
+        # Ctrl+E - Export results
+        self.export_shortcut = QShortcut(QKeySequence("Ctrl+E"), self)
+        self.export_shortcut.activated.connect(self.export_results)
+        
+        # Ctrl+L - Clear terminal
+        self.clear_shortcut = QShortcut(QKeySequence("Ctrl+L"), self)
+        self.clear_shortcut.activated.connect(self.clear_terminal)
+        
+        # Escape - Go back
+        self.back_shortcut = QShortcut(QKeySequence("Escape"), self)
+        self.back_shortcut.activated.connect(self.handle_escape)
+    
+    def clear_terminal(self):
+        """Clear the terminal output"""
+        self.dns_terminal_output.clear()
+    
+    def handle_escape(self):
+        """Handle escape key press"""
+        if self.is_submenu_active:
+            self.set_submenu_active(False)
+        else:
+            self.navigate_signal.emit("home")
+    
     def set_buttons_enabled(self, enabled):
         for button in self.dns_tool_buttons: button.setEnabled(enabled)
+        self.scan_shortcut.setEnabled(enabled)

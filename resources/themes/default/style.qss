@@ -97,3 +97,42 @@ QPushButton[class="backButton"]:pressed {
     background-color: rgba(90, 120, 150, 220);
     border: 2px solid #88DFFF;
 }
+
+
+/* ----------------------------------------
+   6. Export Controls
+----------------------------------------- */
+QComboBox[class="exportCombo"] {
+    background-color: rgba(40, 50, 60, 180);
+    border: 1px solid #707070;
+    border-radius: 6px;
+    font-family: "Consolas", "Monaco", monospace;
+    font-size: 12pt;
+    color: #DCDCDC;
+    padding: 4px 8px;
+}
+
+QComboBox[class="exportCombo"]:hover {
+    border: 1px solid #64C8FF;
+}
+
+QPushButton[class="exportButton"] {
+    background-color: rgba(0, 100, 0, 180);
+    border: 1px solid #00AA00;
+    border-radius: 8px;
+    font-family: "Consolas", "Monaco", monospace;
+    font-size: 12pt;
+    color: #DCDCDC;
+    padding: 4px 8px;
+}
+
+QPushButton[class="exportButton"]:hover {
+    background-color: rgba(0, 150, 0, 200);
+    border: 1px solid #00FF00;
+}
+
+QPushButton[class="exportButton"]:disabled {
+    background-color: rgba(60, 60, 60, 100);
+    border: 1px solid #555555;
+    color: #888888;
+}

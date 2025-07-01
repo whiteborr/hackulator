@@ -6,6 +6,8 @@ import string
 import concurrent.futures
 from collections import defaultdict
 from PyQt6.QtCore import QObject, pyqtSignal, QRunnable, QThreadPool
+from app.core.logger import logger
+from app.core.config import config
 
 class WorkerSignals(QObject):
     """Defines the signals available from a running worker thread."""
@@ -13,6 +15,9 @@ class WorkerSignals(QObject):
     status = pyqtSignal(str)
     finished = pyqtSignal()
     wildcard_result = pyqtSignal(str)
+    results_ready = pyqtSignal(dict)  # Emit results for export
+    progress_update = pyqtSignal(int, int)  # completed_items, results_found
+    progress_start = pyqtSignal(int)  # total_items
 
 
 class HostWordlistWorker(QRunnable):
@@ -28,15 +33,24 @@ class HostWordlistWorker(QRunnable):
         self.is_running = True
         self.record_types = record_types or ['A']
         self.resolver = dns.resolver.Resolver()
+        # Configure DNS resolver from config
+        dns_config = config.get_dns_config()
+        self.resolver.timeout = dns_config.get('timeout', 3)
+        self.resolver.lifetime = dns_config.get('lifetime', 10)
+        self.max_workers = dns_config.get('max_workers', 50)
+        self.wildcard_test_count = dns_config.get('wildcard_test_count', 3)
+        self.wildcard_test_length = dns_config.get('wildcard_test_length', 12)
         self.wildcard_ips = set()
 
-    def _random_string(self, length):
+    def _random_string(self, length=None):
         """Generates a random string for wildcard testing."""
+        if length is None:
+            length = self.wildcard_test_length
         return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
 
     def detect_wildcard(self):
         """Detects wildcard DNS by resolving random subdomains."""
-        test_domains = [f"{self._random_string(12)}.{self.target}" for _ in range(3)]
+        test_domains = [f"{self._random_string()}.{self.target}" for _ in range(self.wildcard_test_count)]
         for test_domain in test_domains:
             try:
                 answers = self.resolver.resolve(test_domain, 'A')
@@ -45,6 +59,7 @@ class HostWordlistWorker(QRunnable):
             except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.Timeout):
                 continue
             except Exception as e:
+                logger.log_dns_error(test_domain, str(e))
                 self.signals.output.emit(f"<p style='color: orange;'>[Wildcard Detection Error]: {test_domain} - {e}</p>")
 
     def query_subdomain(self, subdomain):
@@ -85,6 +100,7 @@ class HostWordlistWorker(QRunnable):
     def run(self):
         """The main logic for the worker thread."""
         try:
+            logger.log_scan_start(self.target, self.wordlist_path, self.record_types)
             self.signals.status.emit(f"Running: Enumerate Hostnames on {self.target}...")
             
             self.signals.wildcard_result.emit("<p style='color: #00FF41; font-family: \"Neuropol X\";'>Checking for wildcard...</p>")
@@ -98,17 +114,31 @@ class HostWordlistWorker(QRunnable):
             with open(self.wordlist_path, 'r') as file:
                 subdomains = [line.strip() for line in file if line.strip()]
 
+            # Emit progress start
+            self.signals.progress_start.emit(len(subdomains))
+            
             # **FIX**: Collect all results from threads before processing
             all_results = defaultdict(lambda: defaultdict(list))
-            with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
+            completed_count = 0
+            results_count = 0
+            
+            with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
                 # Use map to get results as they complete
                 future_to_subdomain = {executor.submit(self.query_subdomain, sub): sub for sub in subdomains}
                 for future in concurrent.futures.as_completed(future_to_subdomain):
                     result = future.result()
+                    completed_count += 1
+                    
                     if result:
                         domain, domain_results = result
+                        if domain_results:  # Only count if results found
+                            results_count += 1
                         for record_type, values in domain_results.items():
                             all_results[domain][record_type].extend(values)
+                    
+                    # Emit progress update every 10 completed items or at end
+                    if completed_count % 10 == 0 or completed_count == len(subdomains):
+                        self.signals.progress_update.emit(completed_count, results_count)
 
             # **FIX**: Process and format the collected results in the correct order
             # First, group all results by record type
@@ -132,18 +162,26 @@ class HostWordlistWorker(QRunnable):
                         
                         self.signals.output.emit(found_line + indented_data_block)
 
+            results_count = len(all_results)
+            logger.log_scan_complete(self.target, results_count)
+            
+            # Emit results for export
+            self.signals.results_ready.emit(dict(all_results))
+            
             self.signals.status.emit("Finished: Enumerate Hostnames")
         except FileNotFoundError:
+            logger.error(f"Wordlist not found: {self.wordlist_path}")
             self.signals.output.emit(f"[ERROR] Wordlist not found at: {self.wordlist_path}")
             self.signals.status.emit("Error: File not found")
         except Exception as e:
+            logger.error(f"Unexpected error in DNS enumeration: {str(e)}")
             self.signals.output.emit(f"[ERROR] An unexpected error occurred: {e}")
             self.signals.status.emit("Error: Script crashed")
         finally:
             self.signals.finished.emit()
 
 
-def enumerate_hostnames(target, wordlist_path, output_callback, status_callback, finished_callback, record_types=None, wildcard_callback=None):
+def enumerate_hostnames(target, wordlist_path, output_callback, status_callback, finished_callback, record_types=None, wildcard_callback=None, results_callback=None, progress_callback=None, progress_start_callback=None):
     """
     Creates and runs the script worker.
     """
@@ -153,4 +191,10 @@ def enumerate_hostnames(target, wordlist_path, output_callback, status_callback,
     worker.signals.finished.connect(finished_callback)
     if wildcard_callback:
         worker.signals.wildcard_result.connect(wildcard_callback)
+    if results_callback:
+        worker.signals.results_ready.connect(results_callback)
+    if progress_callback:
+        worker.signals.progress_update.connect(progress_callback)
+    if progress_start_callback:
+        worker.signals.progress_start.connect(progress_start_callback)
     QThreadPool.globalInstance().start(worker)
