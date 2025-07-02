@@ -8,12 +8,27 @@ from urllib.parse import urljoin
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
+# Import connection pool
+try:
+    from app.core.connection_pool import connection_pool
+    from app.core.proxy_manager import proxy_manager
+except ImportError:
+    connection_pool = None
+    proxy_manager = None
+
 def http_fingerprint(target, port=80, https=False):
     protocol = "https" if https else "http"
     url = f"{protocol}://{target}:{port}"
     
     try:
-        response = requests.get(url, timeout=5, verify=False)
+        # Use connection pool if available
+        if connection_pool:
+            session = connection_pool.get_session(f"http_{target}")
+            proxies = proxy_manager.get_proxy_dict() if proxy_manager else {}
+            response = session.get(url, timeout=5, verify=False, proxies=proxies)
+        else:
+            proxies = proxy_manager.get_proxy_dict() if proxy_manager else {}
+            response = requests.get(url, timeout=5, verify=False, proxies=proxies)
         print(f"[+] {url} - Status: {response.status_code}")
         
         # Server header
@@ -68,7 +83,21 @@ def directory_scan(target, port=80, https=False, wordlist=None):
     def check_dir(directory):
         url = urljoin(base_url + "/", directory)
         try:
-            response = requests.get(url, timeout=3, verify=False, allow_redirects=False)
+            # Apply rate limiting
+            try:
+                from app.core.rate_limiter import rate_limiter
+                rate_limiter.wait_if_needed('http_dir_scan')
+            except ImportError:
+                pass
+            
+            # Use connection pool if available
+            if connection_pool:
+                session = connection_pool.get_session(f"dir_{target}")
+                proxies = proxy_manager.get_proxy_dict() if proxy_manager else {}
+                response = session.get(url, timeout=3, verify=False, allow_redirects=False, proxies=proxies)
+            else:
+                proxies = proxy_manager.get_proxy_dict() if proxy_manager else {}
+                response = requests.get(url, timeout=3, verify=False, allow_redirects=False, proxies=proxies)
             if response.status_code in [200, 301, 302, 403]:
                 print(f"[+] {url} - Status: {response.status_code}")
                 found_dirs.append(url)

@@ -2,12 +2,13 @@
 import logging
 import os
 from PyQt6.QtWidgets import QWidget, QPushButton, QLabel, QLineEdit, QTextEdit, QComboBox, QCheckBox, QHBoxLayout
-from PyQt6.QtCore import pyqtSignal, QSize, Qt
+from PyQt6.QtCore import pyqtSignal, QSize, Qt, QThreadPool
 from PyQt6.QtGui import QPixmap, QIcon, QFont, QTextCursor, QShortcut, QKeySequence
 
 from app.core import custom_scripts
 from app.core.validators import InputValidator, ValidationError
 from app.core.exporter import exporter
+from app.core.base_worker import CommandWorker
 from app.widgets.progress_widget import ProgressWidget
 
 # ============================================================================
@@ -679,24 +680,13 @@ class EnumerationPage(QWidget):
         
         self.dns_terminal_output.clear()
         self.set_buttons_enabled(False)
-        self.append_terminal_output(f"<p style='color: #64C8FF;'>[*] Starting TCP scan on {target}</p>")
         
-        import subprocess
-        import threading
-        
-        def run_scan():
-            try:
-                cmd = ["python", "tools/port_scanner.py", target, "-p", "1-1000"]
-                result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(self.main_window.project_root))
-                self.append_terminal_output(f"<pre style='color: #DCDCDC;'>{result.stdout}</pre>")
-                if result.stderr:
-                    self.append_terminal_output(f"<p style='color: #FF4500;'>{result.stderr}</p>")
-            except Exception as e:
-                self.append_terminal_output(f"<p style='color: #FF4500;'>[ERROR] {str(e)}</p>")
-            finally:
-                self.set_buttons_enabled(True)
-        
-        threading.Thread(target=run_scan, daemon=True).start()
+        cmd = ["python", "tools/port_scanner.py", target, "-p", "1-1000"]
+        worker = CommandWorker(cmd, f"Starting TCP scan on {target}", str(self.main_window.project_root))
+        worker.signals.output.connect(self.append_terminal_output)
+        worker.signals.error.connect(self.append_terminal_output)
+        worker.signals.finished.connect(lambda: self.set_buttons_enabled(True))
+        QThreadPool.globalInstance().start(worker)
     
     def run_port_sweep(self):
         target = self.target_input.text().strip()
@@ -706,24 +696,13 @@ class EnumerationPage(QWidget):
         
         self.dns_terminal_output.clear()
         self.set_buttons_enabled(False)
-        self.append_terminal_output(f"<p style='color: #64C8FF;'>[*] Starting network sweep on {target}</p>")
         
-        import subprocess
-        import threading
-        
-        def run_scan():
-            try:
-                cmd = ["python", "tools/port_scanner.py", target, "--sweep"]
-                result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(self.main_window.project_root))
-                self.append_terminal_output(f"<pre style='color: #DCDCDC;'>{result.stdout}</pre>")
-                if result.stderr:
-                    self.append_terminal_output(f"<p style='color: #FF4500;'>{result.stderr}</p>")
-            except Exception as e:
-                self.append_terminal_output(f"<p style='color: #FF4500;'>[ERROR] {str(e)}</p>")
-            finally:
-                self.set_buttons_enabled(True)
-        
-        threading.Thread(target=run_scan, daemon=True).start()
+        cmd = ["python", "tools/port_scanner.py", target, "--sweep"]
+        worker = CommandWorker(cmd, f"Starting network sweep on {target}", str(self.main_window.project_root))
+        worker.signals.output.connect(self.append_terminal_output)
+        worker.signals.error.connect(self.append_terminal_output)
+        worker.signals.finished.connect(lambda: self.set_buttons_enabled(True))
+        QThreadPool.globalInstance().start(worker)
     
     def run_top_ports(self):
         target = self.target_input.text().strip()
@@ -733,24 +712,13 @@ class EnumerationPage(QWidget):
         
         self.dns_terminal_output.clear()
         self.set_buttons_enabled(False)
-        self.append_terminal_output(f"<p style='color: #64C8FF;'>[*] Scanning top 20 ports on {target}</p>")
         
-        import subprocess
-        import threading
-        
-        def run_scan():
-            try:
-                cmd = ["python", "tools/port_scanner.py", target, "--top-ports", "20"]
-                result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(self.main_window.project_root))
-                self.append_terminal_output(f"<pre style='color: #DCDCDC;'>{result.stdout}</pre>")
-                if result.stderr:
-                    self.append_terminal_output(f"<p style='color: #FF4500;'>{result.stderr}</p>")
-            except Exception as e:
-                self.append_terminal_output(f"<p style='color: #FF4500;'>[ERROR] {str(e)}</p>")
-            finally:
-                self.set_buttons_enabled(True)
-        
-        threading.Thread(target=run_scan, daemon=True).start()
+        cmd = ["python", "tools/port_scanner.py", target, "--top-ports", "20"]
+        worker = CommandWorker(cmd, f"Scanning top 20 ports on {target}", str(self.main_window.project_root))
+        worker.signals.output.connect(self.append_terminal_output)
+        worker.signals.error.connect(self.append_terminal_output)
+        worker.signals.finished.connect(lambda: self.set_buttons_enabled(True))
+        QThreadPool.globalInstance().start(worker)
     
     def run_service_scan(self):
         target = self.target_input.text().strip()
@@ -760,24 +728,13 @@ class EnumerationPage(QWidget):
         
         self.dns_terminal_output.clear()
         self.set_buttons_enabled(False)
-        self.append_terminal_output(f"<p style='color: #64C8FF;'>[*] Scanning with service detection on {target}</p>")
         
-        import subprocess
-        import threading
-        
-        def run_scan():
-            try:
-                cmd = ["python", "tools/port_scanner.py", target, "--top-ports", "20", "--service-detect"]
-                result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(self.main_window.project_root))
-                self.append_terminal_output(f"<pre style='color: #DCDCDC;'>{result.stdout}</pre>")
-                if result.stderr:
-                    self.append_terminal_output(f"<p style='color: #FF4500;'>{result.stderr}</p>")
-            except Exception as e:
-                self.append_terminal_output(f"<p style='color: #FF4500;'>[ERROR] {str(e)}</p>")
-            finally:
-                self.set_buttons_enabled(True)
-        
-        threading.Thread(target=run_scan, daemon=True).start()
+        cmd = ["python", "tools/port_scanner.py", target, "--top-ports", "20", "--service-detect"]
+        worker = CommandWorker(cmd, f"Scanning with service detection on {target}", str(self.main_window.project_root))
+        worker.signals.output.connect(self.append_terminal_output)
+        worker.signals.error.connect(self.append_terminal_output)
+        worker.signals.finished.connect(lambda: self.set_buttons_enabled(True))
+        QThreadPool.globalInstance().start(worker)
     
     # SMB Enumeration Methods
     def run_smb_scan(self):
@@ -788,24 +745,13 @@ class EnumerationPage(QWidget):
         
         self.dns_terminal_output.clear()
         self.set_buttons_enabled(False)
-        self.append_terminal_output(f"<p style='color: #64C8FF;'>[*] Scanning SMB ports on {target}</p>")
         
-        import subprocess
-        import threading
-        
-        def run_scan():
-            try:
-                cmd = ["python", "tools/smb_enum.py", target]
-                result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(self.main_window.project_root))
-                self.append_terminal_output(f"<pre style='color: #DCDCDC;'>{result.stdout}</pre>")
-                if result.stderr:
-                    self.append_terminal_output(f"<p style='color: #FF4500;'>{result.stderr}</p>")
-            except Exception as e:
-                self.append_terminal_output(f"<p style='color: #FF4500;'>[ERROR] {str(e)}</p>")
-            finally:
-                self.set_buttons_enabled(True)
-        
-        threading.Thread(target=run_scan, daemon=True).start()
+        cmd = ["python", "tools/smb_enum.py", target]
+        worker = CommandWorker(cmd, f"Scanning SMB ports on {target}", str(self.main_window.project_root))
+        worker.signals.output.connect(self.append_terminal_output)
+        worker.signals.error.connect(self.append_terminal_output)
+        worker.signals.finished.connect(lambda: self.set_buttons_enabled(True))
+        QThreadPool.globalInstance().start(worker)
     
     def run_netbios_scan(self):
         target = self.target_input.text().strip()
@@ -815,24 +761,13 @@ class EnumerationPage(QWidget):
         
         self.dns_terminal_output.clear()
         self.set_buttons_enabled(False)
-        self.append_terminal_output(f"<p style='color: #64C8FF;'>[*] NetBIOS enumeration on {target}</p>")
         
-        import subprocess
-        import threading
-        
-        def run_scan():
-            try:
-                cmd = ["python", "tools/smb_enum.py", target, "--netbios"]
-                result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(self.main_window.project_root))
-                self.append_terminal_output(f"<pre style='color: #DCDCDC;'>{result.stdout}</pre>")
-                if result.stderr:
-                    self.append_terminal_output(f"<p style='color: #FF4500;'>{result.stderr}</p>")
-            except Exception as e:
-                self.append_terminal_output(f"<p style='color: #FF4500;'>[ERROR] {str(e)}</p>")
-            finally:
-                self.set_buttons_enabled(True)
-        
-        threading.Thread(target=run_scan, daemon=True).start()
+        cmd = ["python", "tools/smb_enum.py", target, "--netbios"]
+        worker = CommandWorker(cmd, f"NetBIOS enumeration on {target}", str(self.main_window.project_root))
+        worker.signals.output.connect(self.append_terminal_output)
+        worker.signals.error.connect(self.append_terminal_output)
+        worker.signals.finished.connect(lambda: self.set_buttons_enabled(True))
+        QThreadPool.globalInstance().start(worker)
     
     def run_smb_os_detect(self):
         target = self.target_input.text().strip()
@@ -842,24 +777,13 @@ class EnumerationPage(QWidget):
         
         self.dns_terminal_output.clear()
         self.set_buttons_enabled(False)
-        self.append_terminal_output(f"<p style='color: #64C8FF;'>[*] SMB OS detection on {target}</p>")
         
-        import subprocess
-        import threading
-        
-        def run_scan():
-            try:
-                cmd = ["python", "tools/smb_enum.py", target, "--os-detect"]
-                result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(self.main_window.project_root))
-                self.append_terminal_output(f"<pre style='color: #DCDCDC;'>{result.stdout}</pre>")
-                if result.stderr:
-                    self.append_terminal_output(f"<p style='color: #FF4500;'>{result.stderr}</p>")
-            except Exception as e:
-                self.append_terminal_output(f"<p style='color: #FF4500;'>[ERROR] {str(e)}</p>")
-            finally:
-                self.set_buttons_enabled(True)
-        
-        threading.Thread(target=run_scan, daemon=True).start()
+        cmd = ["python", "tools/smb_enum.py", target, "--os-detect"]
+        worker = CommandWorker(cmd, f"SMB OS detection on {target}", str(self.main_window.project_root))
+        worker.signals.output.connect(self.append_terminal_output)
+        worker.signals.error.connect(self.append_terminal_output)
+        worker.signals.finished.connect(lambda: self.set_buttons_enabled(True))
+        QThreadPool.globalInstance().start(worker)
     
     def run_smb_range(self):
         target = self.target_input.text().strip()
@@ -869,24 +793,13 @@ class EnumerationPage(QWidget):
         
         self.dns_terminal_output.clear()
         self.set_buttons_enabled(False)
-        self.append_terminal_output(f"<p style='color: #64C8FF;'>[*] SMB range scan on {target}.1-254</p>")
         
-        import subprocess
-        import threading
-        
-        def run_scan():
-            try:
-                cmd = ["python", "tools/smb_enum.py", target, "--range"]
-                result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(self.main_window.project_root))
-                self.append_terminal_output(f"<pre style='color: #DCDCDC;'>{result.stdout}</pre>")
-                if result.stderr:
-                    self.append_terminal_output(f"<p style='color: #FF4500;'>{result.stderr}</p>")
-            except Exception as e:
-                self.append_terminal_output(f"<p style='color: #FF4500;'>[ERROR] {str(e)}</p>")
-            finally:
-                self.set_buttons_enabled(True)
-        
-        threading.Thread(target=run_scan, daemon=True).start()
+        cmd = ["python", "tools/smb_enum.py", target, "--range"]
+        worker = CommandWorker(cmd, f"SMB range scan on {target}.1-254", str(self.main_window.project_root))
+        worker.signals.output.connect(self.append_terminal_output)
+        worker.signals.error.connect(self.append_terminal_output)
+        worker.signals.finished.connect(lambda: self.set_buttons_enabled(True))
+        QThreadPool.globalInstance().start(worker)
     
     def run_smtp_enum(self):
         target = self.target_input.text().strip()
@@ -961,15 +874,9 @@ class EnumerationPage(QWidget):
     def run_tool_command(self, cmd, description):
         self.dns_terminal_output.clear()
         self.set_buttons_enabled(False)
-        self.append_terminal_output(f"<p style='color: #64C8FF;'>[*] {description}</p>")
         
-        import subprocess, threading
-        def run_scan():
-            try:
-                result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(self.main_window.project_root))
-                self.append_terminal_output(f"<pre style='color: #DCDCDC;'>{result.stdout}</pre>")
-                if result.stderr: self.append_terminal_output(f"<p style='color: #FF4500;'>{result.stderr}</p>")
-            except Exception as e:
-                self.append_terminal_output(f"<p style='color: #FF4500;'>[ERROR] {str(e)}</p>")
-            finally: self.set_buttons_enabled(True)
-        threading.Thread(target=run_scan, daemon=True).start()
+        worker = CommandWorker(cmd, description, str(self.main_window.project_root))
+        worker.signals.output.connect(self.append_terminal_output)
+        worker.signals.error.connect(self.append_terminal_output)
+        worker.signals.finished.connect(lambda: self.set_buttons_enabled(True))
+        QThreadPool.globalInstance().start(worker)

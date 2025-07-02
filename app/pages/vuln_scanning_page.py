@@ -1,10 +1,9 @@
 # app/pages/vuln_scanning_page.py
 import logging
-import subprocess
-import threading
 from PyQt6.QtWidgets import QWidget, QPushButton, QLabel, QLineEdit, QTextEdit, QComboBox
-from PyQt6.QtCore import pyqtSignal, QSize, Qt
+from PyQt6.QtCore import pyqtSignal, QSize, Qt, QThreadPool
 from PyQt6.QtGui import QPixmap, QIcon, QShortcut, QKeySequence
+from app.core.base_worker import CommandWorker
 
 class VulnScanningPage(QWidget):
     navigate_signal = pyqtSignal(str)
@@ -120,21 +119,13 @@ class VulnScanningPage(QWidget):
         
         self.terminal_output.clear()
         self.set_buttons_enabled(False)
-        self.append_terminal_output(f"<p style='color: #64C8FF;'>[*] {description}</p>")
         
-        def run_scan():
-            try:
-                full_cmd = cmd + [target]
-                result = subprocess.run(full_cmd, capture_output=True, text=True, cwd=str(self.main_window.project_root))
-                self.append_terminal_output(f"<pre style='color: #DCDCDC;'>{result.stdout}</pre>")
-                if result.stderr:
-                    self.append_terminal_output(f"<p style='color: #FF4500;'>{result.stderr}</p>")
-            except Exception as e:
-                self.append_terminal_output(f"<p style='color: #FF4500;'>[ERROR] {str(e)}</p>")
-            finally:
-                self.set_buttons_enabled(True)
-        
-        threading.Thread(target=run_scan, daemon=True).start()
+        full_cmd = cmd + [target]
+        worker = CommandWorker(full_cmd, description, str(self.main_window.project_root))
+        worker.signals.output.connect(self.append_terminal_output)
+        worker.signals.error.connect(self.append_terminal_output)
+        worker.signals.finished.connect(lambda: self.set_buttons_enabled(True))
+        QThreadPool.globalInstance().start(worker)
 
     def run_all_vulns(self):
         port = self.port_input.text().strip()
@@ -163,20 +154,12 @@ class VulnScanningPage(QWidget):
         # For listing, we don't need a target
         self.terminal_output.clear()
         self.set_buttons_enabled(False)
-        self.append_terminal_output(f"<p style='color: #64C8FF;'>[*] Listing available NSE vulnerability scripts</p>")
         
-        def run_scan():
-            try:
-                result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(self.main_window.project_root))
-                self.append_terminal_output(f"<pre style='color: #DCDCDC;'>{result.stdout}</pre>")
-                if result.stderr:
-                    self.append_terminal_output(f"<p style='color: #FF4500;'>{result.stderr}</p>")
-            except Exception as e:
-                self.append_terminal_output(f"<p style='color: #FF4500;'>[ERROR] {str(e)}</p>")
-            finally:
-                self.set_buttons_enabled(True)
-        
-        threading.Thread(target=run_scan, daemon=True).start()
+        worker = CommandWorker(cmd, "Listing available NSE vulnerability scripts", str(self.main_window.project_root))
+        worker.signals.output.connect(self.append_terminal_output)
+        worker.signals.error.connect(self.append_terminal_output)
+        worker.signals.finished.connect(lambda: self.set_buttons_enabled(True))
+        QThreadPool.globalInstance().start(worker)
 
     def setup_shortcuts(self):
         self.clear_shortcut = QShortcut(QKeySequence("Ctrl+L"), self)

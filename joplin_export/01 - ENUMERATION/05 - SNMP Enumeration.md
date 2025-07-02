@@ -21,6 +21,7 @@ SNMP **MIBs** (Management Information Bases) are databases of hierarchical infor
 
 * * *
 **nmap**
+
 1. Scan for open SNMP ports:
 `nmap -sU --open -p 161 x.x.x.1-254 -oG open-snmp.txt`
 
@@ -37,6 +38,16 @@ SNMP **MIBs** (Management Information Bases) are databases of hierarchical infor
 3. Scan SNMP communities:
 `onesixtyone -c community -i ips`
 `onesixtyone -c common-snmp-community-strings-onesixtyone.txt <target> -w 100`
+
+4. Enumerate with **onesixtyone**  
+`onesixtyone <targetIP> public`  
+`onesixtyone -c /usr/share/wordlists/seclists/Discovery/SNMP/snmp-onesixtyone.txt <targetIP>`
+
+5. Enumerate with **snmp-check**  
+`snmp-check -c public <targetIP>`
+
+6. Enumerate with **snmpwalk**  
+`snmpwalk -v2c -c public <targetIP>`
 
 * * *
 **snmpwalk** 

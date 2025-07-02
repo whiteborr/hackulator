@@ -1,0 +1,4 @@
+requests>=2.25.0
+cryptography>=3.4.0
+pymssql>=2.2.0
+mysql-connector-python>=8.0.0

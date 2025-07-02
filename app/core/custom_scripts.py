@@ -37,7 +37,11 @@ class HostWordlistWorker(QRunnable):
         dns_config = config.get_dns_config()
         self.resolver.timeout = dns_config.get('timeout', 3)
         self.resolver.lifetime = dns_config.get('lifetime', 10)
-        self.max_workers = dns_config.get('max_workers', 50)
+        try:
+            from app.core.rate_limiter import rate_limiter
+            self.max_workers = rate_limiter.get_recommended_thread_count() if rate_limiter.is_enabled() else dns_config.get('max_workers', 50)
+        except ImportError:
+            self.max_workers = dns_config.get('max_workers', 50)
         self.wildcard_test_count = dns_config.get('wildcard_test_count', 3)
         self.wildcard_test_length = dns_config.get('wildcard_test_length', 12)
         self.wildcard_ips = set()
@@ -69,6 +73,19 @@ class HostWordlistWorker(QRunnable):
         """
         if not self.is_running:
             return None
+        
+        # Check if scan should be paused or stopped
+        if hasattr(self, 'scan_controller'):
+            self.scan_controller.wait_if_paused()
+            if not self.scan_controller.should_continue():
+                return None
+        
+        # Apply rate limiting
+        try:
+            from app.core.rate_limiter import rate_limiter
+            rate_limiter.wait_if_needed('dns_enum')
+        except ImportError:
+            pass
 
         domain = f"{subdomain}.{self.target}"
         domain_results = defaultdict(list)
@@ -181,11 +198,13 @@ class HostWordlistWorker(QRunnable):
             self.signals.finished.emit()
 
 
-def enumerate_hostnames(target, wordlist_path, output_callback, status_callback, finished_callback, record_types=None, wildcard_callback=None, results_callback=None, progress_callback=None, progress_start_callback=None):
+def enumerate_hostnames(target, wordlist_path, output_callback, status_callback, finished_callback, record_types=None, wildcard_callback=None, results_callback=None, progress_callback=None, progress_start_callback=None, scan_controller=None):
     """
     Creates and runs the script worker.
     """
     worker = HostWordlistWorker(target, wordlist_path, record_types)
+    if scan_controller:
+        worker.scan_controller = scan_controller
     worker.signals.output.connect(output_callback)
     worker.signals.status.connect(status_callback)
     worker.signals.finished.connect(finished_callback)

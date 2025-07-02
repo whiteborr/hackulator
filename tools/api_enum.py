@@ -5,6 +5,14 @@ import argparse
 import sys
 from concurrent.futures import ThreadPoolExecutor
 
+# Import connection pool
+try:
+    from app.core.connection_pool import connection_pool
+    from app.core.proxy_manager import proxy_manager
+except ImportError:
+    connection_pool = None
+    proxy_manager = None
+
 def api_discovery(target, port=80, https=False, wordlist=None):
     protocol = "https" if https else "http"
     base_url = f"{protocol}://{target}:{port}"
@@ -24,7 +32,21 @@ def api_discovery(target, port=80, https=False, wordlist=None):
         for path in paths:
             url = base_url + path
             try:
-                response = requests.get(url, timeout=3, verify=False)
+                # Apply rate limiting
+                try:
+                    from app.core.rate_limiter import rate_limiter
+                    rate_limiter.wait_if_needed('api_enum')
+                except ImportError:
+                    pass
+                
+                # Use connection pool if available
+                if connection_pool:
+                    session = connection_pool.get_session(f"api_{target}")
+                    proxies = proxy_manager.get_proxy_dict() if proxy_manager else {}
+                    response = session.get(url, timeout=3, verify=False, proxies=proxies)
+                else:
+                    proxies = proxy_manager.get_proxy_dict() if proxy_manager else {}
+                    response = requests.get(url, timeout=3, verify=False, proxies=proxies)
                 if response.status_code in [200, 401, 403]:
                     content_type = response.headers.get('content-type', '').lower()
                     if 'json' in content_type or 'api' in content_type:
@@ -52,7 +74,14 @@ def test_api_methods(url):
     
     for method in methods:
         try:
-            response = requests.request(method, url, timeout=3, verify=False)
+            # Use connection pool if available
+            if connection_pool:
+                session = connection_pool.get_session("api_methods")
+                proxies = proxy_manager.get_proxy_dict() if proxy_manager else {}
+                response = session.request(method, url, timeout=3, verify=False, proxies=proxies)
+            else:
+                proxies = proxy_manager.get_proxy_dict() if proxy_manager else {}
+                response = requests.request(method, url, timeout=3, verify=False, proxies=proxies)
             if response.status_code != 405:  # Method not allowed
                 print(f"[+] {method} {url} - Status: {response.status_code}")
         except:
@@ -74,7 +103,14 @@ def test_api_auth(url):
     
     for headers in headers_list:
         try:
-            response = requests.get(url, headers=headers, timeout=3, verify=False)
+            # Use connection pool if available
+            if connection_pool:
+                session = connection_pool.get_session("api_auth")
+                proxies = proxy_manager.get_proxy_dict() if proxy_manager else {}
+                response = session.get(url, headers=headers, timeout=3, verify=False, proxies=proxies)
+            else:
+                proxies = proxy_manager.get_proxy_dict() if proxy_manager else {}
+                response = requests.get(url, headers=headers, timeout=3, verify=False, proxies=proxies)
             if response.status_code == 200:
                 print(f"[+] Potential bypass with headers: {headers}")
         except:

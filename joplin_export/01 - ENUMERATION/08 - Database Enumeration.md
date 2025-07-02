@@ -46,5 +46,8 @@ Legacy SQL Server (2000, 2005)
 Modern SQL Server (2008+)
 `nmap -p 1433 --script ms-sql-query --script-args mssql.username=sa,mssql.password='yourpassword',mssql.query="SELECT name FROM sys.databases" <target_ip>`
 
-`
+## ORACLE
 
+1. Scan to look for database and services  
+`odat all -s <targetIP> -p 1521`
+2. `nmap -p1521 --script oracle-brute-stealth --script-args oracle-brute-stealth.sid=DB11g -n <targetIP>`

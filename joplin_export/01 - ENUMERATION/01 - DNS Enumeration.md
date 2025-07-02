@@ -16,6 +16,7 @@ altitude: 0.0000
 **DNSRECON**
 1. Run a standard scan:
 `dnsrecon -d example.com -t std`
+`dnsrecon -r 127.0.0.1/24 -n target -d example.com` 
 
 2. Run a brute force on subdomains
 `dnsrecon -d example.com -D subdomain_list.txt -t brt`
@@ -24,10 +25,10 @@ altitude: 0.0000
 **DNSENUM**
 1. run a scan on a domain
 `dnsenum example.com`
+`dnsenum --dnsserver <server>--private -r -t 5 --threads <value> -f /usr/share/dnsenum/dns.txt`
 
  * * * 
  **NSLOOKUP**
  * * *
  ## DNS zone transfer attack
  `dig axfr domain.com @<DNS IP>`
-	

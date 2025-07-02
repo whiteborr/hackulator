@@ -3,9 +3,13 @@ import sys
 from pathlib import Path
 from PyQt6.QtWidgets import QApplication
 from app.main_window import MainWindow
+from app.core.error_handler import setup_global_exception_handler
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
+    
+    # Setup global error handling
+    setup_global_exception_handler()
     
     project_root = Path(__file__).resolve().parent
     

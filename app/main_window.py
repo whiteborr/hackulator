@@ -5,6 +5,8 @@ from PyQt6.QtCore import QSize
 from PyQt6.QtGui import QFontDatabase
 
 from app.theme_manager import ThemeManager
+from app.core.theme_manager import theme_manager as new_theme_manager
+from app.core.shortcut_manager import ShortcutManager, shortcut_manager
 from app.widgets.animated_stacked_widget import AnimatedStackedWidget
 from app.pages.home_page import HomePage
 from app.pages.enumeration_page import EnumerationPage
@@ -53,6 +55,14 @@ class MainWindow(QMainWindow):
         self.db_attacks_page.navigate_signal.connect(self.navigate_to)
         self.os_exploits_page.navigate_signal.connect(self.navigate_to)
         self.cracking_page.navigate_signal.connect(self.navigate_to)
+        
+        # Apply initial theme
+        new_theme_manager.apply_theme()
+        
+        # Setup global shortcuts
+        global shortcut_manager
+        shortcut_manager = ShortcutManager(self)
+        shortcut_manager.quit_app.connect(self.close)
         
     def load_custom_font(self):
         """Loads a custom font from a file so it can be used in QSS."""
