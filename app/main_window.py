@@ -73,6 +73,12 @@ class MainWindow(QMainWindow):
         else:
             font_family = QFontDatabase.applicationFontFamilies(font_id)[0]
             print(f"Custom font '{font_family}' loaded successfully.")
+            
+            # Set as application default font
+            from PyQt6.QtGui import QFont
+            from PyQt6.QtWidgets import QApplication
+            app_font = QFont(font_family, 12)
+            QApplication.instance().setFont(app_font)
 
     def navigate_to(self, page_name):
         if page_name == "home":

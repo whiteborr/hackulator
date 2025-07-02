@@ -33,6 +33,17 @@ A comprehensive penetration testing toolkit built with PyQt6, featuring a comple
 - **Custom Wordlist Manager**: Create, edit, and manage custom wordlists with import/export and merging capabilities
 - **Result Filtering and Search**: Advanced filtering and search capabilities with real-time results and statistics
 - **Real-time Notifications**: Desktop notifications, system tray integration, and configurable alert system
+- **System Tray Integration**: Minimize to tray with quick access menu and notifications
+- **Context Menus**: Right-click menus for terminal output, input fields, and results areas
+- **Advanced UI Themes**: Multiple color schemes including Dark, Light, Cyberpunk, Matrix, and Ocean themes
+- **Unit Testing**: Automated test suite for core functionality validation
+- **Integration Testing**: End-to-end workflow testing and component interaction validation
+- **Code Documentation**: Comprehensive API documentation and development guides
+- **Plugin Architecture**: Extensible plugin system for custom tools and functionality
+- **API Integration**: External service connectivity with Shodan, VirusTotal, and custom API support
+- **Threat Intelligence**: IOC reputation checking against malware and phishing threat feeds
+- **Machine Learning**: Automated pattern detection and anomaly analysis for scan results
+- **Distributed Scanning**: Multi-node scanning support for improved performance and scalability
 - **Memory Monitoring**: Real-time memory usage tracking and optimization
 - **Status Bar Integration**: Live feedback and system monitoring
 
@@ -139,6 +150,267 @@ pip install reportlab>=4.0.0
 python main.py
 ```
 
+## Documentation
+
+Comprehensive documentation is available in the `docs/` directory:
+
+- **API.md**: API reference with code examples
+- **ARCHITECTURE.md**: System architecture and design patterns
+- **DEVELOPMENT.md**: Development guidelines and coding standards
+- **MODULES.md**: Auto-generated module documentation
+
+### Generate Documentation
+
+```bash
+# Generate module documentation from docstrings
+python generate_docs.py
+```
+
+## Plugin System
+
+Hackulator supports a plugin architecture for extending functionality:
+
+### Using Plugins
+
+1. Access plugin manager via Export dropdown → "Plugins"
+2. Select available plugin from dropdown
+3. Click "Execute Plugin" to run on current target
+4. View results in plugin output area
+
+### Creating Plugins
+
+```python
+# plugins/my_plugin.py
+from app.core.plugin_manager import PluginBase
+
+class MyPlugin(PluginBase):
+    def __init__(self):
+        super().__init__()
+        self.name = "My Custom Plugin"
+        self.version = "1.0.0"
+        self.description = "Custom functionality"
+    
+    def execute(self, target, **kwargs):
+        # Plugin logic here
+        return {
+            "plugin": self.name,
+            "target": target,
+            "result": "Custom scan completed",
+            "data": ["result1", "result2"]
+        }
+```
+
+### Available Plugins
+
+- **Example Plugin**: Demonstration plugin showing basic structure
+- **WHOIS Lookup**: Domain WHOIS information retrieval
+- **Custom Plugins**: Add your own plugins to the `plugins/` directory
+
+## API Integration
+
+Hackulator supports integration with external APIs for enhanced intelligence gathering:
+
+### Supported APIs
+
+- **Shodan**: Internet-connected device discovery and port information
+- **VirusTotal**: Domain reputation and malware analysis
+- **URLVoid**: Domain reputation checking
+- **Custom APIs**: Generic HTTP API integration
+
+### Using API Integration
+
+1. Access API integration via Export dropdown → "API Integration"
+2. Select API service from dropdown
+3. Enter API key if required (Shodan, VirusTotal)
+4. Click "Query API" to execute request
+5. View results in API output area
+
+### API Configuration
+
+```python
+# Example API usage
+from app.core.api_integration import api_integration
+
+# Shodan query
+result = api_integration.query_shodan("8.8.8.8", "your_api_key")
+
+# VirusTotal query
+result = api_integration.query_virustotal("example.com", "your_api_key")
+
+# Custom API request
+result = api_integration.custom_api_request("https://api.example.com/data")
+```
+
+### API Key Management
+
+- **Shodan**: Requires API key for host information queries
+- **VirusTotal**: Requires API key for domain reputation checks
+- **URLVoid**: Free tier available without API key
+- **Custom APIs**: Support for authentication headers and parameters
+
+## Threat Intelligence
+
+Hackulator integrates with threat intelligence feeds for IOC (Indicator of Compromise) checking:
+
+### Supported Threat Feeds
+
+- **Abuse.ch Feodo Tracker**: Malware C&C server IP addresses
+- **Malware Domains**: Known malware hosting domains
+- **Phishing Army**: Phishing domain blocklist
+
+### Using Threat Intelligence
+
+1. Access threat intelligence via Export dropdown → "Threat Intel"
+2. Click "Check Target Reputation" to scan current target
+3. Click "Check Feed Status" to verify feed availability
+4. View threats in color-coded table (High/Medium/Low severity)
+5. Review detailed results in output area
+
+### IOC Checking
+
+```python
+# Example threat intelligence usage
+from app.core.threat_intelligence import threat_intelligence
+
+# Check IP reputation
+result = threat_intelligence.check_ip_reputation("192.168.1.1")
+
+# Check domain reputation
+result = threat_intelligence.check_domain_reputation("example.com")
+
+# Get comprehensive IOC summary
+result = threat_intelligence.get_ioc_summary("target")
+```
+
+### Threat Detection
+
+- **Automatic target detection**: Distinguishes between IP addresses and domains
+- **Multiple feed checking**: Queries multiple threat intelligence sources
+- **Severity classification**: High, medium, low threat categorization
+- **Real-time status**: Live feed availability checking
+- **Historical data**: First seen and last seen timestamps where available
+
+## Machine Learning Pattern Detection
+
+Hackulator includes ML-based pattern detection for automated analysis of scan results:
+
+### Pattern Detection Features
+
+- **DNS Pattern Analysis**: Subdomain naming patterns, wildcard detection
+- **Port Scan Analysis**: Service patterns, unusual port combinations
+- **HTTP Pattern Analysis**: Response code patterns, WAF detection
+- **Anomaly Detection**: Statistical analysis of result deviations
+
+### Using ML Pattern Detection
+
+1. Access ML analysis via Export dropdown → "ML Patterns"
+2. Click "Analyze Current Results" to process scan data
+3. View detected patterns in color-coded confidence table
+4. Review anomalies with severity classification
+5. Read ML-generated insights and recommendations
+
+### Pattern Analysis
+
+```python
+# Example ML pattern detection usage
+from app.core.ml_pattern_detection import ml_pattern_detection
+
+# Analyze DNS enumeration results
+analysis = ml_pattern_detection.analyze_scan_results(dns_results, "dns_enum")
+
+# Analyze port scan results
+analysis = ml_pattern_detection.analyze_scan_results(port_results, "port_scan")
+
+# Detect anomalies compared to historical data
+anomalies = ml_pattern_detection.detect_scan_anomalies(current, historical)
+```
+
+### ML Insights
+
+- **Automatic Analysis**: Runs automatically on significant scan results
+- **Confidence Scoring**: Pattern confidence from 0-100%
+- **Severity Classification**: High, medium, low anomaly severity
+- **Actionable Insights**: ML-generated recommendations and observations
+- **Historical Comparison**: Deviation detection from previous scans
+
+## Distributed Scanning
+
+Hackulator supports distributed scanning across multiple nodes for improved performance and scalability:
+
+### Distributed Features
+
+- **Node Discovery**: Automatic discovery of available scanning nodes on the network
+- **Task Distribution**: Intelligent distribution of scan tasks across multiple nodes
+- **Result Aggregation**: Automatic collection and consolidation of results from all nodes
+- **Load Balancing**: Even distribution of targets across available nodes
+
+### Using Distributed Scanning
+
+1. Access distributed scanning via Export dropdown → "Distributed Scan"
+2. Click "Discover Nodes" to find available scanning nodes
+3. View discovered nodes in the nodes table with status and capabilities
+4. Enter targets and select scan type (DNS, Port, HTTP)
+5. Click "Start Distributed Scan" to distribute tasks across nodes
+6. Monitor progress and view aggregated results
+
+### Distributed Architecture
+
+```python
+# Example distributed scanning usage
+from app.core.distributed_scanning import distributed_scanner
+
+# Discover nodes
+distributed_scanner.discover_nodes("192.168.1.0/24")
+
+# Distribute scan
+result = distributed_scanner.distribute_scan(
+    "dns", 
+    ["example1.com", "example2.com", "example3.com"]
+)
+
+# Check scan status
+status = distributed_scanner.get_scan_status(result["scan_id"])
+```
+
+### Node Management
+
+- **Node Registration**: Automatic registration of scanning nodes
+- **Capability Detection**: Nodes advertise their scanning capabilities (DNS, Port, HTTP)
+- **Health Monitoring**: Real-time status monitoring of all nodes
+- **Fault Tolerance**: Graceful handling of node failures during scans
+
+## Testing
+
+Run the unit test suite to validate core functionality:
+
+```bash
+# Run all tests (unit + integration)
+python run_tests.py
+
+# Run only unit tests
+python -m unittest discover tests -v
+
+# Run only integration tests
+python -m unittest discover tests/integration -v
+
+# Run specific test file
+python -m unittest tests.test_validators
+```
+
+### Test Coverage
+
+#### Unit Tests
+- **Input Validation**: IP address and domain validation
+- **Cache Management**: Cache operations and TTL handling
+- **Theme Management**: Advanced theme application and stylesheet generation
+- **Context Menus**: Menu creation and action handling
+
+#### Integration Tests
+- **Scan Workflow**: Complete scan process from validation to storage
+- **Theme Integration**: Theme application across multiple components
+- **Export Integration**: Cache-to-export data flow and multiple format support
+- **Component Interaction**: Cross-component functionality validation
+
 ## Usage
 
 ### Home Page
@@ -230,6 +502,11 @@ python main.py
   - Scan control shortcuts (start, pause, stop)
   - Quick access to advanced features
   - Built-in help system (F1)
+- **Context Menus**: Right-click functionality:
+  - Terminal output: Copy, select all, clear, save to file
+  - Input fields: Cut, copy, paste, select all, clear
+  - Results areas: Export, copy results, clear results
+  - Quick access to common actions without menu navigation
 - **Drag & Drop Support**: Intuitive file handling:
   - Drag wordlist files directly to combo boxes
   - Drop target lists into multi-target scanner
@@ -402,8 +679,14 @@ Edit `resources/themes/default/theme.json` to customize:
 ### Keyboard Shortcuts
 - **Scan Control**: Ctrl+N (new), Ctrl+P (pause), Ctrl+S (stop)
 - **Export Functions**: Ctrl+E (export), Ctrl+M (multi-target)
-- **Interface**: Ctrl+T (toggle theme), F1 (help), Ctrl+Q (quit)
+- **Interface**: Ctrl+T (toggle theme), Ctrl+M (minimize to tray), F1 (help), Ctrl+Q (quit)
 - **Quick Access**: Escape (stop operation), direct feature access
+
+### Context Menu Features
+- **Terminal Output**: Right-click for copy, select all, clear output, save to file
+- **Input Fields**: Standard edit operations (cut, copy, paste, select all, clear)
+- **Results Areas**: Export results, copy all results, clear results
+- **Quick Actions**: Access common functions without navigating through menus
 
 ### Drag & Drop Support
 - **Wordlist Files**: Drag .txt files to wordlist combo boxes
@@ -510,6 +793,11 @@ The modular architecture supports easy extension:
 19. **Custom Wordlists**: Wordlist creation and management system
 20. **Result Filtering**: Advanced search and filtering capabilities
 21. **Real-time Notifications**: Desktop alerts and system tray integration
+22. **Plugin Architecture**: Extensible plugin system for custom functionality
+23. **API Integration**: External service connectivity and custom API support
+24. **Threat Intelligence**: IOC reputation checking and threat feed integration
+25. **Machine Learning**: Automated pattern detection and anomaly analysis
+26. **Distributed Scanning**: Multi-node scanning support for performance and scalability
 
 ## Technical Details
 
@@ -558,8 +846,55 @@ The modular architecture supports easy extension:
 1. Fork the repository
 2. Create a feature branch
 3. Implement changes following the existing architecture
-4. Test thoroughly with various DNS configurations
-5. Submit a pull request
+4. **Run all tests**: `python run_tests.py`
+5. **Add tests** for new functionality (both unit and integration)
+6. Test thoroughly with various configurations
+7. Submit a pull request
+
+### Development Guidelines
+- Write unit tests for new core functionality
+- Add integration tests for workflow changes
+- Follow existing code patterns and architecture
+- **Add proper docstrings** to new classes and methods
+- **Update API documentation** for new features
+- Ensure all tests pass before submitting changes
+- Update documentation for new features
+
+### Documentation Standards
+- Use Google-style docstrings for all public methods
+- Include type hints and parameter descriptions
+- Provide usage examples in API documentation
+- Run `python generate_docs.py` to update module docs
+
+### Plugin Development
+- Inherit from `PluginBase` class
+- Implement `execute(target, **kwargs)` method
+- Place plugin files in `plugins/` directory
+- Follow naming convention: `*_plugin.py`
+
+### API Integration Development
+- Add new API services to `api_integration.py`
+- Follow consistent return format for API responses
+- Handle authentication and rate limiting appropriately
+- Provide error handling for API failures
+
+### Threat Intelligence Development
+- Add new threat feeds to `threat_intelligence.py`
+- Follow standardized IOC result format
+- Implement proper timeout and error handling
+- Provide severity classification for threats
+
+### Machine Learning Development
+- Add new pattern detection algorithms to `ml_pattern_detection.py`
+- Follow standardized analysis result format
+- Implement confidence scoring for patterns
+- Provide severity classification for anomalies
+
+### Distributed Scanning Development
+- Add new node capabilities to `distributed_scanning.py`
+- Follow standardized task distribution format
+- Implement proper node discovery and registration
+- Provide fault tolerance and error handling
 
 ## License
 
@@ -690,26 +1025,44 @@ site1.com, site2.com; site3.com
 4. Click "Start Multi-Scan" for concurrent execution
 5. Monitor progress and individual target results
 
-## Theme Examples
+## Advanced Theme Examples
 
 ### Dark Theme (Default)
-- **Background**: Dark gray (#1e1e1e)
+- **Background**: Deep black (#0A0A0A)
 - **Primary**: Bright blue (#64C8FF)
 - **Text**: Light gray (#DCDCDC)
 - **Accent**: Orange (#FFAA00)
 
 ### Light Theme
-- **Background**: White (#ffffff)
+- **Background**: White (#FFFFFF)
 - **Primary**: Blue (#2196F3)
 - **Text**: Dark gray (#212121)
 - **Accent**: Orange (#FF9800)
 
+### Cyberpunk Theme
+- **Background**: Pure black (#000000)
+- **Primary**: Cyan (#00FFFF)
+- **Text**: Green (#00FF00)
+- **Accent**: Magenta (#FF00FF)
+
+### Matrix Theme
+- **Background**: Black (#000000)
+- **Primary**: Matrix green (#00FF41)
+- **Text**: Matrix green (#00FF41)
+- **Accent**: Bright green (#00AA00)
+
+### Ocean Blue Theme
+- **Background**: Deep navy (#001122)
+- **Primary**: Ocean blue (#0077BE)
+- **Text**: Light cyan (#E0F6FF)
+- **Accent**: Bright blue (#00AAFF)
+
 ### Theme Switching
-1. Access Theme panel via export dropdown
-2. Select Dark or Light theme via radio buttons
-3. Use "Toggle Theme" for quick switching
-4. Theme preference saved automatically
-5. All UI elements update instantly
+1. **Menu Access**: View → Themes → Select theme
+2. **Advanced Panel**: Export dropdown → "Advanced Themes"
+3. **Preview**: Real-time preview before applying
+4. **Instant Apply**: All UI elements update immediately
+5. **Persistent**: Theme preference automatically saved
 
 ## Keyboard Shortcuts
 

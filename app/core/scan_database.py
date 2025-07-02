@@ -40,11 +40,9 @@ class ScanDatabase:
                 )
             """)
             
-            conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_target ON scans(target);
-                CREATE INDEX IF NOT EXISTS idx_scan_type ON scans(scan_type);
-                CREATE INDEX IF NOT EXISTS idx_timestamp ON scans(timestamp);
-            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_target ON scans(target)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_scan_type ON scans(scan_type)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_timestamp ON scans(timestamp)")
     
     def save_scan(self, target: str, scan_type: str, results: Dict, 
                   duration: int = 0, tags: List[str] = None) -> int:

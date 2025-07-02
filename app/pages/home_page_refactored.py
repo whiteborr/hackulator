@@ -178,13 +178,18 @@ class HomePage(QWidget):
         self.info_text = QTextEdit()
         self.info_text.setObjectName("InfoTextArea")
         self.info_text.setReadOnly(True)
+        # Apply Neuropol font directly
+        from PyQt6.QtGui import QFont
+        neuropol_font = QFont()
+        neuropol_font.setFamily("Neuropol X")
+        neuropol_font.setPointSize(14)
+        self.info_text.setFont(neuropol_font)
+        
         self.info_text.setStyleSheet("""
             QTextEdit#InfoTextArea {
                 background-color: transparent;
                 border: none;
                 color: #DCDCDC;
-                font-size: 14pt;
-                font-family: "Consolas", monospace;
             }
         """)
         

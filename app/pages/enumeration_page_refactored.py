@@ -27,6 +27,7 @@ from app.core.multi_target_manager import multi_target_manager
 from app.core.theme_manager import theme_manager
 from app.core.shortcut_manager import ShortcutManager
 from app.core.scan_database import scan_db
+from app.core.context_menu_manager import ContextMenuManager
 from app.widgets.progress_widget import ProgressWidget
 from app.widgets.cache_status_widget import CacheStatusWidget
 from app.widgets.memory_widget import MemoryWidget
@@ -41,6 +42,7 @@ from app.widgets.template_widget import TemplateWidget
 from app.widgets.scheduler_widget import SchedulerWidget
 from app.widgets.multi_target_widget import MultiTargetWidget
 from app.widgets.theme_widget import ThemeWidget
+from app.widgets.advanced_theme_widget import AdvancedThemeWidget
 from app.widgets.help_widget import HelpWidget
 from app.widgets.drag_drop_combo import DragDropComboBox
 from app.widgets.advanced_dir_widget import AdvancedDirectoryWidget
@@ -52,6 +54,11 @@ from app.widgets.session_widget import SessionWidget
 from app.widgets.wordlist_widget import WordlistWidget
 from app.widgets.filter_widget import FilterWidget
 from app.widgets.notification_widget import NotificationWidget
+from app.widgets.plugin_widget import PluginWidget
+from app.widgets.api_integration_widget import APIIntegrationWidget
+from app.widgets.threat_intel_widget import ThreatIntelWidget
+from app.widgets.ml_pattern_widget import MLPatternWidget
+from app.widgets.distributed_scan_widget import DistributedScanWidget
 
 class HoverButton(QPushButton):
     enter_signal = pyqtSignal(str, str)
@@ -122,6 +129,13 @@ class EnumerationPage(QWidget):
         
         # Start memory monitoring
         memory_manager.start_monitoring(self.on_memory_event)
+        
+        # Initialize context menu manager
+        self.context_menu_manager = ContextMenuManager(self)
+        self.context_menu_manager.copy_text.connect(self.copy_to_clipboard)
+        self.context_menu_manager.clear_output.connect(self.clear_terminal)
+        self.context_menu_manager.export_results.connect(self.export_results)
+        self.context_menu_manager.save_to_file.connect(self.save_output_to_file)
 
     def create_header(self):
         """Create the header with title and back button"""
@@ -296,6 +310,12 @@ class EnumerationPage(QWidget):
         self.theme_widget.setVisible(False)
         work_layout.addWidget(self.theme_widget)
         
+        # Advanced theme section (initially hidden)
+        self.advanced_theme_widget = AdvancedThemeWidget(self)
+        self.advanced_theme_widget.setVisible(False)
+        self.advanced_theme_widget.theme_selected.connect(self.apply_advanced_theme)
+        work_layout.addWidget(self.advanced_theme_widget)
+        
         # Help section (initially hidden)
         self.help_widget = HelpWidget(self)
         self.help_widget.setVisible(False)
@@ -353,6 +373,36 @@ class EnumerationPage(QWidget):
         self.notification_widget = NotificationWidget(self)
         self.notification_widget.setVisible(False)
         work_layout.addWidget(self.notification_widget)
+        
+        # Plugin management section (initially hidden)
+        self.plugin_widget = PluginWidget(self)
+        self.plugin_widget.setVisible(False)
+        self.plugin_widget.plugin_executed.connect(self.on_plugin_executed)
+        work_layout.addWidget(self.plugin_widget)
+        
+        # API integration section (initially hidden)
+        self.api_integration_widget = APIIntegrationWidget(self)
+        self.api_integration_widget.setVisible(False)
+        self.api_integration_widget.api_executed.connect(self.on_api_executed)
+        work_layout.addWidget(self.api_integration_widget)
+        
+        # Threat intelligence section (initially hidden)
+        self.threat_intel_widget = ThreatIntelWidget(self)
+        self.threat_intel_widget.setVisible(False)
+        self.threat_intel_widget.threat_checked.connect(self.on_threat_checked)
+        work_layout.addWidget(self.threat_intel_widget)
+        
+        # ML pattern detection section (initially hidden)
+        self.ml_pattern_widget = MLPatternWidget(self)
+        self.ml_pattern_widget.setVisible(False)
+        self.ml_pattern_widget.pattern_analyzed.connect(self.on_pattern_analyzed)
+        work_layout.addWidget(self.ml_pattern_widget)
+        
+        # Distributed scanning section (initially hidden)
+        self.distributed_scan_widget = DistributedScanWidget(self)
+        self.distributed_scan_widget.setVisible(False)
+        self.distributed_scan_widget.scan_completed.connect(self.on_distributed_scan_completed)
+        work_layout.addWidget(self.distributed_scan_widget)
 
         return work_frame
 
@@ -383,6 +433,8 @@ class EnumerationPage(QWidget):
         self.target_input = QLineEdit()
         self.target_input.setObjectName("TargetInput")
         self.target_input.setPlaceholderText("Enter target (IP, domain, or range)...")
+        self.target_input.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.target_input.customContextMenuRequested.connect(self.show_input_context_menu)
         
         # Wordlist combo
         wordlist_label = QLabel("Wordlist:")
@@ -422,7 +474,7 @@ class EnumerationPage(QWidget):
         # Export controls
         self.export_combo = QComboBox()
         self.export_combo.setProperty("class", "exportCombo")
-        self.export_combo.addItems(["JSON", "CSV", "XML", "PDF", "Summary", "Correlate", "Compare", "Proxy", "Rate Limit", "Templates", "Schedule", "Multi-Target", "Theme", "Help", "Advanced Dir", "Cert Transparency", "OSINT", "Vuln Scan", "History", "Sessions", "Wordlists", "Filter", "Notifications"])
+        self.export_combo.addItems(["JSON", "CSV", "XML", "PDF", "Summary", "Correlate", "Compare", "Proxy", "Rate Limit", "Templates", "Schedule", "Multi-Target", "Theme", "Advanced Themes", "Help", "Advanced Dir", "Cert Transparency", "OSINT", "Vuln Scan", "History", "Sessions", "Wordlists", "Filter", "Notifications", "Plugins", "API Integration", "Threat Intel", "ML Patterns", "Distributed Scan"])
         self.export_combo.setFixedWidth(110)
 
         self.export_button = QPushButton("Export")
@@ -466,6 +518,8 @@ class EnumerationPage(QWidget):
         self.terminal_output.setObjectName("InfoPanel")
         self.terminal_output.setReadOnly(True)
         self.terminal_output.setPlaceholderText("Tool output will appear here...")
+        self.terminal_output.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.terminal_output.customContextMenuRequested.connect(self.show_terminal_context_menu)
 
         output_layout.addWidget(self.tool_buttons_panel)
         output_layout.addWidget(self.terminal_output, 1)
@@ -933,6 +987,7 @@ class EnumerationPage(QWidget):
     def clear_terminal(self):
         """Clear terminal output"""
         self.terminal_output.clear()
+        self.status_updated.emit("Terminal output cleared")
 
     # Tool execution methods (simplified versions)
     def run_host_wordlist_scan(self):
@@ -1074,6 +1129,15 @@ class EnumerationPage(QWidget):
                 self.correlation_widget.setVisible(True)
                 self.correlation_widget.display_correlations(correlations)
         
+        # Auto-run ML pattern analysis for significant results
+        if results and len(results) > 3:
+            from app.core.ml_pattern_detection import ml_pattern_detection
+            ml_analysis = ml_pattern_detection.analyze_scan_results(results, self.current_submenu)
+            
+            patterns_found = len(ml_analysis.get('patterns', []))
+            if patterns_found > 0:
+                self.status_updated.emit(f"🤖 Auto-detected {patterns_found} patterns in results")
+        
         # Auto-run comparison if results exist
         if results:
             target = getattr(self, 'last_scan_target', self.target_input.text().strip())
@@ -1162,6 +1226,13 @@ class EnumerationPage(QWidget):
             # Show theme selector
             self.theme_widget.setVisible(True)
             self.status_updated.emit("Theme selector panel opened")
+        elif format_type == "advanced themes":
+            # Show advanced theme selector
+            self.advanced_theme_widget.setVisible(True)
+            # Load themes from main window's advanced theme manager
+            if hasattr(self.main_window, 'advanced_theme_manager'):
+                self.advanced_theme_widget.load_themes(self.main_window.advanced_theme_manager)
+            self.status_updated.emit("Advanced theme selector panel opened")
         elif format_type == "help":
             # Show help
             self.help_widget.setVisible(True)
@@ -1205,6 +1276,29 @@ class EnumerationPage(QWidget):
             # Show notifications
             self.notification_widget.setVisible(True)
             self.status_updated.emit("Notifications panel opened")
+        elif format_type == "plugins":
+            # Show plugin manager
+            self.plugin_widget.setVisible(True)
+            self.status_updated.emit("Plugin manager opened")
+        elif format_type == "api integration":
+            # Show API integration
+            self.api_integration_widget.setVisible(True)
+            self.status_updated.emit("API integration panel opened")
+        elif format_type == "threat intel":
+            # Show threat intelligence
+            self.threat_intel_widget.setVisible(True)
+            self.status_updated.emit("Threat intelligence panel opened")
+        elif format_type == "ml patterns":
+            # Show ML pattern detection
+            self.ml_pattern_widget.setVisible(True)
+            # Load current results if available
+            if self.last_scan_results:
+                self.ml_pattern_widget.load_results(self.last_scan_results, self.current_submenu)
+            self.status_updated.emit("ML pattern detection panel opened")
+        elif format_type == "distributed scan":
+            # Show distributed scanning
+            self.distributed_scan_widget.setVisible(True)
+            self.status_updated.emit("Distributed scanning panel opened")
         else:
             self.export_results()
     
@@ -1317,3 +1411,103 @@ class EnumerationPage(QWidget):
             self.status_updated.emit(f"Export completed: {filepath}")
         else:
             self.show_error(f"Export failed: {message}")
+    
+    def apply_advanced_theme(self, theme_name):
+        """Apply advanced theme selection"""
+        if hasattr(self.main_window, 'advanced_theme_manager'):
+            success = self.main_window.advanced_theme_manager.apply_theme(theme_name)
+            if success:
+                theme_display_name = self.main_window.advanced_theme_manager.available_themes[theme_name]['name']
+                self.status_updated.emit(f"Applied theme: {theme_display_name}")
+            else:
+                self.status_updated.emit(f"Failed to apply theme: {theme_name}")
+    
+    def show_terminal_context_menu(self, position):
+        """Show context menu for terminal output"""
+        cursor = self.terminal_output.textCursor()
+        selected_text = cursor.selectedText()
+        has_results = bool(self.last_scan_results)
+        
+        menu = self.context_menu_manager.create_terminal_menu(self.terminal_output, selected_text)
+        menu.exec(self.terminal_output.mapToGlobal(position))
+    
+    def show_input_context_menu(self, position):
+        """Show context menu for input fields"""
+        menu = self.context_menu_manager.create_input_menu(self.target_input)
+        menu.exec(self.target_input.mapToGlobal(position))
+    
+    def copy_to_clipboard(self, text):
+        """Copy text to clipboard"""
+        from PyQt6.QtWidgets import QApplication
+        clipboard = QApplication.clipboard()
+        clipboard.setText(text)
+        self.status_updated.emit("Text copied to clipboard")
+    
+    def save_output_to_file(self, content):
+        """Save output content to file"""
+        from PyQt6.QtWidgets import QFileDialog
+        filename, _ = QFileDialog.getSaveFileName(
+            self, "Save Output", "output.txt", "Text Files (*.txt);;All Files (*)"
+        )
+        if filename:
+            try:
+                with open(filename, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                self.status_updated.emit(f"Output saved to: {filename}")
+            except Exception as e:
+                self.status_updated.emit(f"Failed to save file: {str(e)}")
+    
+    def on_plugin_executed(self, plugin_name, result):
+        """Handle plugin execution completion."""
+        if 'error' not in result:
+            self.last_scan_results = result
+            self.export_button.setEnabled(True)
+            self.status_updated.emit(f"Plugin {plugin_name} executed successfully")
+        else:
+            self.status_updated.emit(f"Plugin {plugin_name} failed: {result['error']}")
+    
+    def on_api_executed(self, source, result):
+        """Handle API integration completion."""
+        if 'error' not in result:
+            self.last_scan_results = result
+            self.export_button.setEnabled(True)
+            self.status_updated.emit(f"API query to {source} completed successfully")
+        else:
+            self.status_updated.emit(f"API query to {source} failed: {result['error']}")
+    
+    def on_threat_checked(self, check_type, result):
+        """Handle threat intelligence check completion."""
+        threats_found = len(result.get('threats', []))
+        target = result.get('ip', result.get('domain', 'Unknown'))
+        
+        if threats_found > 0:
+            self.last_scan_results = result
+            self.export_button.setEnabled(True)
+            self.status_updated.emit(f"⚠️ {threats_found} threats found for {target}")
+        else:
+            self.status_updated.emit(f"✅ No threats found for {target}")
+    
+    def on_pattern_analyzed(self, scan_type, analysis):
+        """Handle ML pattern analysis completion."""
+        patterns_found = len(analysis.get('patterns', []))
+        anomalies_found = len(analysis.get('anomalies', []))
+        
+        if patterns_found > 0 or anomalies_found > 0:
+            self.last_scan_results = analysis
+            self.export_button.setEnabled(True)
+            self.status_updated.emit(f"🤖 ML analysis: {patterns_found} patterns, {anomalies_found} anomalies")
+        else:
+            self.status_updated.emit(f"🤖 ML analysis completed - no significant patterns detected")
+    
+    def on_distributed_scan_completed(self, scan_id, results):
+        """Handle distributed scan completion."""
+        summary = results.get('summary', {})
+        total_nodes = summary.get('total_nodes', 0)
+        total_results = summary.get('total_results', 0)
+        
+        if total_results > 0:
+            self.last_scan_results = results
+            self.export_button.setEnabled(True)
+            self.status_updated.emit(f"🌐 Distributed scan completed: {total_results} results from {total_nodes} nodes")
+        else:
+            self.status_updated.emit(f"🌐 Distributed scan completed - no results from {total_nodes} nodes")

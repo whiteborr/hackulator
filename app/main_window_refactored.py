@@ -1,14 +1,16 @@
 # app/main_window_refactored.py
 import os
-from PyQt6.QtWidgets import QMainWindow, QStatusBar, QMenuBar, QMenu
+from PyQt6.QtWidgets import QMainWindow, QStatusBar, QMenuBar, QMenu, QSystemTrayIcon
 from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtGui import QFontDatabase, QAction, QKeySequence
 from PyQt6.QtWidgets import QApplication
 
 from app.theme_manager import ThemeManager
+from app.core.advanced_theme_manager import AdvancedThemeManager
 from app.widgets.animated_stacked_widget import AnimatedStackedWidget
 from app.pages.home_page_refactored import HomePage
 from app.pages.enumeration_page_refactored import EnumerationPage
+from app.core.system_tray import SystemTrayManager
 # Import other refactored pages as you create them
 # from app.pages.vuln_scanning_page_refactored import VulnScanningPage
 # from app.pages.web_exploits_page_refactored import WebExploitsPage
@@ -31,6 +33,8 @@ class MainWindow(QMainWindow):
         
         self.load_custom_font()
         self.theme_manager = ThemeManager(project_root=self.project_root)
+        self.advanced_theme_manager = AdvancedThemeManager(self.project_root)
+        self.advanced_theme_manager.theme_changed.connect(self.on_theme_changed)
         
         # Create menu bar
         self.create_menu_bar()
@@ -63,6 +67,14 @@ class MainWindow(QMainWindow):
         self.home_page = HomePage(self)
         self.enum_page = EnumerationPage(self)
         
+        # Apply font to all widgets after creation
+        if hasattr(self, 'neuropol_family') and self.neuropol_family:
+            from PyQt6.QtGui import QFont
+            neuropol_font = QFont(self.neuropol_family)
+            self.setFont(neuropol_font)
+            self.home_page.setFont(neuropol_font)
+            self.enum_page.setFont(neuropol_font)
+        
         # Add pages to stack
         self.stack.addWidget(self.home_page)
         self.stack.addWidget(self.enum_page)
@@ -77,6 +89,12 @@ class MainWindow(QMainWindow):
         
         # Apply global styling
         self.apply_global_styling()
+        
+        # Initialize system tray
+        self.setup_system_tray()
+        
+        # Apply initial advanced theme
+        self.advanced_theme_manager.apply_theme('dark')
         
     def create_menu_bar(self):
         """Create application menu bar"""
@@ -139,6 +157,33 @@ class MainWindow(QMainWindow):
         fullscreen_action.setCheckable(True)
         fullscreen_action.triggered.connect(self.toggle_fullscreen)
         view_menu.addAction(fullscreen_action)
+        
+        view_menu.addSeparator()
+        
+        # Theme submenu
+        theme_menu = view_menu.addMenu('&Themes')
+        
+        # Quick theme actions
+        dark_action = QAction('&Dark Theme', self)
+        dark_action.triggered.connect(lambda: self.advanced_theme_manager.apply_theme('dark'))
+        theme_menu.addAction(dark_action)
+        
+        light_action = QAction('&Light Theme', self)
+        light_action.triggered.connect(lambda: self.advanced_theme_manager.apply_theme('light'))
+        theme_menu.addAction(light_action)
+        
+        cyberpunk_action = QAction('&Cyberpunk Theme', self)
+        cyberpunk_action.triggered.connect(lambda: self.advanced_theme_manager.apply_theme('cyberpunk'))
+        theme_menu.addAction(cyberpunk_action)
+        
+        view_menu.addSeparator()
+        
+        # Minimize to tray action
+        minimize_tray_action = QAction('&Minimize to Tray', self)
+        minimize_tray_action.setShortcut(QKeySequence('Ctrl+M'))
+        minimize_tray_action.setStatusTip('Minimize application to system tray')
+        minimize_tray_action.triggered.connect(self.minimize_to_tray)
+        view_menu.addAction(minimize_tray_action)
         
         # Clear output action
         clear_action = QAction('&Clear Output', self)
@@ -209,9 +254,28 @@ class MainWindow(QMainWindow):
         font_id = QFontDatabase.addApplicationFont(font_path)
         if font_id == -1:
             print(f"WARNING: Could not load font at {font_path}")
+            self.neuropol_family = None
         else:
-            font_family = QFontDatabase.applicationFontFamilies(font_id)[0]
-            print(f"Custom font '{font_family}' loaded successfully.")
+            self.neuropol_family = QFontDatabase.applicationFontFamilies(font_id)[0]
+            print(f"Custom font '{self.neuropol_family}' loaded successfully.")
+            
+            # Set as application default font
+            from PyQt6.QtGui import QFont
+            app_font = QFont(self.neuropol_family, 12)
+            QApplication.instance().setFont(app_font)
+            
+            # Force font on all widgets
+            self.setStyleSheet(f"""
+                QWidget {{
+                    font-family: "{self.neuropol_family}";
+                }}
+                QLabel {{
+                    font-family: "{self.neuropol_family}";
+                }}
+                QPushButton {{
+                    font-family: "{self.neuropol_family}";
+                }}
+            """)
             
     def navigate_to(self, page_name):
         """Navigate to a specific page"""
@@ -287,7 +351,9 @@ class MainWindow(QMainWindow):
             <li>F5 - Run current tool</li>
             <li>Ctrl+E - Export results</li>
             <li>Ctrl+L - Clear output</li>
+            <li>Ctrl+M - Minimize to tray</li>
             <li>F11 - Toggle fullscreen</li>
+            <li>View Menu - Quick theme switching</li>
             <li>Escape - Go back</li>
         </ul>
         """
@@ -326,10 +392,80 @@ class MainWindow(QMainWindow):
         """Update status bar with message from child widgets"""
         self.status_bar.showMessage(message)
         
+    def setup_system_tray(self):
+        """Initialize system tray functionality"""
+        if QSystemTrayIcon.isSystemTrayAvailable():
+            self.tray_manager = SystemTrayManager(self, self.project_root)
+            if self.tray_manager.setup_tray():
+                self.tray_manager.show_tray()
+                self.status_bar.showMessage("System tray integration enabled")
+            else:
+                self.tray_manager = None
+                self.status_bar.showMessage("System tray not available")
+        else:
+            self.tray_manager = None
+            self.status_bar.showMessage("System tray not supported on this system")
+            
+    def minimize_to_tray(self):
+        """Minimize application to system tray"""
+        if self.tray_manager and self.tray_manager.is_available():
+            self.hide()
+            self.tray_manager.show_message(
+                "Hackulator", 
+                "Application minimized to tray. Double-click to restore.",
+                QSystemTrayIcon.MessageIcon.Information
+            )
+            self.status_bar.showMessage("Minimized to system tray")
+        else:
+            self.showMinimized()
+            self.status_bar.showMessage("System tray not available - minimized to taskbar")
+            
+    def changeEvent(self, event):
+        """Handle window state changes"""
+        if event.type() == event.Type.WindowStateChange:
+            if self.isMinimized() and self.tray_manager and self.tray_manager.is_available():
+                # Auto-minimize to tray when minimized
+                self.hide()
+                event.ignore()
+                return
+        super().changeEvent(event)
+        
     def closeEvent(self, event):
         """Handle application close event"""
+        if self.tray_manager and self.tray_manager.is_available():
+            # Ask user if they want to minimize to tray instead of closing
+            from PyQt6.QtWidgets import QMessageBox
+            reply = QMessageBox.question(
+                self, 'Hackulator', 
+                "Close to system tray instead of exiting?\n\n"
+                "Click 'Yes' to minimize to tray\n"
+                "Click 'No' to exit completely",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.Yes
+            )
+            
+            if reply == QMessageBox.StandardButton.Yes:
+                self.hide()
+                self.tray_manager.show_message(
+                    "Hackulator", 
+                    "Application closed to tray. Right-click tray icon to quit.",
+                    QSystemTrayIcon.MessageIcon.Information
+                )
+                event.ignore()
+                return
+                
         self.status_bar.showMessage("Closing application...")
         # Stop memory monitoring
         from app.core.memory_manager import memory_manager
         memory_manager.stop_monitoring()
+        
+        # Hide tray icon
+        if self.tray_manager:
+            self.tray_manager.hide_tray()
+            
         event.accept()
+        
+    def on_theme_changed(self, theme_name):
+        """Handle theme change event"""
+        theme_display_name = self.advanced_theme_manager.available_themes[theme_name]['name']
+        self.status_bar.showMessage(f"Theme changed to: {theme_display_name}")
