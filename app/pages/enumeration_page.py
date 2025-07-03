@@ -1,22 +1,20 @@
-# app/pages/enumeration_page.py
+# app/pages/enumeration_page_simple.py
 import logging
 import os
-from PyQt6.QtWidgets import QWidget, QPushButton, QLabel, QLineEdit, QTextEdit, QComboBox, QCheckBox, QHBoxLayout
+from PyQt6.QtWidgets import (QWidget, QPushButton, QLabel, QLineEdit, QTextEdit, 
+                            QComboBox, QCheckBox, QVBoxLayout, QHBoxLayout, 
+                            QFrame, QSizePolicy, QScrollArea, QStatusBar)
 from PyQt6.QtCore import pyqtSignal, QSize, Qt, QThreadPool
-from PyQt6.QtGui import QPixmap, QIcon, QFont, QTextCursor, QShortcut, QKeySequence
+from PyQt6.QtGui import QPixmap, QIcon, QShortcut, QKeySequence
 
 from app.core import custom_scripts
-from app.core.validators import InputValidator, ValidationError
+from app.core.validators import InputValidator
 from app.core.exporter import exporter
 from app.core.base_worker import CommandWorker
 from app.widgets.progress_widget import ProgressWidget
 
-# ============================================================================
-# Custom HoverButton Widget (for displaying info on hover)
-# ============================================================================
 class HoverButton(QPushButton):
-    """A custom QPushButton that emits signals on mouse enter and leave events."""
-    enter_signal = pyqtSignal(str, str) # title, description
+    enter_signal = pyqtSignal(str, str)
     leave_signal = pyqtSignal()
 
     def __init__(self, title, description, parent=None):
@@ -25,887 +23,381 @@ class HoverButton(QPushButton):
         self.description = description
 
     def enterEvent(self, event):
-        """Called when the mouse enters the widget's area."""
         super().enterEvent(event)
         self.enter_signal.emit(self.title, self.description)
 
     def leaveEvent(self, event):
-        """Called when the mouse leaves the widget's area."""
         super().leaveEvent(event)
         self.leave_signal.emit()
 
-# ============================================================================
-# The Main Enumeration Page Widget
-# ============================================================================
 class EnumerationPage(QWidget):
     navigate_signal = pyqtSignal(str)
+    status_updated = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.main_window = parent
-        self.is_submenu_active = False
+        self.current_submenu = "dns"
         self.setObjectName("EnumerationPage")
 
-        self.background_label = QLabel(self)
-        self.background_label.setScaledContents(True)
+        # Create main layout
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.setContentsMargins(10, 10, 10, 10)
+        self.main_layout.setSpacing(10)
 
-        # --- Data for UI Elements ---
-        self.main_tools_data = [
-            {"id": "dns_enum", "title": "DNS Enumeration", "desc": "Discover domains, subdomains, and IPs.", "icon": "resources/icons/1A.png", "center": (49, 157), "size": (127, 110)},
-            {"id": "port_scan", "title": "Port Scanning", "desc": "Identify open ports and services running.", "icon": "resources/icons/1B.png", "center": (49, 234), "size": (128, 108)},
-            {"id": "smb_enum", "title": "SMB Enumeration", "desc": "List shares and users via Windows SMB.", "icon": "resources/icons/1C.png", "center": (49, 311), "size": (128, 108)},
-            {"id": "smtp_enum", "title": "SMTP Enumeration", "desc": "Probe mail servers for valid emails.", "icon": "resources/icons/1D.png", "center": (49, 389), "size": (128, 108)},
-            {"id": "snmp_enum", "title": "SNMP Enumeration", "desc": "Extract network device info using SNMP.", "icon": "resources/icons/1E.png", "center": (49, 468), "size": (128, 108)},
-            {"id": "http_fingerprint", "title": "HTTP/S Fingerprinting", "desc": "Identify web server type and technologies.", "icon": "resources/icons/1F.png", "center": (49, 545), "size": (128, 108)},
-            {"id": "api_enum", "title": "API Enumeration & Abuse", "desc": "Discover and misuse APIs for data.", "icon": "resources/icons/1G.png", "center": (49, 620), "size": (128, 108)},
-            {"id": "db_enum", "title": "Database Enumeration", "desc": "Find databases, tables, and credentials.", "icon": "resources/icons/1H.png", "center": (49, 700), "size": (128, 108)},
-            {"id": "contactless_info", "title": "Contactless Info Gathering", "desc": "Use NFC/RFID tools to gather wireless data.", "icon": "resources/icons/1I.png", "center": (49, 779), "size": (128, 108)},
-            {"id": "av_detect", "title": "AV Detection", "desc": "Check which antivirus tools are active.", "icon": "resources/icons/1J.png", "center": (49, 857), "size": (128, 108)},
-        ]
-        
-        self.dns_tools_data = [
-            {"id": "dns_hosts",    "text": "HOSTS",    "rect": (135, 225, 105, 30)},
-            {"id": "dns_ptr",      "text": "PTR",      "rect": (135, 283, 105, 30)},
-            {"id": "dns_dnsrecon", "text": "DNSRecon", "rect": (135, 341, 105, 30)},
-            {"id": "dns_dnsenum",  "text": "DNSEnum",  "rect": (135, 398, 105, 30)},
-            {"id": "dns_xfer",     "text": "XFER",     "rect": (135, 458, 105, 30)},
-            {"id": "dns_nslookup", "text": "NSLOOKUP", "rect": (135, 518, 105, 30)},
-        ]
-        
-        self.port_tools_data = [
-            {"id": "port_tcp",     "text": "TCP SCAN",  "rect": (135, 225, 105, 30)},
-            {"id": "port_sweep",   "text": "SWEEP",     "rect": (135, 283, 105, 30)},
-            {"id": "port_top",     "text": "TOP PORTS", "rect": (135, 341, 105, 30)},
-            {"id": "port_service", "text": "SERVICE",   "rect": (135, 398, 105, 30)},
-        ]
-        
-        self.smb_tools_data = [
-            {"id": "smb_scan",     "text": "SMB SCAN",  "rect": (135, 225, 105, 30)},
-            {"id": "smb_netbios",  "text": "NETBIOS",   "rect": (135, 283, 105, 30)},
-            {"id": "smb_os",       "text": "OS DETECT", "rect": (135, 341, 105, 30)},
-            {"id": "smb_range",    "text": "RANGE",     "rect": (135, 398, 105, 30)},
-        ]
-        
-        self.smtp_tools_data = [
-            {"id": "smtp_vrfy",    "text": "VRFY",      "rect": (135, 225, 105, 30)},
-            {"id": "smtp_expn",    "text": "EXPN",      "rect": (135, 283, 105, 30)},
-            {"id": "smtp_rcpt",    "text": "RCPT TO",   "rect": (135, 341, 105, 30)},
-        ]
-        
-        self.snmp_tools_data = [
-            {"id": "snmp_scan",    "text": "SCAN",      "rect": (135, 225, 105, 30)},
-            {"id": "snmp_comm",    "text": "COMMUNITY", "rect": (135, 283, 105, 30)},
-            {"id": "snmp_walk",    "text": "WALK",      "rect": (135, 341, 105, 30)},
-            {"id": "snmp_range",   "text": "RANGE",     "rect": (135, 398, 105, 30)},
-        ]
-        
-        self.http_tools_data = [
-            {"id": "http_finger",  "text": "FINGERPRINT", "rect": (135, 225, 105, 30)},
-            {"id": "http_ssl",     "text": "SSL SCAN",   "rect": (135, 283, 105, 30)},
-            {"id": "http_dir",     "text": "DIR SCAN",   "rect": (135, 341, 105, 30)},
-        ]
-        
-        self.api_tools_data = [
-            {"id": "api_discover", "text": "DISCOVER",   "rect": (135, 225, 105, 30)},
-            {"id": "api_methods",  "text": "METHODS",    "rect": (135, 283, 105, 30)},
-            {"id": "api_auth",     "text": "AUTH TEST",  "rect": (135, 341, 105, 30)},
-        ]
-        
-        self.db_tools_data = [
-            {"id": "db_scan",      "text": "DB SCAN",    "rect": (135, 225, 105, 30)},
-            {"id": "db_detailed",  "text": "DETAILED",   "rect": (135, 283, 105, 30)},
-        ]
+        # Create header
+        self.header = self.create_header()
+        self.main_layout.addWidget(self.header)
 
-        # --- Create Main Menu Widgets ---
-        self.main_title = QLabel("Enumeration Tools", self)
-        self.main_title.setObjectName("TitleLabel")
-        
-        self.main_back_button = QPushButton("< Back", self)
-        self.main_back_button.setProperty("class", "backButton")
-        self.main_back_button.clicked.connect(lambda: self.navigate_signal.emit("home"))
-        
-        self.info_panel = QTextEdit(self)
-        self.info_panel.setObjectName("InfoPanel")
-        self.info_panel.setReadOnly(True)
-        
-        self.main_tool_buttons = []
-        for tool in self.main_tools_data:
-            button = HoverButton(tool["title"], tool["desc"], self)
-            icon_path = os.path.join(self.main_window.project_root, tool["icon"])
-            self.setup_icon_button(button, tool["center"], tool["size"], icon_path)
+        # Create content area
+        self.content_area = QHBoxLayout()
+        self.main_layout.addLayout(self.content_area)
 
-            if tool["id"] == "dns_enum":
-                button.clicked.connect(lambda: self.set_submenu_active(True))
-            elif tool["id"] == "port_scan":
-                button.clicked.connect(lambda: self.set_submenu_active(True, "port_scan"))
-            elif tool["id"] == "smb_enum":
-                button.clicked.connect(lambda: self.set_submenu_active(True, "smb_enum"))
-            elif tool["id"] == "smtp_enum":
-                button.clicked.connect(lambda: self.set_submenu_active(True, "smtp_enum"))
-            elif tool["id"] == "snmp_enum":
-                button.clicked.connect(lambda: self.set_submenu_active(True, "snmp_enum"))
-            elif tool["id"] == "http_fingerprint":
-                button.clicked.connect(lambda: self.set_submenu_active(True, "http_fingerprint"))
-            elif tool["id"] == "api_enum":
-                button.clicked.connect(lambda: self.set_submenu_active(True, "api_enum"))
-            elif tool["id"] == "db_enum":
-                button.clicked.connect(lambda: self.set_submenu_active(True, "db_enum"))
-            
-            button.enter_signal.connect(self.update_info_panel)
-            button.leave_signal.connect(self.clear_info_panel)
-            self.main_tool_buttons.append(button)
+        # Create tool selection panel (left)
+        self.tool_panel = self.create_tool_panel()
+        self.content_area.addWidget(self.tool_panel, 0)
 
-        self.main_widgets = [self.main_title, self.main_back_button, self.info_panel] + self.main_tool_buttons
+        # Create main work area (right)
+        self.work_area = self.create_work_area()
+        self.content_area.addWidget(self.work_area, 1)
 
-        # --- Create DNS Sub-menu Widgets ---
-        self.dns_back_button = QPushButton("< Back", self)
-        self.dns_back_button.setProperty("class", "backButton")
-        self.dns_back_button.clicked.connect(lambda: self.set_submenu_active(False))
-
-        self.target_input = QLineEdit(self)
-        self.target_input.setObjectName("TargetInput")
-        self.target_input.setPlaceholderText("Enter target...")
-
-        self.dns_terminal_output = QTextEdit(self)
-        self.dns_terminal_output.setObjectName("InfoPanel")
-        self.dns_terminal_output.setReadOnly(True)
-        
-        # Progress widget
-        self.progress_widget = ProgressWidget(self)
-        self.progress_widget.setVisible(False)
-        
-        self.wordlist_combo = QComboBox(self)
-        self.wordlist_combo.setProperty("class", "wordlistCombo")
-        self.populate_wordlists()
-
-        self.record_type_container = QWidget(self)
-        self.record_type_layout = QHBoxLayout(self.record_type_container)
-        self.record_type_checkboxes = {}
-        for record_type in ['A', 'AAAA', 'CNAME', 'MX', 'TXT']:
-            checkbox = QCheckBox(record_type, self)
-            checkbox.setStyleSheet("color: #DCDCDC; font-size: 12pt;")
-            if record_type == 'A': checkbox.setChecked(True)
-            self.record_type_layout.addWidget(checkbox)
-            self.record_type_checkboxes[record_type] = checkbox
-        
-        # Export controls
-        self.export_combo = QComboBox(self)
-        self.export_combo.setProperty("class", "exportCombo")
-        self.export_combo.addItems(["JSON", "CSV", "XML"])
-        
-        self.export_button = QPushButton("Export Results", self)
-        self.export_button.setProperty("class", "exportButton")
-        self.export_button.clicked.connect(self.export_results)
-        self.export_button.setEnabled(False)  # Disabled until results available
-        
-        # Store last scan results for export
-        self.last_scan_results = {}
-        self.last_scan_target = ""
-
-        self.dns_tool_buttons = []
-        for tool_data in self.dns_tools_data:
-            button = QPushButton(tool_data["text"], self)
-            button.setProperty("class", "dnsToolButton")
-            if tool_data["id"] == "dns_hosts":
-                button.clicked.connect(self.run_host_wordlist_scan)
-            self.dns_tool_buttons.append(button)
-        
-        self.port_tool_buttons = []
-        for tool_data in self.port_tools_data:
-            button = QPushButton(tool_data["text"], self)
-            button.setProperty("class", "dnsToolButton")
-            if tool_data["id"] == "port_tcp":
-                button.clicked.connect(self.run_port_scan)
-            elif tool_data["id"] == "port_sweep":
-                button.clicked.connect(self.run_port_sweep)
-            elif tool_data["id"] == "port_top":
-                button.clicked.connect(self.run_top_ports)
-            elif tool_data["id"] == "port_service":
-                button.clicked.connect(self.run_service_scan)
-            self.port_tool_buttons.append(button)
-        
-        self.smb_tool_buttons = []
-        for tool_data in self.smb_tools_data:
-            button = QPushButton(tool_data["text"], self)
-            button.setProperty("class", "dnsToolButton")
-            if tool_data["id"] == "smb_scan":
-                button.clicked.connect(self.run_smb_scan)
-            elif tool_data["id"] == "smb_netbios":
-                button.clicked.connect(self.run_netbios_scan)
-            elif tool_data["id"] == "smb_os":
-                button.clicked.connect(self.run_smb_os_detect)
-            elif tool_data["id"] == "smb_range":
-                button.clicked.connect(self.run_smb_range)
-            self.smb_tool_buttons.append(button)
-        
-        # Create tool buttons for other enumeration types
-        self.smtp_tool_buttons = []
-        for tool_data in self.smtp_tools_data:
-            button = QPushButton(tool_data["text"], self)
-            button.setProperty("class", "dnsToolButton")
-            if tool_data["id"] == "smtp_vrfy":
-                button.clicked.connect(self.run_smtp_enum)
-            self.smtp_tool_buttons.append(button)
-        
-        self.snmp_tool_buttons = []
-        for tool_data in self.snmp_tools_data:
-            button = QPushButton(tool_data["text"], self)
-            button.setProperty("class", "dnsToolButton")
-            if tool_data["id"] == "snmp_scan":
-                button.clicked.connect(self.run_snmp_scan)
-            elif tool_data["id"] == "snmp_comm":
-                button.clicked.connect(self.run_snmp_community)
-            elif tool_data["id"] == "snmp_walk":
-                button.clicked.connect(self.run_snmp_walk)
-            elif tool_data["id"] == "snmp_range":
-                button.clicked.connect(self.run_snmp_range)
-            self.snmp_tool_buttons.append(button)
-        
-        self.http_tool_buttons = []
-        for tool_data in self.http_tools_data:
-            button = QPushButton(tool_data["text"], self)
-            button.setProperty("class", "dnsToolButton")
-            if tool_data["id"] == "http_finger":
-                button.clicked.connect(self.run_http_fingerprint)
-            elif tool_data["id"] == "http_ssl":
-                button.clicked.connect(self.run_http_ssl)
-            elif tool_data["id"] == "http_dir":
-                button.clicked.connect(self.run_http_dir)
-            self.http_tool_buttons.append(button)
-        
-        self.api_tool_buttons = []
-        for tool_data in self.api_tools_data:
-            button = QPushButton(tool_data["text"], self)
-            button.setProperty("class", "dnsToolButton")
-            if tool_data["id"] == "api_discover":
-                button.clicked.connect(self.run_api_discover)
-            elif tool_data["id"] == "api_methods":
-                button.clicked.connect(self.run_api_methods)
-            elif tool_data["id"] == "api_auth":
-                button.clicked.connect(self.run_api_auth)
-            self.api_tool_buttons.append(button)
-        
-        self.db_tool_buttons = []
-        for tool_data in self.db_tools_data:
-            button = QPushButton(tool_data["text"], self)
-            button.setProperty("class", "dnsToolButton")
-            if tool_data["id"] == "db_scan":
-                button.clicked.connect(self.run_db_scan)
-            elif tool_data["id"] == "db_detailed":
-                button.clicked.connect(self.run_db_detailed)
-            self.db_tool_buttons.append(button)
-        
-        # **FIX**: Removed the separate wildcard status label
-        self.submenu_widgets = [self.dns_back_button, self.target_input, self.dns_terminal_output, self.wordlist_combo, self.record_type_container, self.export_combo, self.export_button, self.progress_widget] + self.dns_tool_buttons + self.port_tool_buttons + self.smb_tool_buttons + self.smtp_tool_buttons + self.snmp_tool_buttons + self.http_tool_buttons + self.api_tool_buttons + self.db_tool_buttons
-        
-        self.current_submenu = "dns"
-        
+        # Initialize data and setup
+        self.setup_tool_data()
         self.setup_shortcuts()
-        self.resizeEvent(None) 
-        self.set_submenu_active(False)
         self.apply_theme()
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
-
-    def setup_icon_button(self, button, center, size, icon_path):
-        """Setup icon button - positioning will be handled in resizeEvent"""
-        cx, cy = center
-        w, h = size
-        
-        # Initial positioning - will be updated in resizeEvent
-        button.setGeometry(cx - w // 2, cy - h // 2, w, h)
-        
-        icon = QIcon(icon_path)
-        if icon.isNull(): 
-            logging.warning(f"Could not load icon at: {icon_path}")
-        button.setIcon(icon)
-        button.setIconSize(QSize(int(w * 0.9), int(h * 0.9)))
-        
-        # Initial styling - border radius will be updated in resizeEvent
-        border_radius = h // 2
-        button.setStyleSheet(f"""
-            QPushButton {{
-                background-color: rgba(0, 0, 0, 1); border: none;
-                border-radius: {border_radius}px;
-            }}
-            QPushButton:hover {{
-                background-color: rgba(255, 255, 255, 40);
-                border-radius: {border_radius}px;
-            }}
+    def create_header(self):
+        header_frame = QFrame()
+        header_frame.setFixedHeight(60)
+        header_frame.setStyleSheet("""
+            QFrame {
+                background-color: rgba(0, 0, 0, 100);
+                border-radius: 10px;
+                border: 1px solid rgba(100, 200, 255, 50);
+            }
         """)
+
+        header_layout = QHBoxLayout(header_frame)
+        header_layout.setContentsMargins(15, 10, 15, 10)
+
+        self.back_button = QPushButton("← Back to Home")
+        self.back_button.clicked.connect(lambda: self.navigate_signal.emit("home"))
+        self.back_button.setFixedWidth(150)
+
+        self.title_label = QLabel("Enumeration Tools")
+        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        header_layout.addWidget(self.back_button)
+        header_layout.addWidget(self.title_label, 1)
+        header_layout.addStretch()
+
+        return header_frame
+
+    def create_tool_panel(self):
+        tool_frame = QFrame()
+        tool_frame.setFixedWidth(300)
+        tool_frame.setStyleSheet("""
+            QFrame {
+                background-color: rgba(0, 0, 0, 100);
+                border-radius: 10px;
+                border: 1px solid rgba(100, 200, 255, 50);
+            }
+        """)
+
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        tool_widget = QWidget()
+        self.tool_layout = QVBoxLayout(tool_widget)
+        self.tool_layout.setContentsMargins(10, 10, 10, 10)
+        self.tool_layout.setSpacing(8)
+
+        scroll_area.setWidget(tool_widget)
+
+        frame_layout = QVBoxLayout(tool_frame)
+        frame_layout.setContentsMargins(5, 5, 5, 5)
+        frame_layout.addWidget(scroll_area)
+
+        return tool_frame
+
+    def create_work_area(self):
+        work_frame = QFrame()
+        work_frame.setStyleSheet("""
+            QFrame {
+                background-color: rgba(0, 0, 0, 100);
+                border-radius: 10px;
+                border: 1px solid rgba(100, 200, 255, 50);
+            }
+        """)
+
+        work_layout = QVBoxLayout(work_frame)
+        work_layout.setContentsMargins(15, 15, 15, 15)
+        work_layout.setSpacing(10)
+
+        # Controls section
+        self.controls_section = self.create_controls_section()
+        work_layout.addWidget(self.controls_section)
+
+        # Output section
+        self.output_section = self.create_output_section()
+        work_layout.addWidget(self.output_section, 1)
+
+        # Progress section
+        self.progress_widget = ProgressWidget(self)
+        self.progress_widget.setVisible(False)
+        work_layout.addWidget(self.progress_widget)
+
+        return work_frame
+
+    def create_controls_section(self):
+        controls_frame = QFrame()
+        controls_frame.setFixedHeight(120)
+
+        controls_layout = QVBoxLayout(controls_frame)
+        controls_layout.setContentsMargins(10, 10, 10, 10)
+        controls_layout.setSpacing(8)
+
+        # First row: Target input and wordlist
+        first_row = QHBoxLayout()
+        
+        target_label = QLabel("Target:")
+        target_label.setFixedWidth(60)
+        
+        self.target_input = QLineEdit()
+        self.target_input.setPlaceholderText("Enter target (IP, domain, or range)...")
+        
+        wordlist_label = QLabel("Wordlist:")
+        wordlist_label.setFixedWidth(70)
+        
+        self.wordlist_combo = QComboBox()
+        self.wordlist_combo.setFixedWidth(200)
+        self.populate_wordlists()
+
+        first_row.addWidget(target_label)
+        first_row.addWidget(self.target_input, 1)
+        first_row.addWidget(wordlist_label)
+        first_row.addWidget(self.wordlist_combo)
+
+        # Second row: Record types and export controls
+        second_row = QHBoxLayout()
+        
+        record_label = QLabel("Types:")
+        record_label.setFixedWidth(60)
+        
+        self.record_type_checkboxes = {}
+        for record_type in ['A', 'AAAA', 'CNAME', 'MX', 'TXT']:
+            checkbox = QCheckBox(record_type)
+            if record_type == 'A':
+                checkbox.setChecked(True)
+            self.record_type_checkboxes[record_type] = checkbox
+            second_row.addWidget(checkbox)
+
+        second_row.addStretch()
+
+        self.export_combo = QComboBox()
+        self.export_combo.addItems(["JSON", "CSV", "XML"])
+        self.export_combo.setFixedWidth(110)
+
+        self.export_button = QPushButton("Export")
+        self.export_button.clicked.connect(self.export_results)
+        self.export_button.setEnabled(False)
+        self.export_button.setFixedWidth(80)
+
+        second_row.addWidget(self.export_combo)
+        second_row.addWidget(self.export_button)
+
+        controls_layout.addLayout(first_row)
+        controls_layout.addLayout(second_row)
+
+        return controls_frame
+
+    def create_output_section(self):
+        output_frame = QFrame()
+        output_layout = QHBoxLayout(output_frame)
+        output_layout.setContentsMargins(0, 0, 0, 0)
+        output_layout.setSpacing(10)
+
+        # Tool buttons panel (left)
+        self.tool_buttons_panel = QFrame()
+        self.tool_buttons_panel.setFixedWidth(120)
+
+        self.tool_buttons_layout = QVBoxLayout(self.tool_buttons_panel)
+        self.tool_buttons_layout.setContentsMargins(5, 5, 5, 5)
+        self.tool_buttons_layout.setSpacing(5)
+
+        # Terminal output (right)
+        self.terminal_output = QTextEdit()
+        self.terminal_output.setReadOnly(True)
+        self.terminal_output.setPlaceholderText("Tool output will appear here...")
+
+        output_layout.addWidget(self.tool_buttons_panel)
+        output_layout.addWidget(self.terminal_output, 1)
+
+        return output_frame
+
+    def setup_tool_data(self):
+        self.main_tools_data = [
+            {"id": "dns_enum", "title": "DNS Enumeration", "desc": "Discover domains, subdomains, and IPs.", "icon": "resources/icons/1A.png"},
+            {"id": "port_scan", "title": "Port Scanning", "desc": "Identify open ports and services running.", "icon": "resources/icons/1B.png"},
+            {"id": "smb_enum", "title": "SMB Enumeration", "desc": "List shares and users via Windows SMB.", "icon": "resources/icons/1C.png"},
+            {"id": "smtp_enum", "title": "SMTP Enumeration", "desc": "Probe mail servers for valid emails.", "icon": "resources/icons/1D.png"},
+            {"id": "snmp_enum", "title": "SNMP Enumeration", "desc": "Extract network device info using SNMP.", "icon": "resources/icons/1E.png"},
+            {"id": "http_fingerprint", "title": "HTTP/S Fingerprinting", "desc": "Identify web server type and technologies.", "icon": "resources/icons/1F.png"},
+        ]
+
+        # Create main tool buttons
+        self.main_tool_buttons = []
+        for tool in self.main_tools_data:
+            button = self.create_main_tool_button(tool)
+            self.tool_layout.addWidget(button)
+            self.main_tool_buttons.append(button)
+
+        self.tool_layout.addStretch()
+
+        # Setup tool-specific data
+        self.dns_tools_data = [
+            {"id": "dns_hosts", "text": "HOSTS", "method": self.run_host_wordlist_scan},
+            {"id": "dns_ptr", "text": "PTR", "method": self.run_ptr_scan},
+        ]
+
+        self.last_scan_results = {}
+        self.last_scan_target = ""
+
+    def create_main_tool_button(self, tool_data):
+        button = HoverButton(tool_data["title"], tool_data["desc"], self)
+        button.setMinimumHeight(50)
+        button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
+        icon_path = os.path.join(self.main_window.project_root, tool_data["icon"])
+        icon = QIcon(icon_path)
+        if not icon.isNull():
+            button.setIcon(icon)
+            button.setIconSize(QSize(24, 24))
+
+        button.setText(tool_data["title"])
+        button.clicked.connect(lambda: self.activate_tool_submenu(tool_data["id"]))
+        button.enter_signal.connect(self.update_status_bar)
+        button.leave_signal.connect(self.clear_status_bar)
+
+        return button
+
+    def activate_tool_submenu(self, tool_id):
+        self.current_submenu = tool_id
+        self.update_tool_buttons()
+        self.status_updated.emit(f"Selected: {tool_id.replace('_', ' ').title()}")
+
+    def update_tool_buttons(self):
+        # Clear existing buttons
+        for i in reversed(range(self.tool_buttons_layout.count())):
+            child = self.tool_buttons_layout.itemAt(i).widget()
+            if child:
+                child.setParent(None)
+
+        # Add new buttons based on current submenu
+        if self.current_submenu == "dns_enum":
+            for tool_data in self.dns_tools_data:
+                button = QPushButton(tool_data["text"])
+                button.setMinimumHeight(35)
+                button.clicked.connect(tool_data["method"])
+                self.tool_buttons_layout.addWidget(button)
+
+        self.tool_buttons_layout.addStretch()
 
     def populate_wordlists(self):
         wordlist_dir = os.path.join(self.main_window.project_root, "resources", "wordlists")
-        if not os.path.isdir(wordlist_dir):
-            logging.warning(f"Wordlist directory not found: {wordlist_dir}")
-            return
-        
-        for filename in os.listdir(wordlist_dir):
-            if filename.endswith(".txt"):
-                self.wordlist_combo.addItem(filename, os.path.join(wordlist_dir, filename))
+        if os.path.exists(wordlist_dir):
+            for filename in os.listdir(wordlist_dir):
+                if filename.endswith(".txt"):
+                    self.wordlist_combo.addItem(filename, os.path.join(wordlist_dir, filename))
 
-    def set_submenu_active(self, active, submenu_type="dns"):
-        self.is_submenu_active = active
-        self.current_submenu = submenu_type
-        
-        for widget in self.main_widgets: widget.setVisible(not active)
-        
-        # Show/hide common submenu widgets
-        common_widgets = [self.dns_back_button, self.target_input, self.dns_terminal_output, self.export_combo, self.export_button, self.progress_widget]
-        for widget in common_widgets: widget.setVisible(active)
-        
-        # Show/hide specific tool buttons and controls
-        if active:
-            if submenu_type == "dns":
-                for widget in self.dns_tool_buttons: widget.setVisible(True)
-                self.wordlist_combo.setVisible(True)
-                self.record_type_container.setVisible(True)
-                for widget in self.port_tool_buttons: widget.setVisible(False)
-                for widget in self.smb_tool_buttons: widget.setVisible(False)
-            elif submenu_type == "port_scan":
-                for widget in self.port_tool_buttons: widget.setVisible(True)
-                self.wordlist_combo.setVisible(False)
-                self.record_type_container.setVisible(False)
-                for widget in self.dns_tool_buttons: widget.setVisible(False)
-                for widget in self.smb_tool_buttons: widget.setVisible(False)
-            elif submenu_type == "smb_enum":
-                for widget in self.smb_tool_buttons: widget.setVisible(True)
-                self.wordlist_combo.setVisible(False)
-                self.record_type_container.setVisible(False)
-                for widget in self.dns_tool_buttons: widget.setVisible(False)
-                for widget in self.port_tool_buttons: widget.setVisible(False)
-                self.hide_other_tools(["smb"])
-            elif submenu_type == "smtp_enum":
-                for widget in self.smtp_tool_buttons: widget.setVisible(True)
-                self.wordlist_combo.setVisible(True)
-                self.record_type_container.setVisible(False)
-                self.hide_other_tools(["smtp"])
-            elif submenu_type == "snmp_enum":
-                for widget in self.snmp_tool_buttons: widget.setVisible(True)
-                self.wordlist_combo.setVisible(False)
-                self.record_type_container.setVisible(False)
-                self.hide_other_tools(["snmp"])
-            elif submenu_type == "http_fingerprint":
-                for widget in self.http_tool_buttons: widget.setVisible(True)
-                self.wordlist_combo.setVisible(False)
-                self.record_type_container.setVisible(False)
-                self.hide_other_tools(["http"])
-            elif submenu_type == "api_enum":
-                for widget in self.api_tool_buttons: widget.setVisible(True)
-                self.wordlist_combo.setVisible(False)
-                self.record_type_container.setVisible(False)
-                self.hide_other_tools(["api"])
-            elif submenu_type == "db_enum":
-                for widget in self.db_tool_buttons: widget.setVisible(True)
-                self.wordlist_combo.setVisible(False)
-                self.record_type_container.setVisible(False)
-                self.hide_other_tools(["db"])
-        else:
-            self.hide_all_tool_buttons()
-            self.wordlist_combo.setVisible(False)
-            self.record_type_container.setVisible(False)
-        
-        if self.main_tool_buttons: self.main_tool_buttons[0].setVisible(True)
-        self.update_background()
+    def update_status_bar(self, title, description):
+        self.status_updated.emit(f"{title}: {description}")
 
-    def update_background(self):
-        if hasattr(self.main_window, 'theme_manager'):
-            theme = self.main_window.theme_manager
-            bg_path = theme.get("backgrounds.enumeration_dns") if self.is_submenu_active else theme.get("backgrounds.enumeration")
-            if bg_path: self.background_label.setPixmap(QPixmap(bg_path))
-        else:
-            # Fallback to default background
-            bg_name = "alien_tablet_skin_enumeration_dns.png" if self.is_submenu_active else "alien_tablet_skin_enumeration.png"
-            bg_path = os.path.join(self.main_window.project_root, "resources", "themes", "default", bg_name)
-            if os.path.exists(bg_path):
-                self.background_label.setPixmap(QPixmap(bg_path))
+    def clear_status_bar(self):
+        self.status_updated.emit("")
 
-    def apply_theme(self): self.update_background()
+    def apply_theme(self):
+        pass
 
-    def resizeEvent(self, event):
-        if event: super().resizeEvent(event)
+    def setup_shortcuts(self):
+        self.scan_shortcut = QShortcut(QKeySequence("F5"), self)
+        self.scan_shortcut.activated.connect(self.run_host_wordlist_scan)
         
-        self.background_label.setGeometry(0, 0, self.width(), self.height())
-        
-        # Scale based on window size (assuming original design for 1920x1080)
-        scale_x = self.width() / 1920.0
-        scale_y = self.height() / 1080.0
-        
-        # Scale main UI elements
-        self.main_title.setGeometry(int(340 * scale_x), int(40 * scale_y), int(400 * scale_x), int(50 * scale_y))
-        self.main_back_button.setGeometry(int(20 * scale_x), int(20 * scale_y), int(150 * scale_x), int(50 * scale_y))
-        
-        # Scale terminal and info panel
-        term_x, term_y = int(340 * scale_x), int(175 * scale_y)
-        term_w, term_h = int((1731 - 340) * scale_x), int((770 - 175) * scale_y)
-        self.info_panel.setGeometry(term_x, term_y, term_w, term_h)
-        self.dns_terminal_output.setGeometry(term_x, term_y, term_w, term_h)
-        
-        # Scale and position main tool icons (copy exact approach from home page)
-        for i, button in enumerate(self.main_tool_buttons):
-            if i < len(self.main_tools_data):
-                center = self.main_tools_data[i]["center"]
-                size = self.main_tools_data[i]["size"]
-                width, height = size
-                cx, cy = center
-                
-                # Apply scaling exactly like home page
-                scaled_cx = int(cx * scale_x)
-                scaled_cy = int(cy * scale_y)
-                scaled_w = int(width * scale_x)
-                scaled_h = int(height * scale_y)
-                
-                button.setGeometry(
-                    scaled_cx - scaled_w // 2, 
-                    scaled_cy - scaled_h // 2, 
-                    scaled_w, scaled_h
-                )
-                button.setIconSize(QSize(int(scaled_w * 0.9), int(scaled_h * 0.9)))
+        self.back_shortcut = QShortcut(QKeySequence("Escape"), self)
+        self.back_shortcut.activated.connect(lambda: self.navigate_signal.emit("home"))
 
-        # Scale submenu controls
-        self.dns_back_button.setGeometry(int(40 * scale_x), int(850 * scale_y), int(150 * scale_x), int(50 * scale_y))
-
-        controls_y = term_y + term_h + int(80 * scale_y)
-        padding = int(15 * scale_x)
-        control_height = int(36 * scale_y)
-
-        target_width = int(term_w * 0.25)
-        wordlist_width = int(term_w * 0.35)
-        checkbox_width = term_w - target_width - wordlist_width - (padding * 2)
-
-        target_x = term_x
-        wordlist_x = target_x + target_width + padding
-        checkbox_x = wordlist_x + wordlist_width + padding
-
-        self.target_input.setGeometry(target_x, controls_y, target_width, control_height)
-        self.wordlist_combo.setGeometry(wordlist_x, controls_y, wordlist_width, control_height)
-        self.record_type_container.setGeometry(checkbox_x, controls_y, checkbox_width, control_height)
-        
-        # Progress widget positioning
-        progress_y = controls_y + control_height + int(15 * scale_y)
-        progress_height = int(60 * scale_y)
-        self.progress_widget.setGeometry(target_x, progress_y, term_w, progress_height)
-        
-        # Export controls positioning
-        export_y = progress_y + progress_height + int(15 * scale_y)
-        export_combo_width = int(100 * scale_x)
-        export_button_width = int(120 * scale_x)
-        
-        self.export_combo.setGeometry(target_x, export_y, export_combo_width, control_height)
-        self.export_button.setGeometry(target_x + export_combo_width + padding, export_y, export_button_width, control_height)
-
-        # Scale submenu tool buttons
-        for i, button in enumerate(self.dns_tool_buttons):
-            x, y, w, h = self.dns_tools_data[i]["rect"]
-            button.setGeometry(int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y))
-        
-        for i, button in enumerate(self.port_tool_buttons):
-            x, y, w, h = self.port_tools_data[i]["rect"]
-            button.setGeometry(int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y))
-        
-        for i, button in enumerate(self.smb_tool_buttons):
-            x, y, w, h = self.smb_tools_data[i]["rect"]
-            button.setGeometry(int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y))
-        
-        for i, button in enumerate(self.smtp_tool_buttons):
-            x, y, w, h = self.smtp_tools_data[i]["rect"]
-            button.setGeometry(int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y))
-        
-        for i, button in enumerate(self.snmp_tool_buttons):
-            x, y, w, h = self.snmp_tools_data[i]["rect"]
-            button.setGeometry(int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y))
-        
-        for i, button in enumerate(self.http_tool_buttons):
-            x, y, w, h = self.http_tools_data[i]["rect"]
-            button.setGeometry(int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y))
-        
-        for i, button in enumerate(self.api_tool_buttons):
-            x, y, w, h = self.api_tools_data[i]["rect"]
-            button.setGeometry(int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y))
-        
-        for i, button in enumerate(self.db_tool_buttons):
-            x, y, w, h = self.db_tools_data[i]["rect"]
-            button.setGeometry(int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y))
-        
-    def update_info_panel(self, title, description):
-        self.info_panel.setHtml(f"""
-        <div style='color: #64C8FF; font-size: 22pt; font-weight: bold;'>{title}</div>
-        <div style='color: #DCDCDC; font-size: 16pt; font-family: "Neuropol";'>{description}</div>
-        """)
-    
-    def clear_info_panel(self): self.info_panel.clear()
-
-    # --- Script Execution and UI Update Methods ---
     def run_host_wordlist_scan(self):
-        target = self.target_input.text()
+        target = self.target_input.text().strip()
+        if not target:
+            self.show_error("Please enter a target domain")
+            return
+
         wordlist_path = self.wordlist_combo.currentData()
         selected_types = [rtype for rtype, cb in self.record_type_checkboxes.items() if cb.isChecked()]
 
-        # Validate domain input
-        domain_valid, domain_result = InputValidator.validate_domain(target)
-        if not domain_valid:
-            self.dns_terminal_output.setHtml(f"<p style='color: #FF4500;'>[ERROR] Invalid domain: {domain_result}</p>")
-            return
-        target = domain_result  # Use sanitized domain
-        
-        # Validate wordlist path
-        wordlist_valid, wordlist_error, validated_path = InputValidator.validate_wordlist_path(wordlist_path)
-        if not wordlist_valid:
-            self.dns_terminal_output.setHtml(f"<p style='color: #FF4500;'>[ERROR] Wordlist validation failed: {wordlist_error}</p>")
-            return
-        wordlist_path = validated_path  # Use validated path
-        
-        # Validate record types
-        types_valid, types_error, validated_types = InputValidator.validate_record_types(selected_types)
-        if not types_valid:
-            self.dns_terminal_output.setHtml(f"<p style='color: #FF4500;'>[ERROR] Record type validation failed: {types_error}</p>")
-            return
-        selected_types = validated_types  # Use validated types
-        
-        self.dns_terminal_output.clear()
-        self.set_buttons_enabled(False)
+        self.terminal_output.clear()
         self.progress_widget.setVisible(True)
-        self.progress_widget.reset_progress()
+        self.status_updated.emit(f"Starting DNS enumeration on {target}...")
 
-        # Store current scan info for export
-        self.last_scan_target = target
-        
         custom_scripts.enumerate_hostnames(
-            target=target, wordlist_path=wordlist_path, record_types=selected_types,
+            target=target,
+            wordlist_path=wordlist_path,
+            record_types=selected_types,
             output_callback=self.append_terminal_output,
-            status_callback=self.update_status,
-            finished_callback=self.on_script_finished,
-            wildcard_callback=self.update_wildcard_status,
+            status_callback=self.update_status_bar_text,
+            finished_callback=self.on_scan_finished,
             results_callback=self.store_scan_results,
             progress_callback=self.update_progress,
             progress_start_callback=self.start_progress
         )
 
-    def append_terminal_output(self, text):
-        self.dns_terminal_output.insertHtml(text)
-        self.dns_terminal_output.verticalScrollBar().setValue(self.dns_terminal_output.verticalScrollBar().maximum())
+    def run_ptr_scan(self):
+        self.show_info("PTR scan functionality")
 
-    def update_status(self, status_text): print(f"STATUS: {status_text}")
-    
-    def update_wildcard_status(self, text):
-        """
-        **FIX**: This slot now handles the wildcard status by inserting text at the top
-        of the terminal window.
-        """
-        # If this is the "Checking..." message, just insert it.
-        if "Checking" in text:
-            self.dns_terminal_output.setHtml(text + "<br>")
-        else:
-            # If it's the result, replace the first line.
-            cursor = self.dns_terminal_output.textCursor()
-            cursor.movePosition(QTextCursor.MoveOperation.Start)
-            cursor.select(QTextCursor.SelectionType.LineUnderCursor)
-            cursor.removeSelectedText()
-            cursor.insertHtml(text + "<br>")
+    def show_error(self, message):
+        self.terminal_output.setHtml(f"<p style='color: #FF4500;'>[ERROR] {message}</p>")
+        self.status_updated.emit(f"Error: {message}")
+
+    def show_info(self, message):
+        self.terminal_output.setHtml(f"<p style='color: #64C8FF;'>[INFO] {message}</p>")
+
+    def append_terminal_output(self, text):
+        self.terminal_output.insertHtml(text)
+        scrollbar = self.terminal_output.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum())
+
+    def update_status_bar_text(self, text):
+        self.status_updated.emit(text)
 
     def store_scan_results(self, results):
-        """Store scan results for export functionality"""
         self.last_scan_results = results
-        self.export_button.setEnabled(bool(results))
-    
+        self.export_button.setEnabled(True)
+
+    def start_progress(self, total_items):
+        self.progress_widget.start_progress(total_items, "Scanning...")
+
+    def update_progress(self, completed_items, results_found):
+        self.progress_widget.update_progress(completed_items, results_found)
+
+    def on_scan_finished(self):
+        self.progress_widget.finish_progress("Scan Complete")
+        self.status_updated.emit("Scan completed successfully")
+
     def export_results(self):
-        """Export the last scan results"""
         if not self.last_scan_results:
-            self.append_terminal_output("<p style='color: #FF4500;'>[ERROR] No scan results to export</p>")
+            self.show_error("No scan results to export")
             return
-        
+
         format_type = self.export_combo.currentText().lower()
         success, filepath, message = exporter.export_results(
-            self.last_scan_results, 
-            self.last_scan_target, 
+            self.last_scan_results,
+            self.last_scan_target,
             format_type
         )
-        
-        if success:
-            self.append_terminal_output(f"<p style='color: #00FF41;'>[✓] Results exported to: {filepath}</p><br>")
-        else:
-            self.append_terminal_output(f"<p style='color: #FF4500;'>[ERROR] Export failed: {message}</p><br>")
-    
-    def start_progress(self, total_items):
-        """Start progress tracking"""
-        self.progress_widget.start_progress(total_items, "Enumerating hostnames...")
-    
-    def update_progress(self, completed_items, results_found):
-        """Update progress tracking"""
-        self.progress_widget.update_progress(completed_items, results_found)
-    
-    def on_script_finished(self):
-        self.set_buttons_enabled(True)
-        self.progress_widget.finish_progress("Scan Complete")
-        self.append_terminal_output("<br><p style='color: #64C8FF;'>--- Scan Finished ---</p><br>")
 
-    def setup_shortcuts(self):
-        """Setup keyboard shortcuts"""
-        # F5 - Start scan
-        self.scan_shortcut = QShortcut(QKeySequence("F5"), self)
-        self.scan_shortcut.activated.connect(self.run_host_wordlist_scan)
-        
-        # Ctrl+E - Export results
-        self.export_shortcut = QShortcut(QKeySequence("Ctrl+E"), self)
-        self.export_shortcut.activated.connect(self.export_results)
-        
-        # Ctrl+L - Clear terminal
-        self.clear_shortcut = QShortcut(QKeySequence("Ctrl+L"), self)
-        self.clear_shortcut.activated.connect(self.clear_terminal)
-        
-        # Escape - Go back
-        self.back_shortcut = QShortcut(QKeySequence("Escape"), self)
-        self.back_shortcut.activated.connect(self.handle_escape)
-    
-    def clear_terminal(self):
-        """Clear the terminal output"""
-        self.dns_terminal_output.clear()
-    
-    def handle_escape(self):
-        """Handle escape key press"""
-        if self.is_submenu_active:
-            self.set_submenu_active(False)
+        if success:
+            self.show_info(f"Results exported to: {filepath}")
         else:
-            self.navigate_signal.emit("home")
-    
-    def hide_other_tools(self, keep_visible):
-        all_tools = {
-            "dns": self.dns_tool_buttons,
-            "port": self.port_tool_buttons, 
-            "smb": self.smb_tool_buttons,
-            "smtp": self.smtp_tool_buttons,
-            "snmp": self.snmp_tool_buttons,
-            "http": self.http_tool_buttons,
-            "api": self.api_tool_buttons,
-            "db": self.db_tool_buttons
-        }
-        
-        for tool_type, buttons in all_tools.items():
-            visible = tool_type in keep_visible
-            for button in buttons:
-                button.setVisible(visible)
-    
-    def hide_all_tool_buttons(self):
-        all_buttons = (self.dns_tool_buttons + self.port_tool_buttons + self.smb_tool_buttons + 
-                      self.smtp_tool_buttons + self.snmp_tool_buttons + self.http_tool_buttons + 
-                      self.api_tool_buttons + self.db_tool_buttons)
-        for button in all_buttons:
-            button.setVisible(False)
-    
-    def set_buttons_enabled(self, enabled):
-        all_buttons = (self.dns_tool_buttons + self.port_tool_buttons + self.smb_tool_buttons + 
-                      self.smtp_tool_buttons + self.snmp_tool_buttons + self.http_tool_buttons + 
-                      self.api_tool_buttons + self.db_tool_buttons)
-        for button in all_buttons:
-            button.setEnabled(enabled)
-        self.scan_shortcut.setEnabled(enabled)
-    
-    # Port Scanning Methods
-    def run_port_scan(self):
-        target = self.target_input.text().strip()
-        if not target:
-            self.dns_terminal_output.setHtml("<p style='color: #FF4500;'>[ERROR] Please enter a target IP</p>")
-            return
-        
-        self.dns_terminal_output.clear()
-        self.set_buttons_enabled(False)
-        
-        cmd = ["python", "tools/port_scanner.py", target, "-p", "1-1000"]
-        worker = CommandWorker(cmd, f"Starting TCP scan on {target}", str(self.main_window.project_root))
-        worker.signals.output.connect(self.append_terminal_output)
-        worker.signals.error.connect(self.append_terminal_output)
-        worker.signals.finished.connect(lambda: self.set_buttons_enabled(True))
-        QThreadPool.globalInstance().start(worker)
-    
-    def run_port_sweep(self):
-        target = self.target_input.text().strip()
-        if not target:
-            self.dns_terminal_output.setHtml("<p style='color: #FF4500;'>[ERROR] Please enter a network range</p>")
-            return
-        
-        self.dns_terminal_output.clear()
-        self.set_buttons_enabled(False)
-        
-        cmd = ["python", "tools/port_scanner.py", target, "--sweep"]
-        worker = CommandWorker(cmd, f"Starting network sweep on {target}", str(self.main_window.project_root))
-        worker.signals.output.connect(self.append_terminal_output)
-        worker.signals.error.connect(self.append_terminal_output)
-        worker.signals.finished.connect(lambda: self.set_buttons_enabled(True))
-        QThreadPool.globalInstance().start(worker)
-    
-    def run_top_ports(self):
-        target = self.target_input.text().strip()
-        if not target:
-            self.dns_terminal_output.setHtml("<p style='color: #FF4500;'>[ERROR] Please enter a target IP</p>")
-            return
-        
-        self.dns_terminal_output.clear()
-        self.set_buttons_enabled(False)
-        
-        cmd = ["python", "tools/port_scanner.py", target, "--top-ports", "20"]
-        worker = CommandWorker(cmd, f"Scanning top 20 ports on {target}", str(self.main_window.project_root))
-        worker.signals.output.connect(self.append_terminal_output)
-        worker.signals.error.connect(self.append_terminal_output)
-        worker.signals.finished.connect(lambda: self.set_buttons_enabled(True))
-        QThreadPool.globalInstance().start(worker)
-    
-    def run_service_scan(self):
-        target = self.target_input.text().strip()
-        if not target:
-            self.dns_terminal_output.setHtml("<p style='color: #FF4500;'>[ERROR] Please enter a target IP</p>")
-            return
-        
-        self.dns_terminal_output.clear()
-        self.set_buttons_enabled(False)
-        
-        cmd = ["python", "tools/port_scanner.py", target, "--top-ports", "20", "--service-detect"]
-        worker = CommandWorker(cmd, f"Scanning with service detection on {target}", str(self.main_window.project_root))
-        worker.signals.output.connect(self.append_terminal_output)
-        worker.signals.error.connect(self.append_terminal_output)
-        worker.signals.finished.connect(lambda: self.set_buttons_enabled(True))
-        QThreadPool.globalInstance().start(worker)
-    
-    # SMB Enumeration Methods
-    def run_smb_scan(self):
-        target = self.target_input.text().strip()
-        if not target:
-            self.dns_terminal_output.setHtml("<p style='color: #FF4500;'>[ERROR] Please enter a target IP</p>")
-            return
-        
-        self.dns_terminal_output.clear()
-        self.set_buttons_enabled(False)
-        
-        cmd = ["python", "tools/smb_enum.py", target]
-        worker = CommandWorker(cmd, f"Scanning SMB ports on {target}", str(self.main_window.project_root))
-        worker.signals.output.connect(self.append_terminal_output)
-        worker.signals.error.connect(self.append_terminal_output)
-        worker.signals.finished.connect(lambda: self.set_buttons_enabled(True))
-        QThreadPool.globalInstance().start(worker)
-    
-    def run_netbios_scan(self):
-        target = self.target_input.text().strip()
-        if not target:
-            self.dns_terminal_output.setHtml("<p style='color: #FF4500;'>[ERROR] Please enter a target IP</p>")
-            return
-        
-        self.dns_terminal_output.clear()
-        self.set_buttons_enabled(False)
-        
-        cmd = ["python", "tools/smb_enum.py", target, "--netbios"]
-        worker = CommandWorker(cmd, f"NetBIOS enumeration on {target}", str(self.main_window.project_root))
-        worker.signals.output.connect(self.append_terminal_output)
-        worker.signals.error.connect(self.append_terminal_output)
-        worker.signals.finished.connect(lambda: self.set_buttons_enabled(True))
-        QThreadPool.globalInstance().start(worker)
-    
-    def run_smb_os_detect(self):
-        target = self.target_input.text().strip()
-        if not target:
-            self.dns_terminal_output.setHtml("<p style='color: #FF4500;'>[ERROR] Please enter a target IP</p>")
-            return
-        
-        self.dns_terminal_output.clear()
-        self.set_buttons_enabled(False)
-        
-        cmd = ["python", "tools/smb_enum.py", target, "--os-detect"]
-        worker = CommandWorker(cmd, f"SMB OS detection on {target}", str(self.main_window.project_root))
-        worker.signals.output.connect(self.append_terminal_output)
-        worker.signals.error.connect(self.append_terminal_output)
-        worker.signals.finished.connect(lambda: self.set_buttons_enabled(True))
-        QThreadPool.globalInstance().start(worker)
-    
-    def run_smb_range(self):
-        target = self.target_input.text().strip()
-        if not target:
-            self.dns_terminal_output.setHtml("<p style='color: #FF4500;'>[ERROR] Please enter a network range (e.g., 192.168.1)</p>")
-            return
-        
-        self.dns_terminal_output.clear()
-        self.set_buttons_enabled(False)
-        
-        cmd = ["python", "tools/smb_enum.py", target, "--range"]
-        worker = CommandWorker(cmd, f"SMB range scan on {target}.1-254", str(self.main_window.project_root))
-        worker.signals.output.connect(self.append_terminal_output)
-        worker.signals.error.connect(self.append_terminal_output)
-        worker.signals.finished.connect(lambda: self.set_buttons_enabled(True))
-        QThreadPool.globalInstance().start(worker)
-    
-    def run_smtp_enum(self):
-        target = self.target_input.text().strip()
-        if not target: return self.show_error("Please enter target")
-        domain = target.split('.')[0] if '.' in target else "example.com"
-        wordlist = self.wordlist_combo.currentData() or "resources/wordlists/subdomains-top1000.txt"
-        self.run_tool_command(["python", "tools/smtp_enum.py", target, "--domain", domain, "--wordlist", wordlist], f"SMTP enumeration on {target}")
-    
-    def run_snmp_scan(self):
-        target = self.target_input.text().strip()
-        if not target: return self.show_error("Please enter a target IP")
-        self.run_tool_command(["python", "tools/snmp_enum.py", target], f"SNMP scan on {target}")
-    
-    def run_snmp_community(self):
-        target = self.target_input.text().strip()
-        if not target: return self.show_error("Please enter a target IP")
-        self.run_tool_command(["python", "tools/snmp_enum.py", target, "--community", "public"], f"SNMP community test on {target}")
-    
-    def run_snmp_walk(self):
-        target = self.target_input.text().strip()
-        if not target: return self.show_error("Please enter a target IP")
-        self.run_tool_command(["python", "tools/snmp_enum.py", target, "--walk"], f"SNMP walk on {target}")
-    
-    def run_snmp_range(self):
-        target = self.target_input.text().strip()
-        if not target: return self.show_error("Please enter a network range")
-        self.run_tool_command(["python", "tools/snmp_enum.py", target, "--range"], f"SNMP range scan on {target}")
-    
-    def run_http_fingerprint(self):
-        target = self.target_input.text().strip()
-        if not target: return self.show_error("Please enter a target")
-        self.run_tool_command(["python", "tools/http_enum.py", target], f"HTTP fingerprinting on {target}")
-    
-    def run_http_ssl(self):
-        target = self.target_input.text().strip()
-        if not target: return self.show_error("Please enter a target")
-        self.run_tool_command(["python", "tools/http_enum.py", target, "--https", "--ssl-scan"], f"SSL scan on {target}")
-    
-    def run_http_dir(self):
-        target = self.target_input.text().strip()
-        if not target: return self.show_error("Please enter a target")
-        self.run_tool_command(["python", "tools/http_enum.py", target, "--dir-scan"], f"Directory scan on {target}")
-    
-    def run_api_discover(self):
-        target = self.target_input.text().strip()
-        if not target: return self.show_error("Please enter a target")
-        self.run_tool_command(["python", "tools/api_enum.py", target], f"API discovery on {target}")
-    
-    def run_api_methods(self):
-        target = self.target_input.text().strip()
-        if not target: return self.show_error("Please enter a target")
-        self.run_tool_command(["python", "tools/api_enum.py", target, "--methods"], f"API methods test on {target}")
-    
-    def run_api_auth(self):
-        target = self.target_input.text().strip()
-        if not target: return self.show_error("Please enter a target")
-        self.run_tool_command(["python", "tools/api_enum.py", target, "--auth-bypass"], f"API auth bypass test on {target}")
-    
-    def run_db_scan(self):
-        target = self.target_input.text().strip()
-        if not target: return self.show_error("Please enter a target IP")
-        self.run_tool_command(["python", "tools/db_enum.py", target], f"Database scan on {target}")
-    
-    def run_db_detailed(self):
-        target = self.target_input.text().strip()
-        if not target: return self.show_error("Please enter a target IP")
-        self.run_tool_command(["python", "tools/db_enum.py", target, "--detailed"], f"Detailed database scan on {target}")
-    
-    def show_error(self, message):
-        self.dns_terminal_output.setHtml(f"<p style='color: #FF4500;'>[ERROR] {message}</p>")
-    
-    def run_tool_command(self, cmd, description):
-        self.dns_terminal_output.clear()
-        self.set_buttons_enabled(False)
-        
-        worker = CommandWorker(cmd, description, str(self.main_window.project_root))
-        worker.signals.output.connect(self.append_terminal_output)
-        worker.signals.error.connect(self.append_terminal_output)
-        worker.signals.finished.connect(lambda: self.set_buttons_enabled(True))
-        QThreadPool.globalInstance().start(worker)
+            self.show_error(f"Export failed: {message}")

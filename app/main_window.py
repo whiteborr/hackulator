@@ -8,17 +8,17 @@ from PyQt6.QtWidgets import QApplication
 from app.theme_manager import ThemeManager
 from app.core.advanced_theme_manager import AdvancedThemeManager
 from app.widgets.animated_stacked_widget import AnimatedStackedWidget
-from app.pages.home_page_refactored import HomePage
-from app.pages.enumeration_page_simple import EnumerationPage
-from app.pages.vuln_scanning_page_refactored import VulnScanningPage
-from app.pages.web_exploits_page_refactored import WebExploitsPage
-from app.pages.db_attacks_page_refactored import DbAttacksPage
-from app.pages.os_exploits_page_refactored import OSExploitsPage
-from app.pages.cracking_page_refactored import CrackingPage
-from app.pages.osint_page_refactored import OSINTPage
-from app.pages.findings_page_refactored import FindingsPage
-from app.pages.owasp_api_page_refactored import OWASPAPIPage
-from app.pages.scripts_page_refactored import ScriptsPage
+from app.pages.home_page import HomePage
+from app.pages.enumeration_page import EnumerationPage
+from app.pages.vuln_scanning_page import VulnScanningPage
+from app.pages.web_exploits_page import WebExploitsPage
+from app.pages.db_attacks_page import DbAttacksPage
+from app.pages.os_exploits_page import OSExploitsPage
+from app.pages.cracking_page import CrackingPage
+from app.pages.osint_page import OSINTPage
+from app.pages.findings_page import FindingsPage
+from app.pages.owasp_api_page import OWASPAPIPage
+from app.pages.scripts_page import ScriptsPage
 from app.core.system_tray import SystemTrayManager
 
 class MainWindow(QMainWindow):

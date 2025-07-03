@@ -2,7 +2,7 @@ import sys
 import os
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtGui import QFontDatabase
-from app.main_window_refactored import MainWindow
+from app.main_window import MainWindow
 from app.core.logger import logger
 from app.core.config import config
 
