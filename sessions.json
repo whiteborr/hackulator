@@ -1,0 +1,33 @@
+{
+  "830466b7": {
+    "id": "830466b7",
+    "name": "example-session-1",
+    "description": "First session",
+    "created_date": "2025-07-04T00:19:16.582781",
+    "targets": [
+      "example.com (external)"
+    ],
+    "scan_ids": [
+      1,
+      2
+    ],
+    "status": "active",
+    "tags": [],
+    "notes": ""
+  },
+  "d402133b": {
+    "id": "d402133b",
+    "name": "mgnnet-sessions",
+    "description": "Session 2",
+    "created_date": "2025-07-04T00:33:42.426495",
+    "targets": [
+      "mgnnet.com.au"
+    ],
+    "scan_ids": [
+      3
+    ],
+    "status": "active",
+    "tags": [],
+    "notes": ""
+  }
+}

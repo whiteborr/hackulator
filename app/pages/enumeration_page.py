@@ -142,133 +142,153 @@ class EnumerationPage(QWidget):
         return work_frame
 
     def create_controls_section(self):
-        controls_frame = QFrame()
-        controls_frame.setFixedHeight(120)
+        from PyQt6.QtWidgets import QSpinBox, QStackedWidget
 
+        controls_frame = QFrame()
         controls_layout = QVBoxLayout(controls_frame)
         controls_layout.setContentsMargins(10, 10, 10, 10)
         controls_layout.setSpacing(8)
 
-        first_row = QHBoxLayout()
+        # === First Row: Target Input ===
+        target_row = QHBoxLayout()
         target_label = QLabel("Target:")
-        target_label.setFixedWidth(60)
-
+        target_label.setFixedWidth(110)
+        target_row.addWidget(target_label)
         self.target_input = QLineEdit()
         self.target_input.setPlaceholderText("Enter target (IP, domain, or range)...")
         self.target_input.textChanged.connect(self.check_target_type)
+        target_row.addWidget(self.target_input)
+        controls_layout.addLayout(target_row)
 
-        wordlist_label = QLabel("Wordlist:")
-        wordlist_label.setFixedWidth(70)
-
-        self.wordlist_combo = QComboBox()
-        self.wordlist_combo.setFixedWidth(200)
-        self.populate_wordlists()
-
-        first_row.addWidget(target_label)
-        first_row.addWidget(self.target_input, 1)
+        # === Second Row: Record Type Checkboxes ===
+        record_row = QHBoxLayout()
+        types_label = QLabel("Types:")
+        types_label.setFixedWidth(110)
+        types_label.setFixedHeight(30)
+        record_row.addWidget(types_label)
+        checkbox_style = """
+            QCheckBox {
+                spacing: 5px;
+                color: #DCDCDC;
+                font-size: 11pt;
+            }
+            QCheckBox::indicator {
+                width: 16px;
+                height: 16px;
+                border-radius: 8px;
+                border: 2px solid #64C8FF;
+                background-color: transparent;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #64C8FF;
+                border: 2px solid #64C8FF;
+            }
+            QCheckBox::indicator:hover {
+                border: 2px solid #87CEEB;
+            }
+            QCheckBox::indicator:disabled {
+                border: 2px solid #555;
+                background-color: transparent;
+            }
+        """
         
-        dns_label = QLabel("DNS:")
-        dns_label.setFixedWidth(40)
-        
-        self.dns_input = QLineEdit()
-        self.dns_input.setPlaceholderText("DNS Server (leave blank for system default)")
-        self.dns_input.setFixedWidth(200)
-        
-        first_row.addWidget(dns_label)
-        first_row.addWidget(self.dns_input)
-        
-        self.wordlist_label = QLabel("Wordlist:")
-        self.wordlist_label.setFixedWidth(70)
-        first_row.addWidget(self.wordlist_label)
-        first_row.addWidget(self.wordlist_combo)
-        
-        # Bruteforce options (initially hidden)
-        self.bruteforce_label = QLabel("Chars:")
-        self.bruteforce_label.setFixedWidth(50)
-        self.bruteforce_label.setVisible(False)
-        
-        self.char_checkboxes = {}
-        self.char_options = {'0-9': True, 'a-z': True, '-': False}
-        for char_type, default in self.char_options.items():
-            checkbox = QCheckBox(char_type)
-            checkbox.setChecked(default)
-            checkbox.setVisible(False)
-            self.char_checkboxes[char_type] = checkbox
-            first_row.addWidget(checkbox)
-        
-        self.length_label = QLabel("Length:")
-        self.length_label.setFixedWidth(50)
-        self.length_label.setVisible(False)
-        
-        from PyQt6.QtWidgets import QSpinBox
-        self.length_spinbox = QSpinBox()
-        self.length_spinbox.setMinimum(1)
-        self.length_spinbox.setMaximum(12)
-        self.length_spinbox.setValue(3)
-        self.length_spinbox.setFixedWidth(60)
-        self.length_spinbox.setVisible(False)
-        
-        first_row.addWidget(self.bruteforce_label)
-        for checkbox in self.char_checkboxes.values():
-            first_row.addWidget(checkbox)
-        first_row.addWidget(self.length_label)
-        first_row.addWidget(self.length_spinbox)
-
-        second_row = QHBoxLayout()
-        record_label = QLabel("Types:")
-        record_label.setFixedWidth(60)
+        self.all_checkbox = QCheckBox("ALL")
+        self.all_checkbox.setStyleSheet(checkbox_style)
+        self.all_checkbox.stateChanged.connect(self.toggle_all_records)
+        record_row.addWidget(self.all_checkbox)
+        record_row.addSpacing(10)
 
         self.record_type_checkboxes = {}
-        self.all_checkbox = QCheckBox("ALL")
-        self.all_checkbox.stateChanged.connect(self.toggle_all_records)
-        second_row.addWidget(self.all_checkbox)
-        
-        for record_type in ['A', 'CNAME', 'MX', 'TXT', 'NS']:
-            checkbox = QCheckBox(record_type)
-            checkbox.stateChanged.connect(self.update_all_checkbox)
-            self.record_type_checkboxes[record_type] = checkbox
-            second_row.addWidget(checkbox)
-        
-        self.ptr_checkbox = QCheckBox('PTR')
+        for rtype in ['A', 'CNAME', 'MX', 'TXT', 'NS']:
+            cb = QCheckBox(rtype)
+            cb.setStyleSheet(checkbox_style)
+            cb.stateChanged.connect(self.update_all_checkbox)
+            self.record_type_checkboxes[rtype] = cb
+            record_row.addWidget(cb)
+            record_row.addSpacing(10)
+
+        self.ptr_checkbox = QCheckBox("PTR")
+        self.ptr_checkbox.setStyleSheet(checkbox_style)
         self.ptr_checkbox.setEnabled(False)
         self.ptr_checkbox.stateChanged.connect(self.update_all_checkbox)
-        second_row.addWidget(self.ptr_checkbox)
+        record_row.addWidget(self.ptr_checkbox)
 
-        second_row.addStretch()
-        
+        record_row.addStretch()
+        controls_layout.addLayout(record_row)
+
+        # === DNS Row ===
+        dns_row = QHBoxLayout()
+        dns_label = QLabel("DNS:")
+        dns_label.setFixedWidth(110)
+        dns_row.addWidget(dns_label)
+        self.dns_input = QLineEdit()
+        self.dns_input.setPlaceholderText("DNS Server (optional)")
+        self.dns_input.setFixedWidth(400)
+        dns_row.addWidget(self.dns_input)
+        dns_row.addStretch()
+        controls_layout.addLayout(dns_row)
+
+        # === Third Row: Method & Wordlist/Bruteforce ===
+        method_row = QHBoxLayout()
         method_label = QLabel("Method:")
-        method_label.setFixedWidth(60)
+        method_label.setFixedWidth(110)
+        method_row.addWidget(method_label)
         self.method_combo = QComboBox()
         self.method_combo.addItems(["Wordlist", "Bruteforce"])
-        self.method_combo.setFixedWidth(100)
+        self.method_combo.setFixedWidth(150)
         self.method_combo.currentTextChanged.connect(self.toggle_method_options)
-        
+        method_row.addWidget(self.method_combo)
+
+        self.wordlist_combo = QComboBox()
+        self.populate_wordlists()
+        method_row.addWidget(self.wordlist_combo, 1)
+
+        # Bruteforce options on same line
+        self.bruteforce_label = QLabel("Charset:")
+        self.char_checkboxes = {}
+        self.char_options = {'0-9': True, 'a-z': True, '-': False}
+        self.length_label = QLabel("Length:")
+        self.length_spinbox = QSpinBox()
+        self.length_spinbox.setRange(1, 12)
+        self.length_spinbox.setValue(3)
+        self.length_spinbox.setFixedWidth(60)
+
+        method_row.addWidget(self.bruteforce_label)
+        for k, v in self.char_options.items():
+            cb = QCheckBox(k)
+            cb.setChecked(v)
+            self.char_checkboxes[k] = cb
+            method_row.addWidget(cb)
+        method_row.addWidget(self.length_label)
+        method_row.addWidget(self.length_spinbox)
+        method_row.addStretch()
+
+        self.method_row_layout = method_row
+        controls_layout.addLayout(method_row)
+
+        # === Fourth Row: Actions ===
+        action_row = QHBoxLayout()
+        action_row.addStretch()
         self.run_button = QPushButton("Run")
+        self.run_button.setFixedWidth(80)
         self.run_button.clicked.connect(self.toggle_scan)
-        self.run_button.setFixedWidth(60)
-        self.is_scanning = False
-        self.current_worker = None
-        
+        action_row.addWidget(self.run_button)
+
         self.export_combo = QComboBox()
-        self.export_combo.addItems(["JSON", "CSV", "XML", "Advanced Report"])
+        self.export_combo.addItems(["JSON", "CSV", "XML", "Advanced Report", "Sessions"])
         self.export_combo.setFixedWidth(130)
+        action_row.addWidget(self.export_combo)
 
         self.export_button = QPushButton("Export")
-        self.export_button.clicked.connect(self.export_results)
-        self.export_button.setEnabled(False)
         self.export_button.setFixedWidth(80)
+        self.export_button.setEnabled(False)
+        self.export_button.clicked.connect(self.export_results)
+        action_row.addWidget(self.export_button)
 
-        second_row.addWidget(method_label)
-        second_row.addWidget(self.method_combo)
-        second_row.addWidget(self.run_button)
-        second_row.addWidget(self.export_combo)
-        second_row.addWidget(self.export_button)
+        controls_layout.addLayout(action_row)
 
-        # Initialize method options visibility
+        # === Visibility Toggle ===
         self.toggle_method_options("Wordlist")
-
-        controls_layout.addLayout(first_row)
-        controls_layout.addLayout(second_row)
         return controls_frame
 
     def create_output_section(self):
@@ -375,6 +395,11 @@ class EnumerationPage(QWidget):
             for checkbox in self.record_type_checkboxes.values():
                 checkbox.setEnabled(False)
                 checkbox.setChecked(False)
+            # Hide method row when PTR is active
+            for i in range(self.method_row_layout.count()):
+                item = self.method_row_layout.itemAt(i)
+                if item and item.widget():
+                    item.widget().setVisible(False)
         else:
             # Enable others, disable PTR
             self.ptr_checkbox.setEnabled(False)
@@ -382,11 +407,19 @@ class EnumerationPage(QWidget):
             self.all_checkbox.setEnabled(True)
             for checkbox in self.record_type_checkboxes.values():
                 checkbox.setEnabled(True)
+            # Show method row when PTR is not active
+            for i in range(self.method_row_layout.count()):
+                item = self.method_row_layout.itemAt(i)
+                if item and item.widget():
+                    item.widget().setVisible(True)
+            # Re-apply method visibility settings
+            self.toggle_method_options(self.method_combo.currentText())
     
     def toggle_method_options(self, method):
         is_wordlist = (method == "Wordlist")
-        self.wordlist_label.setVisible(is_wordlist)
         self.wordlist_combo.setVisible(is_wordlist)
+        
+        # Toggle bruteforce options visibility
         self.bruteforce_label.setVisible(not is_wordlist)
         self.length_label.setVisible(not is_wordlist)
         self.length_spinbox.setVisible(not is_wordlist)
@@ -614,11 +647,16 @@ class EnumerationPage(QWidget):
         self.terminal_output.setHtml(f"<p style='color: #64C8FF;'>[INFO] {message}</p>")
 
     def export_results(self):
+        export_format = self.export_combo.currentText()
+        
+        if export_format == "Sessions":
+            self.open_session_management()
+            return
+        
         if not self.last_scan_results:
             self.show_error("No scan results to export")
             return
         
-        export_format = self.export_combo.currentText()
         target = self.target_input.text().strip() or "unknown"
         
         if export_format == "Advanced Report":
@@ -693,3 +731,54 @@ class EnumerationPage(QWidget):
         
         layout.addWidget(reporting_widget)
         dialog.exec()
+    
+    def open_session_management(self):
+        """Open session management dialog"""
+        from app.widgets.session_widget import SessionWidget
+        from app.core.session_manager import session_manager
+        from PyQt6.QtWidgets import QDialog, QVBoxLayout
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Session Management")
+        dialog.setModal(True)
+        dialog.resize(900, 700)
+        
+        layout = QVBoxLayout(dialog)
+        
+        # Create session widget
+        session_widget = SessionWidget(dialog)
+        
+        # Connect session change signal to handle scan association
+        session_widget.session_changed.connect(self.on_session_changed)
+        
+        layout.addWidget(session_widget)
+        dialog.exec()
+    
+    def on_session_changed(self, session_id):
+        """Handle session change event"""
+        from app.core.session_manager import session_manager
+        from app.core.scan_database import scan_db
+        
+        # If we have scan results, associate them with the current session
+        if self.last_scan_results and session_id:
+            try:
+                # Save current scan to database
+                target = self.target_input.text().strip() or "unknown"
+                scan_id = scan_db.save_scan(
+                    target=target,
+                    scan_type='dns_enum',
+                    results=self.last_scan_results,
+                    duration=0  # Duration not tracked in this context
+                )
+                
+                if scan_id:
+                    # Associate scan with session
+                    session_manager.add_scan_to_session(session_id, scan_id)
+                    self.append_terminal_output(
+                        f"<p style='color: #00FF41;'>[SESSION] Scan results associated with session</p><br>"
+                    )
+                
+            except Exception as e:
+                self.append_terminal_output(
+                    f"<p style='color: #FF4500;'>[SESSION ERROR] Failed to associate scan: {str(e)}</p><br>"
+                )

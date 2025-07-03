@@ -208,6 +208,13 @@ class MainWindow(QMainWindow):
         
         view_menu.addSeparator()
         
+        # Sessions action
+        sessions_action = QAction('&Sessions', self)
+        sessions_action.setShortcut(QKeySequence('Ctrl+Shift+S'))
+        sessions_action.setStatusTip('Manage scanning sessions')
+        sessions_action.triggered.connect(self.open_sessions_dialog)
+        view_menu.addAction(sessions_action)
+        
         # Reports action
         reports_action = QAction('&Reports', self)
         reports_action.setShortcut(QKeySequence('Ctrl+R'))
@@ -588,6 +595,24 @@ class MainWindow(QMainWindow):
                 f"Failed to load scan results file:\n{str(e)}"
             )
             self.status_bar.showMessage(f"Error loading file: {str(e)}")
+    
+    def open_sessions_dialog(self):
+        """Open session management dialog"""
+        from app.widgets.session_widget import SessionWidget
+        from PyQt6.QtWidgets import QDialog, QVBoxLayout
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Session Management")
+        dialog.setModal(True)
+        dialog.resize(900, 700)
+        
+        layout = QVBoxLayout(dialog)
+        session_widget = SessionWidget(dialog)
+        layout.addWidget(session_widget)
+        
+        self.status_bar.showMessage("Session Management opened")
+        dialog.exec()
+        self.status_bar.showMessage("Session Management closed")
     
     def on_theme_changed(self, theme_name):
         """Handle theme change event"""
