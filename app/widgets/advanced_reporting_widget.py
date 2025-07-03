@@ -53,7 +53,7 @@ class AdvancedReportingWidget(QWidget):
         
         # Title
         title = QLabel("Advanced Reporting Engine")
-        title.setFont(QFont("Neuropol", 16, QFont.Weight.Bold))
+        title.setStyleSheet("")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
         
