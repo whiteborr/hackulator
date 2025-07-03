@@ -1,0 +1,25 @@
+{
+  "metadata": {
+    "scan_info": {
+      "target": "example.com",
+      "timestamp": "2025-07-02T21:43:52.373127",
+      "total_domains": 1,
+      "total_records": 4,
+      "export_version": "1.0",
+      "tool": "Hackulator",
+      "record_types": [
+        "AAAA"
+      ]
+    }
+  },
+  "results": {
+    "www.example.com": {
+      "AAAA": [
+        "2600:1415:9c00:6::1728:346c",
+        "2600:1415:9c00:6::1728:346c",
+        "2600:1415:9c00:6::1728:346f",
+        "2600:1415:9c00:6::1728:346f"
+      ]
+    }
+  }
+}

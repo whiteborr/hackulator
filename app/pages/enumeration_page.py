@@ -51,16 +51,16 @@ class EnumerationPage(QWidget):
 
         # --- Data for UI Elements ---
         self.main_tools_data = [
-            {"id": "dns_enum", "title": "DNS Enumeration", "desc": "Discover domains, subdomains, and IPs.", "icon": "resources/icons/1A.png", "center": (49, 157), "size": (39, 59)},
-            {"id": "port_scan", "title": "Port Scanning", "desc": "Identify open ports and services running.", "icon": "resources/icons/1B.png", "center": (49, 234), "size": (39, 59)},
-            {"id": "smb_enum", "title": "SMB Enumeration", "desc": "List shares and users via Windows SMB.", "icon": "resources/icons/1C.png", "center": (49, 311), "size": (39, 59)},
-            {"id": "smtp_enum", "title": "SMTP Enumeration", "desc": "Probe mail servers for valid emails.", "icon": "resources/icons/1D.png", "center": (49, 389), "size": (39, 59)},
-            {"id": "snmp_enum", "title": "SNMP Enumeration", "desc": "Extract network device info using SNMP.", "icon": "resources/icons/1E.png", "center": (49, 468), "size": (39, 59)},
-            {"id": "http_fingerprint", "title": "HTTP/S Fingerprinting", "desc": "Identify web server type and technologies.", "icon": "resources/icons/1F.png", "center": (49, 545), "size": (39, 59)},
-            {"id": "api_enum", "title": "API Enumeration & Abuse", "desc": "Discover and misuse APIs for data.", "icon": "resources/icons/1G.png", "center": (49, 620), "size": (39, 59)},
-            {"id": "db_enum", "title": "Database Enumeration", "desc": "Find databases, tables, and credentials.", "icon": "resources/icons/1H.png", "center": (49, 700), "size": (39, 59)},
-            {"id": "contactless_info", "title": "Contactless Info Gathering", "desc": "Use NFC/RFID tools to gather wireless data.", "icon": "resources/icons/1I.png", "center": (49, 779), "size": (39, 59)},
-            {"id": "av_detect", "title": "AV Detection", "desc": "Check which antivirus tools are active.", "icon": "resources/icons/1J.png", "center": (49, 857), "size": (39, 59)},
+            {"id": "dns_enum", "title": "DNS Enumeration", "desc": "Discover domains, subdomains, and IPs.", "icon": "resources/icons/1A.png", "center": (49, 157), "size": (127, 110)},
+            {"id": "port_scan", "title": "Port Scanning", "desc": "Identify open ports and services running.", "icon": "resources/icons/1B.png", "center": (49, 234), "size": (128, 108)},
+            {"id": "smb_enum", "title": "SMB Enumeration", "desc": "List shares and users via Windows SMB.", "icon": "resources/icons/1C.png", "center": (49, 311), "size": (128, 108)},
+            {"id": "smtp_enum", "title": "SMTP Enumeration", "desc": "Probe mail servers for valid emails.", "icon": "resources/icons/1D.png", "center": (49, 389), "size": (128, 108)},
+            {"id": "snmp_enum", "title": "SNMP Enumeration", "desc": "Extract network device info using SNMP.", "icon": "resources/icons/1E.png", "center": (49, 468), "size": (128, 108)},
+            {"id": "http_fingerprint", "title": "HTTP/S Fingerprinting", "desc": "Identify web server type and technologies.", "icon": "resources/icons/1F.png", "center": (49, 545), "size": (128, 108)},
+            {"id": "api_enum", "title": "API Enumeration & Abuse", "desc": "Discover and misuse APIs for data.", "icon": "resources/icons/1G.png", "center": (49, 620), "size": (128, 108)},
+            {"id": "db_enum", "title": "Database Enumeration", "desc": "Find databases, tables, and credentials.", "icon": "resources/icons/1H.png", "center": (49, 700), "size": (128, 108)},
+            {"id": "contactless_info", "title": "Contactless Info Gathering", "desc": "Use NFC/RFID tools to gather wireless data.", "icon": "resources/icons/1I.png", "center": (49, 779), "size": (128, 108)},
+            {"id": "av_detect", "title": "AV Detection", "desc": "Check which antivirus tools are active.", "icon": "resources/icons/1J.png", "center": (49, 857), "size": (128, 108)},
         ]
         
         self.dns_tools_data = [
@@ -131,7 +131,7 @@ class EnumerationPage(QWidget):
         self.main_tool_buttons = []
         for tool in self.main_tools_data:
             button = HoverButton(tool["title"], tool["desc"], self)
-            icon_path = str(self.main_window.project_root / tool["icon"])
+            icon_path = os.path.join(self.main_window.project_root, tool["icon"])
             self.setup_icon_button(button, tool["center"], tool["size"], icon_path)
 
             if tool["id"] == "dns_enum":
@@ -308,24 +308,21 @@ class EnumerationPage(QWidget):
 
 
     def setup_icon_button(self, button, center, size, icon_path):
-        new_size = self.main_window.size()
-        original_size = self.main_window.original_size
-        ws = new_size.width() / original_size.width()
-        hs = new_size.height() / original_size.height()
-
-        scaled_cx = int(center[0] * ws)
-        scaled_cy = int(center[1] * hs)
-        scaled_w = int(size[0] * ws)
-        scaled_h = int(size[1] * hs)
+        """Setup icon button - positioning will be handled in resizeEvent"""
+        cx, cy = center
+        w, h = size
         
-        button.setGeometry(scaled_cx - scaled_w // 2, scaled_cy - scaled_h // 2, scaled_w, scaled_h)
+        # Initial positioning - will be updated in resizeEvent
+        button.setGeometry(cx - w // 2, cy - h // 2, w, h)
         
         icon = QIcon(icon_path)
-        if icon.isNull(): logging.warning(f"Could not load icon at: {icon_path}")
+        if icon.isNull(): 
+            logging.warning(f"Could not load icon at: {icon_path}")
         button.setIcon(icon)
-        button.setIconSize(QSize(int(scaled_w * 0.9), int(scaled_h * 0.9)))
+        button.setIconSize(QSize(int(w * 0.9), int(h * 0.9)))
         
-        border_radius = scaled_h // 2
+        # Initial styling - border radius will be updated in resizeEvent
+        border_radius = h // 2
         button.setStyleSheet(f"""
             QPushButton {{
                 background-color: rgba(0, 0, 0, 1); border: none;
@@ -338,14 +335,14 @@ class EnumerationPage(QWidget):
         """)
 
     def populate_wordlists(self):
-        wordlist_dir = self.main_window.project_root / "resources" / "wordlists"
+        wordlist_dir = os.path.join(self.main_window.project_root, "resources", "wordlists")
         if not os.path.isdir(wordlist_dir):
             logging.warning(f"Wordlist directory not found: {wordlist_dir}")
             return
         
         for filename in os.listdir(wordlist_dir):
             if filename.endswith(".txt"):
-                self.wordlist_combo.addItem(filename, str(wordlist_dir / filename))
+                self.wordlist_combo.addItem(filename, os.path.join(wordlist_dir, filename))
 
     def set_submenu_active(self, active, submenu_type="dns"):
         self.is_submenu_active = active
@@ -412,9 +409,16 @@ class EnumerationPage(QWidget):
         self.update_background()
 
     def update_background(self):
-        theme = self.main_window.theme_manager
-        bg_path = theme.get("backgrounds.enumeration_dns") if self.is_submenu_active else theme.get("backgrounds.enumeration")
-        if bg_path: self.background_label.setPixmap(QPixmap(bg_path))
+        if hasattr(self.main_window, 'theme_manager'):
+            theme = self.main_window.theme_manager
+            bg_path = theme.get("backgrounds.enumeration_dns") if self.is_submenu_active else theme.get("backgrounds.enumeration")
+            if bg_path: self.background_label.setPixmap(QPixmap(bg_path))
+        else:
+            # Fallback to default background
+            bg_name = "alien_tablet_skin_enumeration_dns.png" if self.is_submenu_active else "alien_tablet_skin_enumeration.png"
+            bg_path = os.path.join(self.main_window.project_root, "resources", "themes", "default", bg_name)
+            if os.path.exists(bg_path):
+                self.background_label.setPixmap(QPixmap(bg_path))
 
     def apply_theme(self): self.update_background()
 
@@ -423,23 +427,47 @@ class EnumerationPage(QWidget):
         
         self.background_label.setGeometry(0, 0, self.width(), self.height())
         
-        new_size = self.main_window.size()
-        original_size = self.main_window.original_size
-        ws = new_size.width() / original_size.width()
-        hs = new_size.height() / original_size.height()
-
-        self.main_title.setGeometry(int(340 * ws), int(40 * hs), int(400 * ws), int(50 * hs))
-        self.main_back_button.setGeometry(int(20 * ws), int(20 * hs), int(150 * ws), int(50 * hs))
+        # Scale based on window size (assuming original design for 1920x1080)
+        scale_x = self.width() / 1920.0
+        scale_y = self.height() / 1080.0
         
-        term_x, term_y, term_w, term_h = 340, 175, 1731 - 340, 770 - 175
+        # Scale main UI elements
+        self.main_title.setGeometry(int(340 * scale_x), int(40 * scale_y), int(400 * scale_x), int(50 * scale_y))
+        self.main_back_button.setGeometry(int(20 * scale_x), int(20 * scale_y), int(150 * scale_x), int(50 * scale_y))
+        
+        # Scale terminal and info panel
+        term_x, term_y = int(340 * scale_x), int(175 * scale_y)
+        term_w, term_h = int((1731 - 340) * scale_x), int((770 - 175) * scale_y)
         self.info_panel.setGeometry(term_x, term_y, term_w, term_h)
         self.dns_terminal_output.setGeometry(term_x, term_y, term_w, term_h)
+        
+        # Scale and position main tool icons (copy exact approach from home page)
+        for i, button in enumerate(self.main_tool_buttons):
+            if i < len(self.main_tools_data):
+                center = self.main_tools_data[i]["center"]
+                size = self.main_tools_data[i]["size"]
+                width, height = size
+                cx, cy = center
+                
+                # Apply scaling exactly like home page
+                scaled_cx = int(cx * scale_x)
+                scaled_cy = int(cy * scale_y)
+                scaled_w = int(width * scale_x)
+                scaled_h = int(height * scale_y)
+                
+                button.setGeometry(
+                    scaled_cx - scaled_w // 2, 
+                    scaled_cy - scaled_h // 2, 
+                    scaled_w, scaled_h
+                )
+                button.setIconSize(QSize(int(scaled_w * 0.9), int(scaled_h * 0.9)))
 
-        self.dns_back_button.setGeometry(int(40 * ws), int(850 * hs), int(150 * ws), int(50 * hs))
+        # Scale submenu controls
+        self.dns_back_button.setGeometry(int(40 * scale_x), int(850 * scale_y), int(150 * scale_x), int(50 * scale_y))
 
-        controls_y = term_y + term_h + 80
-        padding = 15
-        control_height = 36
+        controls_y = term_y + term_h + int(80 * scale_y)
+        padding = int(15 * scale_x)
+        control_height = int(36 * scale_y)
 
         target_width = int(term_w * 0.25)
         wordlist_width = int(term_w * 0.35)
@@ -454,49 +482,50 @@ class EnumerationPage(QWidget):
         self.record_type_container.setGeometry(checkbox_x, controls_y, checkbox_width, control_height)
         
         # Progress widget positioning
-        progress_y = controls_y + control_height + 15
-        progress_height = 60
+        progress_y = controls_y + control_height + int(15 * scale_y)
+        progress_height = int(60 * scale_y)
         self.progress_widget.setGeometry(target_x, progress_y, term_w, progress_height)
         
         # Export controls positioning
-        export_y = progress_y + progress_height + 15
-        export_combo_width = 100
-        export_button_width = 120
+        export_y = progress_y + progress_height + int(15 * scale_y)
+        export_combo_width = int(100 * scale_x)
+        export_button_width = int(120 * scale_x)
         
         self.export_combo.setGeometry(target_x, export_y, export_combo_width, control_height)
-        self.export_button.setGeometry(target_x + export_combo_width + 15, export_y, export_button_width, control_height)
+        self.export_button.setGeometry(target_x + export_combo_width + padding, export_y, export_button_width, control_height)
 
+        # Scale submenu tool buttons
         for i, button in enumerate(self.dns_tool_buttons):
             x, y, w, h = self.dns_tools_data[i]["rect"]
-            button.setGeometry(x, y, w, h)
+            button.setGeometry(int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y))
         
         for i, button in enumerate(self.port_tool_buttons):
             x, y, w, h = self.port_tools_data[i]["rect"]
-            button.setGeometry(x, y, w, h)
+            button.setGeometry(int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y))
         
         for i, button in enumerate(self.smb_tool_buttons):
             x, y, w, h = self.smb_tools_data[i]["rect"]
-            button.setGeometry(x, y, w, h)
+            button.setGeometry(int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y))
         
         for i, button in enumerate(self.smtp_tool_buttons):
             x, y, w, h = self.smtp_tools_data[i]["rect"]
-            button.setGeometry(x, y, w, h)
+            button.setGeometry(int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y))
         
         for i, button in enumerate(self.snmp_tool_buttons):
             x, y, w, h = self.snmp_tools_data[i]["rect"]
-            button.setGeometry(x, y, w, h)
+            button.setGeometry(int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y))
         
         for i, button in enumerate(self.http_tool_buttons):
             x, y, w, h = self.http_tools_data[i]["rect"]
-            button.setGeometry(x, y, w, h)
+            button.setGeometry(int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y))
         
         for i, button in enumerate(self.api_tool_buttons):
             x, y, w, h = self.api_tools_data[i]["rect"]
-            button.setGeometry(x, y, w, h)
+            button.setGeometry(int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y))
         
         for i, button in enumerate(self.db_tool_buttons):
             x, y, w, h = self.db_tools_data[i]["rect"]
-            button.setGeometry(x, y, w, h)
+            button.setGeometry(int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y))
         
     def update_info_panel(self, title, description):
         self.info_panel.setHtml(f"""
@@ -593,9 +622,9 @@ class EnumerationPage(QWidget):
         )
         
         if success:
-            self.append_terminal_output(f"<p style='color: #00FF41;'>[✓] Results exported to: {filepath}</p>")
+            self.append_terminal_output(f"<p style='color: #00FF41;'>[✓] Results exported to: {filepath}</p><br>")
         else:
-            self.append_terminal_output(f"<p style='color: #FF4500;'>[ERROR] Export failed: {message}</p>")
+            self.append_terminal_output(f"<p style='color: #FF4500;'>[ERROR] Export failed: {message}</p><br>")
     
     def start_progress(self, total_items):
         """Start progress tracking"""
@@ -608,7 +637,7 @@ class EnumerationPage(QWidget):
     def on_script_finished(self):
         self.set_buttons_enabled(True)
         self.progress_widget.finish_progress("Scan Complete")
-        self.append_terminal_output("<br><p style='color: #64C8FF;'>--- Scan Finished ---</p>")
+        self.append_terminal_output("<br><p style='color: #64C8FF;'>--- Scan Finished ---</p><br>")
 
     def setup_shortcuts(self):
         """Setup keyboard shortcuts"""

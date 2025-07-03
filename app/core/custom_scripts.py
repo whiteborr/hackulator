@@ -177,7 +177,7 @@ class HostWordlistWorker(QRunnable):
                         data_lines_str = "".join([f"&nbsp;&nbsp;&nbsp;-&gt; {record}<br>" for record in records])
                         indented_data_block = f"<p style='color: #DCDCDC; font-family: \"Neuropol X\"; padding-left: 20px;'>{data_lines_str}</p>"
                         
-                        self.signals.output.emit(found_line + indented_data_block)
+                        self.signals.output.emit(found_line + indented_data_block + "<br>")
 
             results_count = len(all_results)
             logger.log_scan_complete(self.target, results_count)

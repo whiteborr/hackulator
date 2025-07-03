@@ -1,0 +1,29 @@
+Domain,Record Type,Value
+# Target: ,,
+# Timestamp: 2025-07-03T01:03:04.177770,,
+# Total Domains: 4,,
+,,
+dev.managenet.com.au,A,119.82.4.202
+mail.managenet.com.au,A,218.185.76.62
+ftp.managenet.com.au,A,119.82.2.3
+ftp.managenet.com.au,CNAME,ns1.managenet.com.au.
+www.managenet.com.au,A,101.0.116.90
+www.managenet.com.au,A,101.0.116.90
+www.managenet.com.au,CNAME,managenet.com.au.
+www.managenet.com.au,CNAME,managenet.com.au.
+www.managenet.com.au,MX,0 managenet-com-au.mail.protection.outlook.com.
+www.managenet.com.au,MX,0 managenet-com-au.mail.protection.outlook.com.
+www.managenet.com.au,TXT,FILF7906O2VM7AUCGJO8BCQKME
+www.managenet.com.au,TXT,FILF7906O2VM7AUCGJO8BCQKME
+www.managenet.com.au,TXT,MS=5E49AEBA60639C2BA4D36973D03BD12A9981A4D4
+www.managenet.com.au,TXT,MS=5E49AEBA60639C2BA4D36973D03BD12A9981A4D4
+www.managenet.com.au,TXT,MS=ms52107559
+www.managenet.com.au,TXT,MS=ms52107559
+www.managenet.com.au,TXT,google-site-verification=CMFE-Wkx8mbW0ocQsg0ZvzGIT39Tp6fnQ7ShXk0bBr8
+www.managenet.com.au,TXT,google-site-verification=CMFE-Wkx8mbW0ocQsg0ZvzGIT39Tp6fnQ7ShXk0bBr8
+www.managenet.com.au,TXT,logmein-verification-code=aebbf8c0-b70f-4459-b1f5-56c6e380a35f
+www.managenet.com.au,TXT,logmein-verification-code=aebbf8c0-b70f-4459-b1f5-56c6e380a35f
+www.managenet.com.au,TXT,v=spf1 a:mx01.mgnnet.com.au a:mx02.mgnnet.com.au include:servers.mcsv.net include:spf.myconnectwise.net include:spf.hes.trendmicro.com include:spf.protection.outlook.com -all
+www.managenet.com.au,TXT,v=spf1 a:mx01.mgnnet.com.au a:mx02.mgnnet.com.au include:servers.mcsv.net include:spf.myconnectwise.net include:spf.hes.trendmicro.com include:spf.protection.outlook.com -all
+www.managenet.com.au,TXT,vmifjb8urmso8v2qi5lv3ekpmf
+www.managenet.com.au,TXT,vmifjb8urmso8v2qi5lv3ekpmf

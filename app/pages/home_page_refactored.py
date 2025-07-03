@@ -1,7 +1,7 @@
 # app/pages/home_page_refactored.py
 import logging
-from PyQt6.QtWidgets import (QWidget, QPushButton, QLabel, QTextEdit, 
-                            QVBoxLayout, QHBoxLayout, QGridLayout, QSizePolicy, QFrame)
+import os
+from PyQt6.QtWidgets import (QWidget, QPushButton, QLabel, QTextEdit, QVBoxLayout, QHBoxLayout, QGridLayout, QSizePolicy, QFrame)
 from PyQt6.QtCore import pyqtSignal, QSize, Qt
 from PyQt6.QtGui import QPixmap, QIcon, QFont
 
@@ -86,6 +86,10 @@ class HomePage(QWidget):
             {"name": "databases", "title": "🗄️ DB ATTACKS", "desc": ["Exploit weaknesses in database queries and configurations."], "icon": "resources/icons/4.png"},
             {"name": "os_exploits", "title": "🖥️ OS EXPLOITS", "desc": ["Leverage OS-level flaws for privilege escalation or persistence."], "icon": "resources/icons/5.png"},
             {"name": "cracking", "title": "🔓 CRACKING", "desc": ["Break passwords by capturing and cracking authentication hashes."], "icon": "resources/icons/6.png"},
+            {"name": "osint", "title": "🔎 OSINT & RECON", "desc": ["Open Source Intelligence gathering and reconnaissance techniques."], "icon": "resources/icons/1A.png"},
+            {"name": "findings", "title": "📋 COMMON FINDINGS", "desc": ["Common penetration testing findings and vulnerabilities."], "icon": "resources/icons/1B.png"},
+            {"name": "owasp_api", "title": "🔐 OWASP API TOP 10", "desc": ["OWASP API Security Top 10 - 2023 vulnerabilities and mitigations."], "icon": "resources/icons/1C.png"},
+            {"name": "scripts", "title": "⚡ SCRIPTS & TOOLS", "desc": ["Useful scripts and code generators for penetration testing."], "icon": "resources/icons/1D.png"},
         ]
         
         # Create navigation buttons
@@ -109,7 +113,7 @@ class HomePage(QWidget):
         button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         
         # Load icon
-        icon_path = str(self.main_window.project_root / btn_info["icon"])
+        icon_path = os.path.join(self.main_window.project_root, btn_info["icon"])
         icon = QIcon(icon_path)
         if icon.isNull():
             logging.warning(f"Could not load icon at {icon_path}")

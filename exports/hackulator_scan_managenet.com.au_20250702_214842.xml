@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='utf-8'?>
+<hackulator_scan>
+  <metadata>
+    <target>managenet.com.au</target>
+    <timestamp>2025-07-02T21:48:42.260972</timestamp>
+    <total_domains>4</total_domains>
+    <total_records>24</total_records>
+    <export_version>1.0</export_version>
+    <tool>Hackulator</tool>
+    <record_types>['MX', 'CNAME', 'A', 'TXT']</record_types>
+  </metadata>
+  <results>
+    <domain name="mail.managenet.com.au">
+      <record type="A">218.185.76.62</record>
+    </domain>
+    <domain name="dev.managenet.com.au">
+      <record type="A">119.82.4.202</record>
+    </domain>
+    <domain name="ftp.managenet.com.au">
+      <record type="A">119.82.2.3</record>
+      <record type="CNAME">ns1.managenet.com.au.</record>
+    </domain>
+    <domain name="www.managenet.com.au">
+      <record type="A">101.0.116.90</record>
+      <record type="A">101.0.116.90</record>
+      <record type="CNAME">managenet.com.au.</record>
+      <record type="CNAME">managenet.com.au.</record>
+      <record type="MX">0 managenet-com-au.mail.protection.outlook.com.</record>
+      <record type="MX">0 managenet-com-au.mail.protection.outlook.com.</record>
+      <record type="TXT">FILF7906O2VM7AUCGJO8BCQKME</record>
+      <record type="TXT">FILF7906O2VM7AUCGJO8BCQKME</record>
+      <record type="TXT">MS=5E49AEBA60639C2BA4D36973D03BD12A9981A4D4</record>
+      <record type="TXT">MS=5E49AEBA60639C2BA4D36973D03BD12A9981A4D4</record>
+      <record type="TXT">MS=ms52107559</record>
+      <record type="TXT">MS=ms52107559</record>
+      <record type="TXT">google-site-verification=CMFE-Wkx8mbW0ocQsg0ZvzGIT39Tp6fnQ7ShXk0bBr8</record>
+      <record type="TXT">google-site-verification=CMFE-Wkx8mbW0ocQsg0ZvzGIT39Tp6fnQ7ShXk0bBr8</record>
+      <record type="TXT">logmein-verification-code=aebbf8c0-b70f-4459-b1f5-56c6e380a35f</record>
+      <record type="TXT">logmein-verification-code=aebbf8c0-b70f-4459-b1f5-56c6e380a35f</record>
+      <record type="TXT">v=spf1 a:mx01.mgnnet.com.au a:mx02.mgnnet.com.au include:servers.mcsv.net include:spf.myconnectwise.net include:spf.hes.trendmicro.com include:spf.protection.outlook.com -all</record>
+      <record type="TXT">v=spf1 a:mx01.mgnnet.com.au a:mx02.mgnnet.com.au include:servers.mcsv.net include:spf.myconnectwise.net include:spf.hes.trendmicro.com include:spf.protection.outlook.com -all</record>
+      <record type="TXT">vmifjb8urmso8v2qi5lv3ekpmf</record>
+      <record type="TXT">vmifjb8urmso8v2qi5lv3ekpmf</record>
+    </domain>
+  </results>
+</hackulator_scan>

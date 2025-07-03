@@ -9,14 +9,17 @@ from app.theme_manager import ThemeManager
 from app.core.advanced_theme_manager import AdvancedThemeManager
 from app.widgets.animated_stacked_widget import AnimatedStackedWidget
 from app.pages.home_page_refactored import HomePage
-from app.pages.enumeration_page_refactored import EnumerationPage
+from app.pages.enumeration_page_simple import EnumerationPage
+from app.pages.vuln_scanning_page_refactored import VulnScanningPage
+from app.pages.web_exploits_page_refactored import WebExploitsPage
+from app.pages.db_attacks_page_refactored import DbAttacksPage
+from app.pages.os_exploits_page_refactored import OSExploitsPage
+from app.pages.cracking_page_refactored import CrackingPage
+from app.pages.osint_page_refactored import OSINTPage
+from app.pages.findings_page_refactored import FindingsPage
+from app.pages.owasp_api_page_refactored import OWASPAPIPage
+from app.pages.scripts_page_refactored import ScriptsPage
 from app.core.system_tray import SystemTrayManager
-# Import other refactored pages as you create them
-# from app.pages.vuln_scanning_page_refactored import VulnScanningPage
-# from app.pages.web_exploits_page_refactored import WebExploitsPage
-# from app.pages.db_attacks_page_refactored import DbAttacksPage
-# from app.pages.os_exploits_page_refactored import OSExploitsPage
-# from app.pages.cracking_page_refactored import CrackingPage
 
 class MainWindow(QMainWindow):
     def __init__(self, project_root):
@@ -66,6 +69,15 @@ class MainWindow(QMainWindow):
         # Create pages
         self.home_page = HomePage(self)
         self.enum_page = EnumerationPage(self)
+        self.vuln_page = VulnScanningPage(self)
+        self.web_exploits_page = WebExploitsPage(self)
+        self.db_attacks_page = DbAttacksPage(self)
+        self.os_exploits_page = OSExploitsPage(self)
+        self.cracking_page = CrackingPage(self)
+        self.osint_page = OSINTPage(self)
+        self.findings_page = FindingsPage(self)
+        self.owasp_api_page = OWASPAPIPage(self)
+        self.scripts_page = ScriptsPage(self)
         
         # Apply font to all widgets after creation
         if hasattr(self, 'neuropol_family') and self.neuropol_family:
@@ -78,10 +90,28 @@ class MainWindow(QMainWindow):
         # Add pages to stack
         self.stack.addWidget(self.home_page)
         self.stack.addWidget(self.enum_page)
+        self.stack.addWidget(self.vuln_page)
+        self.stack.addWidget(self.web_exploits_page)
+        self.stack.addWidget(self.db_attacks_page)
+        self.stack.addWidget(self.os_exploits_page)
+        self.stack.addWidget(self.cracking_page)
+        self.stack.addWidget(self.osint_page)
+        self.stack.addWidget(self.findings_page)
+        self.stack.addWidget(self.owasp_api_page)
+        self.stack.addWidget(self.scripts_page)
         
         # Connect navigation signals
         self.home_page.navigate_signal.connect(self.navigate_to)
         self.enum_page.navigate_signal.connect(self.navigate_to)
+        self.vuln_page.navigate_signal.connect(self.navigate_to)
+        self.web_exploits_page.navigate_signal.connect(self.navigate_to)
+        self.db_attacks_page.navigate_signal.connect(self.navigate_to)
+        self.os_exploits_page.navigate_signal.connect(self.navigate_to)
+        self.cracking_page.navigate_signal.connect(self.navigate_to)
+        self.osint_page.navigate_signal.connect(self.navigate_to)
+        self.findings_page.navigate_signal.connect(self.navigate_to)
+        self.owasp_api_page.navigate_signal.connect(self.navigate_to)
+        self.scripts_page.navigate_signal.connect(self.navigate_to)
         
         # Connect status signals
         self.home_page.status_updated.connect(self.update_status_bar)
@@ -287,17 +317,33 @@ class MainWindow(QMainWindow):
         elif page_name == "enumeration":
             self.stack.animate_to_widget(self.enum_page)
             self.status_bar.showMessage("Enumeration Tools - Select a tool from the left panel")
-        # Add other page navigation as you create them
-        # elif page_name == "vuln_scanning":
-        #     self.stack.animate_to_widget(self.vuln_page)
-        # elif page_name == "web_exploits":
-        #     self.stack.animate_to_widget(self.web_exploits_page)
-        # elif page_name == "databases":
-        #     self.stack.animate_to_widget(self.db_attacks_page)
-        # elif page_name == "os_exploits":
-        #     self.stack.animate_to_widget(self.os_exploits_page)
-        # elif page_name == "cracking":
-        #     self.stack.animate_to_widget(self.cracking_page)
+        elif page_name == "vuln_scanning":
+            self.stack.animate_to_widget(self.vuln_page)
+            self.status_bar.showMessage("Vulnerability Scanning Tools")
+        elif page_name == "web_exploits":
+            self.stack.animate_to_widget(self.web_exploits_page)
+            self.status_bar.showMessage("Web Application Exploits")
+        elif page_name == "databases":
+            self.stack.animate_to_widget(self.db_attacks_page)
+            self.status_bar.showMessage("Database Attack Tools")
+        elif page_name == "os_exploits":
+            self.stack.animate_to_widget(self.os_exploits_page)
+            self.status_bar.showMessage("Operating System Exploits")
+        elif page_name == "cracking":
+            self.stack.animate_to_widget(self.cracking_page)
+            self.status_bar.showMessage("Password Cracking Tools")
+        elif page_name == "osint":
+            self.stack.animate_to_widget(self.osint_page)
+            self.status_bar.showMessage("OSINT & Reconnaissance Tools")
+        elif page_name == "findings":
+            self.stack.animate_to_widget(self.findings_page)
+            self.status_bar.showMessage("Common Pentest Findings")
+        elif page_name == "owasp_api":
+            self.stack.animate_to_widget(self.owasp_api_page)
+            self.status_bar.showMessage("OWASP API Security Top 10")
+        elif page_name == "scripts":
+            self.stack.animate_to_widget(self.scripts_page)
+            self.status_bar.showMessage("Scripts & Tools")
         else:
             print(f"Navigation request to unknown page: {page_name}")
             self.status_bar.showMessage(f"Unknown page: {page_name}")
