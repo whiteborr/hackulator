@@ -12,6 +12,63 @@ from PyQt6.QtCore import QObject, pyqtSignal, QRunnable, QThreadPool
 from app.core.logger import logger
 from app.core.config import config
 
+class SubdomainGenerator:
+    """Dedicated subdomain generator - handles only subdomain generation logic"""
+    
+    def __init__(self, wordlist_path=None, use_bruteforce=False, char_sets=None, max_length=16):
+        self.wordlist_path = wordlist_path
+        self.use_bruteforce = use_bruteforce
+        self.char_sets = char_sets or []
+        self.max_length = max_length
+    
+    def generate(self):
+        """Main generator method - yields subdomains based on configuration"""
+        if self.use_bruteforce:
+            yield from self._generate_bruteforce()
+        else:
+            yield from self._generate_wordlist()
+    
+    def _generate_bruteforce(self):
+        """Generate subdomains using bruteforce patterns"""
+        chars = self._build_charset()
+        if not chars:
+            return
+        
+        for length in range(1, self.max_length + 1):
+            for combo in itertools.product(chars, repeat=length):
+                yield ''.join(combo)
+    
+    def _build_charset(self):
+        """Build character set from configuration"""
+        chars = ''
+        if '0-9' in self.char_sets: 
+            chars += '0123456789'
+        if 'a-z' in self.char_sets: 
+            chars += 'abcdefghijklmnopqrstuvwxyz'
+        if '-' in self.char_sets: 
+            chars += '-'
+        return chars
+    
+    def _generate_wordlist(self):
+        """Generate subdomains from wordlist file"""
+        if self.wordlist_path and os.path.exists(self.wordlist_path):
+            try:
+                with open(self.wordlist_path, 'r') as file:
+                    for line in file:
+                        subdomain = line.strip()
+                        if subdomain:
+                            yield subdomain
+            except (IOError, OSError):
+                yield from self._generate_default()
+        else:
+            yield from self._generate_default()
+    
+    def _generate_default(self):
+        """Generate default subdomain list as fallback"""
+        default_subdomains = ['www', 'mail', 'ftp', 'admin', 'test']
+        for subdomain in default_subdomains:
+            yield subdomain
+
 class WorkerSignals(QObject):
     output = pyqtSignal(str)
     status = pyqtSignal(str)
@@ -24,36 +81,53 @@ class WorkerSignals(QObject):
     result_found = pyqtSignal(str, str, list)
 
 class HostWordlistWorker(QRunnable):
-    def __init__(self, target, wordlist_path, record_types=None, use_bruteforce=False, char_sets=None, max_length=16, dns_server=None):
+    """DNS query worker - consumes subdomains and performs DNS queries"""
+    
+    def __init__(self, target, subdomain_generator, record_types=None, dns_server=None):
         super().__init__()
         self.signals = WorkerSignals()
         self.target = target
-        self.wordlist_path = wordlist_path
-        self.use_bruteforce = use_bruteforce
-        self.char_sets = char_sets or []
-        # Support up to 16 characters
-        self.max_length = max_length
+        self.subdomain_generator = subdomain_generator
         self.dns_server = dns_server
         self.is_running = True
         self.record_types = record_types or ['A']
-        self.resolver = dns.resolver.Resolver()
-        
+        self.resolver = self._setup_resolver()
+        self.max_workers = self._get_max_workers()
+        self.wildcard_test_count = config.get_dns_config().get('wildcard_test_count', 3)
+        self.wildcard_test_length = config.get_dns_config().get('wildcard_test_length', 12)
+        self.wildcard_ips = set()
+    
+    def _setup_resolver(self):
+        """Configure DNS resolver"""
+        resolver = dns.resolver.Resolver()
         if self.dns_server:
-            self.resolver.nameservers = [self.dns_server]
-            
-        dns_config = config.get_dns_config()
-        self.resolver.timeout = dns_config.get('timeout', 3)
-        self.resolver.lifetime = dns_config.get('lifetime', 10)
+            resolver.nameservers = [self.dns_server]
         
+        dns_config = config.get_dns_config()
+        resolver.timeout = dns_config.get('timeout', 3)
+        resolver.lifetime = dns_config.get('lifetime', 10)
+        return resolver
+    
+    def _get_max_workers(self):
+        """Determine optimal worker count"""
         try:
             from app.core.rate_limiter import rate_limiter
-            self.max_workers = rate_limiter.get_recommended_thread_count() if rate_limiter.is_enabled() else dns_config.get('max_workers', 50)
+            return rate_limiter.get_recommended_thread_count() if rate_limiter.is_enabled() else config.get_dns_config().get('max_workers', 50)
         except ImportError:
-            self.max_workers = dns_config.get('max_workers', 50)
-            
-        self.wildcard_test_count = dns_config.get('wildcard_test_count', 3)
-        self.wildcard_test_length = dns_config.get('wildcard_test_length', 12)
-        self.wildcard_ips = set()
+            return config.get_dns_config().get('max_workers', 50)
+    
+    def _get_formatter(self, record_type):
+        """Get formatter function for DNS record type"""
+        formatters = {
+            'A': lambda r: r.address,
+            'AAAA': lambda r: r.address,
+            'CNAME': lambda r: r.target.to_text().rstrip('.'),
+            'MX': lambda r: f"{r.preference} {r.exchange.to_text().rstrip('.')}",
+            'TXT': lambda r: b''.join(r.strings).decode('utf-8', errors='ignore').replace('"', ''),
+            'NS': lambda r: r.target.to_text().rstrip('.'),
+            'PTR': lambda r: r.target.to_text().rstrip('.')
+        }
+        return formatters.get(record_type, lambda r: r.to_text())
 
     def _random_string(self, length=None):
         length = length or self.wildcard_test_length
@@ -82,16 +156,8 @@ class HostWordlistWorker(QRunnable):
                 return
             try:
                 answers = self.resolver.resolve(domain, record_type)
-                if record_type in ['A', 'AAAA']:
-                    values = [r.address for r in answers]
-                elif record_type == "CNAME":
-                    values = [r.target.to_text().rstrip('.') for r in answers]
-                elif record_type == "MX":
-                    values = [f"{r.preference} {r.exchange.to_text().rstrip('.')}" for r in answers]
-                elif record_type == "TXT":
-                    values = [b''.join(r.strings).decode('utf-8', errors='ignore').replace('"', '') for r in answers]
-                else: # NS, PTR, etc.
-                    values = [r.target.to_text().rstrip('.') for r in answers]
+                formatter = self._get_formatter(record_type)
+                values = [formatter(r) for r in answers]
                 
                 # Filter out wildcard results
                 if record_type == "A" and self.wildcard_ips and set(values).issubset(self.wildcard_ips):
@@ -106,39 +172,17 @@ class HostWordlistWorker(QRunnable):
             except Exception:
                 pass
 
-    def _generate_subdomains(self):
-        """Yields subdomains from bruteforce or wordlist."""
-        if self.use_bruteforce:
-            chars = ''
-            if '0-9' in self.char_sets: chars += '0123456789'
-
-            if 'a-z' in self.char_sets: chars += 'abcdefghijklmnopqrstuvwxyz'
-            if '-' in self.char_sets: chars += '-'
-            
-            if not chars: return
-
-            for length in range(1, self.max_length + 1):
-                for combo in itertools.product(chars, repeat=length):
-                    if not self.is_running: return
-                    yield ''.join(combo)
-        else:
-            if self.wordlist_path:
-                try:
-                    with open(self.wordlist_path, 'r') as file:
-                        for line in file:
-                            if not self.is_running: return
-                            yield line.strip()
-                except FileNotFoundError:
-                    self.signals.output.emit(f"[ERROR] Wordlist not found at: {self.wordlist_path}")
-                    return
-            else: # Default list
-                for sub in ['www', 'mail', 'ftp', 'admin', 'test']:
-                    yield sub
+    def _get_subdomains(self):
+        """Get subdomains from the injected generator"""
+        for subdomain in self.subdomain_generator.generate():
+            if not self.is_running:
+                return
+            yield subdomain
 
     def run(self):
         try:
-            wordlist_name = os.path.basename(self.wordlist_path) if self.wordlist_path else "bruteforce"
-            logger.log_scan_start(self.target, wordlist_name, self.record_types)
+            scan_type = "bruteforce" if self.subdomain_generator.use_bruteforce else os.path.basename(self.subdomain_generator.wordlist_path or "default")
+            logger.log_scan_start(self.target, scan_type, self.record_types)
             self.signals.status.emit(f"Running: Enumerate Hostnames on {self.target}...")
 
             self.signals.wildcard_result.emit("<p style='color: #00FF41;'>Checking for wildcard...</p>")
@@ -148,42 +192,29 @@ class HostWordlistWorker(QRunnable):
             else:
                 self.signals.wildcard_result.emit("<p style='color: #00FF41;'>[✓] No wildcard DNS detected.</p>")
             
-            subdomains = list(self._generate_subdomains())
-            if not self.is_running:
-                return
-
-            if self.use_bruteforce:
+            if self.subdomain_generator.use_bruteforce:
                 self.signals.output.emit(f"<p style='color: #00BFFF;'>Bruteforcing.... Please wait....</p><br>")
-            else:
-                # Don't show message for wordlist - handled by main UI
-                pass
-            self.signals.progress_start.emit(len(subdomains))
             
             completed_count = 0
-            results_count = 0
-            
             all_results = defaultdict(lambda: defaultdict(list))
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                future_to_subdomain = {executor.submit(self.query_subdomain, sub): sub for sub in subdomains}
-                for future in concurrent.futures.as_completed(future_to_subdomain):
+                futures = {executor.submit(self.query_subdomain, sub) for sub in self._get_subdomains()}
+                
+                for future in concurrent.futures.as_completed(futures):
                     if not self.is_running:
-                        # Attempt to cancel remaining futures
-                        for f in future_to_subdomain:
+                        for f in futures:
                             f.cancel()
                         break
                     
-                    # Process future to catch exceptions and collect results
                     future.result()
                     completed_count += 1
-                    if completed_count % 10 == 0 or completed_count == len(subdomains):
+                    if completed_count % 10 == 0:
                         self.signals.progress_update.emit(completed_count, len(all_results))
             
             if self.is_running:
-                self.signals.progress_update.emit(len(subdomains), len(all_results))
                 final_count = getattr(self, 'final_result_count', len(all_results))
                 logger.log_scan_complete(self.target, final_count)
-                # Always emit results, even if empty
                 self.signals.results_ready.emit(dict(all_results))
                 self.signals.status.emit("Finished: Enumerate Hostnames")
 
@@ -196,7 +227,16 @@ class HostWordlistWorker(QRunnable):
 
 
 def enumerate_hostnames(target, wordlist_path, output_callback, status_callback, finished_callback, record_types=None, use_bruteforce=False, char_sets=None, max_length=16, dns_server=None, wildcard_callback=None, results_callback=None, progress_callback=None, progress_start_callback=None, scan_controller=None):
-    worker = HostWordlistWorker(target, wordlist_path, record_types, use_bruteforce, char_sets, max_length, dns_server)
+    # Create dedicated subdomain generator
+    subdomain_generator = SubdomainGenerator(
+        wordlist_path=wordlist_path,
+        use_bruteforce=use_bruteforce,
+        char_sets=char_sets,
+        max_length=max_length
+    )
+    
+    # Create worker that consumes from the generator
+    worker = HostWordlistWorker(target, subdomain_generator, record_types, dns_server)
     if scan_controller:
         worker.scan_controller = scan_controller
         

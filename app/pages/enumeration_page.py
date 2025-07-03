@@ -141,31 +141,8 @@ class EnumerationPage(QWidget):
 
         return work_frame
 
-    def create_controls_section(self):
-        from PyQt6.QtWidgets import QSpinBox, QStackedWidget
-
-        controls_frame = QFrame()
-        controls_layout = QVBoxLayout(controls_frame)
-        controls_layout.setContentsMargins(10, 10, 10, 10)
-        controls_layout.setSpacing(8)
-
-        # === First Row: Target Input ===
-        target_row = QHBoxLayout()
-        target_label = QLabel("Target:")
-        target_label.setFixedWidth(110)
-        target_row.addWidget(target_label)
-        self.target_input = QLineEdit()
-        self.target_input.setPlaceholderText("Enter target (IP, domain, or range)...")
-        self.target_input.textChanged.connect(self.check_target_type)
-        target_row.addWidget(self.target_input)
-        controls_layout.addLayout(target_row)
-
-        # === Second Row: Record Type Checkboxes ===
-        record_row = QHBoxLayout()
-        types_label = QLabel("Types:")
-        types_label.setFixedWidth(110)
-        types_label.setFixedHeight(30)
-        record_row.addWidget(types_label)
+    def _create_record_checkboxes(self, parent_layout):
+        """Helper to create record type checkboxes"""
         checkbox_style = """
             QCheckBox {
                 spacing: 5px;
@@ -195,8 +172,8 @@ class EnumerationPage(QWidget):
         self.all_checkbox = QCheckBox("ALL")
         self.all_checkbox.setStyleSheet(checkbox_style)
         self.all_checkbox.stateChanged.connect(self.toggle_all_records)
-        record_row.addWidget(self.all_checkbox)
-        record_row.addSpacing(10)
+        parent_layout.addWidget(self.all_checkbox)
+        parent_layout.addSpacing(10)
 
         self.record_type_checkboxes = {}
         for rtype in ['A', 'CNAME', 'MX', 'TXT', 'NS']:
@@ -204,14 +181,64 @@ class EnumerationPage(QWidget):
             cb.setStyleSheet(checkbox_style)
             cb.stateChanged.connect(self.update_all_checkbox)
             self.record_type_checkboxes[rtype] = cb
-            record_row.addWidget(cb)
-            record_row.addSpacing(10)
+            parent_layout.addWidget(cb)
+            parent_layout.addSpacing(10)
 
         self.ptr_checkbox = QCheckBox("PTR")
         self.ptr_checkbox.setStyleSheet(checkbox_style)
         self.ptr_checkbox.setEnabled(False)
         self.ptr_checkbox.stateChanged.connect(self.update_all_checkbox)
-        record_row.addWidget(self.ptr_checkbox)
+        parent_layout.addWidget(self.ptr_checkbox)
+    
+    def _create_bruteforce_options(self, parent_layout):
+        """Helper to create bruteforce option widgets"""
+        from PyQt6.QtWidgets import QSpinBox
+        
+        self.bruteforce_label = QLabel("Charset:")
+        self.char_checkboxes = {}
+        self.char_options = {'0-9': True, 'a-z': True, '-': False}
+        self.length_label = QLabel("Length:")
+        self.length_spinbox = QSpinBox()
+        self.length_spinbox.setRange(1, 12)
+        self.length_spinbox.setValue(3)
+        self.length_spinbox.setFixedWidth(60)
+
+        parent_layout.addWidget(self.bruteforce_label)
+        for k, v in self.char_options.items():
+            cb = QCheckBox(k)
+            cb.setChecked(v)
+            self.char_checkboxes[k] = cb
+            parent_layout.addWidget(cb)
+        parent_layout.addWidget(self.length_label)
+        parent_layout.addWidget(self.length_spinbox)
+
+    def create_controls_section(self):
+        from PyQt6.QtWidgets import QSpinBox, QStackedWidget
+
+        controls_frame = QFrame()
+        controls_layout = QVBoxLayout(controls_frame)
+        controls_layout.setContentsMargins(10, 10, 10, 10)
+        controls_layout.setSpacing(8)
+
+        # === First Row: Target Input ===
+        target_row = QHBoxLayout()
+        target_label = QLabel("Target:")
+        target_label.setFixedWidth(110)
+        target_row.addWidget(target_label)
+        self.target_input = QLineEdit()
+        self.target_input.setPlaceholderText("Enter target (IP, domain, or range)...")
+        self.target_input.textChanged.connect(self.check_target_type)
+        target_row.addWidget(self.target_input)
+        controls_layout.addLayout(target_row)
+
+        # === Second Row: Record Type Checkboxes ===
+        record_row = QHBoxLayout()
+        types_label = QLabel("Types:")
+        types_label.setFixedWidth(110)
+        types_label.setFixedHeight(30)
+        record_row.addWidget(types_label)
+        
+        self._create_record_checkboxes(record_row)
 
         record_row.addStretch()
         controls_layout.addLayout(record_row)
@@ -244,23 +271,7 @@ class EnumerationPage(QWidget):
         method_row.addWidget(self.wordlist_combo, 1)
 
         # Bruteforce options on same line
-        self.bruteforce_label = QLabel("Charset:")
-        self.char_checkboxes = {}
-        self.char_options = {'0-9': True, 'a-z': True, '-': False}
-        self.length_label = QLabel("Length:")
-        self.length_spinbox = QSpinBox()
-        self.length_spinbox.setRange(1, 12)
-        self.length_spinbox.setValue(3)
-        self.length_spinbox.setFixedWidth(60)
-
-        method_row.addWidget(self.bruteforce_label)
-        for k, v in self.char_options.items():
-            cb = QCheckBox(k)
-            cb.setChecked(v)
-            self.char_checkboxes[k] = cb
-            method_row.addWidget(cb)
-        method_row.addWidget(self.length_label)
-        method_row.addWidget(self.length_spinbox)
+        self._create_bruteforce_options(method_row)
         method_row.addStretch()
 
         self.method_row_layout = method_row
@@ -336,6 +347,8 @@ class EnumerationPage(QWidget):
         ]
         self.last_scan_results = {}
         self.last_scan_target = ""
+        self.is_scanning = False
+        self.current_worker = None
 
     def create_main_tool_button(self, tool_data):
         button = HoverButton(tool_data["title"], tool_data["desc"], self)
@@ -664,43 +677,18 @@ class EnumerationPage(QWidget):
             return
         
         try:
-            import time
-            exports_dir = os.path.join(self.main_window.project_root, "exports")
-            os.makedirs(exports_dir, exist_ok=True)
+            # Delegate the actual file writing to the exporter module
+            success, filename, message = exporter.export_results(
+                self.last_scan_results,
+                target,
+                export_format.lower()
+            )
             
-            if export_format == "JSON":
-                import json
-                filename = f"scan_results_{target}_{int(time.time())}.json"
-                filepath = os.path.join(exports_dir, filename)
-                with open(filepath, 'w') as f:
-                    json.dump(self.last_scan_results, f, indent=2)
-            elif export_format == "CSV":
-                import csv
-                filename = f"scan_results_{target}_{int(time.time())}.csv"
-                filepath = os.path.join(exports_dir, filename)
-                with open(filepath, 'w', newline='') as f:
-                    writer = csv.writer(f)
-                    writer.writerow(["Domain", "Type", "Value"])
-                    for domain, record_types in self.last_scan_results.items():
-                        for record_type, values in record_types.items():
-                            for value in values:
-                                writer.writerow([domain, record_type, value])
-            elif export_format == "XML":
-                filename = f"scan_results_{target}_{int(time.time())}.xml"
-                filepath = os.path.join(exports_dir, filename)
-                with open(filepath, 'w') as f:
-                    f.write('<?xml version="1.0" encoding="UTF-8"?>\n<scan_results>\n')
-                    for domain, record_types in self.last_scan_results.items():
-                        f.write(f'  <domain name="{domain}">\n')
-                        for record_type, values in record_types.items():
-                            f.write(f'    <{record_type.lower()}_records>\n')
-                            for value in values:
-                                f.write(f'      <record>{value}</record>\n')
-                            f.write(f'    </{record_type.lower()}_records>\n')
-                        f.write('  </domain>\n')
-                    f.write('</scan_results>\n')
-            
-            self.append_terminal_output(f"<p style='color: #00FF41;'>[EXPORT] Results exported to exports/{filename}</p><br>")
+            if success:
+                self.append_terminal_output(f"<p style='color: #00FF41;'>[EXPORT] Results exported to {filename}</p><br>")
+            else:
+                self.append_terminal_output(f"<p style='color: #FF4500;'>[EXPORT ERROR] {message}</p><br>")
+                
         except Exception as e:
             self.append_terminal_output(f"<p style='color: #FF4500;'>[EXPORT ERROR] Export failed: {str(e)}</p><br>")
     
