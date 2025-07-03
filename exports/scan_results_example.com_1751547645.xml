@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scan_results>
+  <domain name="example.com">
+    <mx_records>
+      <record>10 mx01.example.com</record>
+    </mx_records>
+    <txt_records>
+      <record>v=spf1</record>
+    </txt_records>
+    <ns_records>
+      <record>dc01.lab.local</record>
+    </ns_records>
+  </domain>
+  <domain name="www.example.com">
+    <a_records>
+      <record>192.168.1.110</record>
+    </a_records>
+  </domain>
+  <domain name="ftp.example.com">
+    <a_records>
+      <record>192.168.1.110</record>
+      <record>192.168.16.6</record>
+    </a_records>
+    <cname_records>
+      <record>dc01.lab.local</record>
+    </cname_records>
+  </domain>
+</scan_results>

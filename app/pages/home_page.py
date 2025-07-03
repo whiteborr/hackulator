@@ -67,7 +67,7 @@ class HomePage(QWidget):
         nav_layout.setSpacing(10)
         
         # Title
-        title = QLabel("🛡️ HACKULATOR")
+        title = QLabel("HACKULATOR")
         title.setObjectName("TitleLabel")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("""
@@ -80,16 +80,16 @@ class HomePage(QWidget):
         
         # Button data
         button_data = [
-            {"name": "enumeration", "title": "🛡️ ENUMERATION", "desc": ["Enumeration is the process of actively collecting information about a target system to identify potential entry points."], "icon": "resources/icons/1.png"},
-            {"name": "vuln_scanning", "title": "🔍 VULN SCANNING", "desc": ["Identify known weaknesses in systems and services using automated tools."], "icon": "resources/icons/2.png"},
-            {"name": "web_exploits", "title": "💥 WEB EXPLOITS", "desc": ["Target vulnerabilities in web applications and client software."], "icon": "resources/icons/3.png"},
-            {"name": "databases", "title": "🗄️ DB ATTACKS", "desc": ["Exploit weaknesses in database queries and configurations."], "icon": "resources/icons/4.png"},
-            {"name": "os_exploits", "title": "🖥️ OS EXPLOITS", "desc": ["Leverage OS-level flaws for privilege escalation or persistence."], "icon": "resources/icons/5.png"},
-            {"name": "cracking", "title": "🔓 CRACKING", "desc": ["Break passwords by capturing and cracking authentication hashes."], "icon": "resources/icons/6.png"},
-            {"name": "osint", "title": "🔎 OSINT & RECON", "desc": ["Open Source Intelligence gathering and reconnaissance techniques."], "icon": "resources/icons/1A.png"},
-            {"name": "findings", "title": "📋 COMMON FINDINGS", "desc": ["Common penetration testing findings and vulnerabilities."], "icon": "resources/icons/1B.png"},
-            {"name": "owasp_api", "title": "🔐 OWASP API TOP 10", "desc": ["OWASP API Security Top 10 - 2023 vulnerabilities and mitigations."], "icon": "resources/icons/1C.png"},
-            {"name": "scripts", "title": "⚡ SCRIPTS & TOOLS", "desc": ["Useful scripts and code generators for penetration testing."], "icon": "resources/icons/1D.png"},
+            {"name": "enumeration", "title": "ENUMERATION", "desc": ["Enumeration is the process of actively collecting information about a target system to identify potential entry points."], "icon": "resources/icons/1.png"},
+            {"name": "vuln_scanning", "title": "VULN SCANNING", "desc": ["Identify known weaknesses in systems and services using automated tools."], "icon": "resources/icons/2.png"},
+            {"name": "web_exploits", "title": "WEB EXPLOITS", "desc": ["Target vulnerabilities in web applications and client software."], "icon": "resources/icons/3.png"},
+            {"name": "databases", "title": "DB ATTACKS", "desc": ["Exploit weaknesses in database queries and configurations."], "icon": "resources/icons/4.png"},
+            {"name": "os_exploits", "title": "OS EXPLOITS", "desc": ["Leverage OS-level flaws for privilege escalation or persistence."], "icon": "resources/icons/5.png"},
+            {"name": "cracking", "title": "CRACKING", "desc": ["Break passwords by capturing and cracking authentication hashes."], "icon": "resources/icons/6.png"},
+            {"name": "osint", "title": "OSINT & RECON", "desc": ["Open Source Intelligence gathering and reconnaissance techniques."], "icon": "resources/icons/1A.png"},
+            {"name": "findings", "title": "COMMON FINDINGS", "desc": ["Common penetration testing findings and vulnerabilities."], "icon": "resources/icons/1B.png"},
+            {"name": "owasp_api", "title": "OWASP API TOP 10", "desc": ["OWASP API Security Top 10 - 2023 vulnerabilities and mitigations."], "icon": "resources/icons/1C.png"},
+            {"name": "scripts", "title": "SCRIPTS & TOOLS", "desc": ["Useful scripts and code generators for penetration testing."], "icon": "resources/icons/1D.png"},
         ]
         
         # Create navigation buttons
@@ -200,7 +200,7 @@ class HomePage(QWidget):
         # Default content
         self.info_text.setHtml("""
         <div style='color: #64C8FF; font-size: 18pt; font-weight: bold; margin-bottom: 20px;'>
-            🚀 Cybersecurity Toolkit
+            Cybersecurity Toolkit
         </div>
         <div style='color: #DCDCDC; font-size: 14pt; line-height: 150%;'>
             Select a tool from the navigation panel to get started.<br><br>
@@ -238,7 +238,7 @@ class HomePage(QWidget):
         """Reset info panel to default content"""
         self.info_text.setHtml("""
         <div style='color: #64C8FF; font-size: 18pt; font-weight: bold; margin-bottom: 20px;'>
-            🚀 Cybersecurity Toolkit
+            Cybersecurity Toolkit
         </div>
         <div style='color: #DCDCDC; font-size: 14pt; line-height: 150%;'>
             Select a tool from the navigation panel to get started.<br><br>

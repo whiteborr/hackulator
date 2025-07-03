@@ -14,9 +14,10 @@ A comprehensive penetration testing toolkit built with PyQt6, featuring a comple
 ### Advanced Features ✨
 - **Performance Optimization**: Connection pooling, result caching, memory management
 - **Scan Control**: Pause/resume/stop functionality for long-running scans
-- **Professional Reporting**: PDF reports and executive summaries
+- **Advanced Reporting Engine**: Comprehensive multi-format reporting with risk assessment
+- **Professional Reporting**: PDF, HTML, JSON reports with executive summaries
 - **Vulnerability Correlation**: AI-powered analysis of security relationships
-- **Export Formats**: JSON, CSV, XML, PDF, Executive Summary, Correlation Analysis, Result Comparison
+- **Export Formats**: JSON, CSV, XML, PDF, HTML, Executive Summary, Correlation Analysis, Result Comparison
 - **Rate Limiting**: Configurable scan speed control with presets
 - **Custom Templates**: Save and reuse scan configurations
 - **Scan Scheduling**: Automated scan execution at specified times
@@ -46,6 +47,7 @@ A comprehensive penetration testing toolkit built with PyQt6, featuring a comple
 - **Distributed Scanning**: Multi-node scanning support for improved performance and scalability
 - **Memory Monitoring**: Real-time memory usage tracking and optimization
 - **Status Bar Integration**: Live feedback and system monitoring
+- **Advanced Reporting Engine**: Comprehensive multi-format reporting with risk assessment and compliance checking
 
 ## Enumeration Tools
 
@@ -158,6 +160,7 @@ Comprehensive documentation is available in the `docs/` directory:
 - **ARCHITECTURE.md**: System architecture and design patterns
 - **DEVELOPMENT.md**: Development guidelines and coding standards
 - **MODULES.md**: Auto-generated module documentation
+- **ADVANCED_REPORTING.md**: Advanced reporting engine documentation
 
 ### Generate Documentation
 
@@ -769,6 +772,7 @@ Edit `resources/themes/default/theme.json` to customize:
 - **Wordlist Management**: Custom wordlist creation and content management
 - **Result Filtering**: Advanced search and filtering of scan results
 - **Real-time Notifications**: Desktop alerts and system tray integration
+- **Advanced Reporting**: Multi-format report generation with risk assessment
 
 ### Extending Functionality
 The modular architecture supports easy extension:

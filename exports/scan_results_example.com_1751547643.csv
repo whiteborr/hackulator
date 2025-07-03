@@ -1,0 +1,8 @@
+Domain,Type,Value
+example.com,MX,10 mx01.example.com
+example.com,TXT,v=spf1
+example.com,NS,dc01.lab.local
+www.example.com,A,192.168.1.110
+ftp.example.com,A,192.168.1.110
+ftp.example.com,A,192.168.16.6
+ftp.example.com,CNAME,dc01.lab.local
