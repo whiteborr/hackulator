@@ -137,50 +137,54 @@ class DbAttacksPage(QWidget):
             }
         """)
 
-    def test_sql_injection(self):
-        cmd = ["python", "tools/db_attacks.py", "--sql-inject"]
-        self.run_db_command(cmd, "Testing for SQL injection vulnerabilities")
-
-    def test_blind_sql(self):
-        cmd = ["python", "tools/db_attacks.py", "--blind-sql"]
-        self.run_db_command(cmd, "Testing for blind SQL injection")
-
-    def test_union_sql(self):
-        cmd = ["python", "tools/db_attacks.py", "--union-sql"]
-        self.run_db_command(cmd, "Testing for UNION-based SQL injection")
-
-    def test_mssql(self):
-        username = self.username_input.text().strip() or "sa"
-        password = self.password_input.text().strip()
-        cmd = ["python", "tools/db_attacks.py", "--mssql", "--username", username]
-        if password:
-            cmd.extend(["--password", password])
-        self.run_db_command(cmd, "Testing MSSQL connection and exploitation")
-
-    def test_mysql(self):
-        username = self.username_input.text().strip() or "root"
-        password = self.password_input.text().strip()
-        cmd = ["python", "tools/db_attacks.py", "--mysql", "--username", username]
-        if password:
-            cmd.extend(["--password", password])
-        self.run_db_command(cmd, "Testing MySQL connection and exploitation")
-
-    def test_all_attacks(self):
-        cmd = ["python", "tools/db_attacks.py", "--all"]
-        self.run_db_command(cmd, "Running comprehensive database attack tests")
-
-    def run_db_command(self, cmd, description):
+    def _run_command(self, tool, args, description):
+        """Helper function to run a command-line tool."""
+        from app.core.error_context import handle_errors
+        
         target = self.target_input.text().strip()
         if not target:
             self.show_error("Please enter a target")
             return
-        self.terminal_output.clear()
-        self.set_buttons_enabled(False)
-        full_cmd = cmd + [target]
-        worker = CommandWorker(full_cmd, description, str(self.main_window.project_root))
-        worker.signals.output.connect(self.append_terminal_output)
-        worker.signals.finished.connect(lambda: self.set_buttons_enabled(True))
-        QThreadPool.globalInstance().start(worker)
+
+        with handle_errors(f"Command Execution: {description}"):
+            self.terminal_output.clear()
+            self.set_buttons_enabled(False)
+
+            full_cmd = ["python", f"tools/{tool}.py", target] + args
+            worker = CommandWorker(full_cmd, description, str(self.main_window.project_root))
+            worker.signals.output.connect(self.append_terminal_output)
+            worker.signals.finished.connect(lambda: self.set_buttons_enabled(True))
+            QThreadPool.globalInstance().start(worker)
+
+    def test_sql_injection(self):
+        self._run_command("db_attacks", ["--sql-inject"], "Testing for SQL injection vulnerabilities")
+
+    def test_blind_sql(self):
+        self._run_command("db_attacks", ["--blind-sql"], "Testing for blind SQL injection")
+
+    def test_union_sql(self):
+        self._run_command("db_attacks", ["--union-sql"], "Testing for UNION-based SQL injection")
+
+    def test_mssql(self):
+        username = self.username_input.text().strip() or "sa"
+        password = self.password_input.text().strip()
+        args = ["--mssql", "--username", username]
+        if password:
+            args.extend(["--password", password])
+        self._run_command("db_attacks", args, "Testing MSSQL connection and exploitation")
+
+    def test_mysql(self):
+        username = self.username_input.text().strip() or "root"
+        password = self.password_input.text().strip()
+        args = ["--mysql", "--username", username]
+        if password:
+            args.extend(["--password", password])
+        self._run_command("db_attacks", args, "Testing MySQL connection and exploitation")
+
+    def test_all_attacks(self):
+        self._run_command("db_attacks", ["--all"], "Running comprehensive database attack tests")
+
+
 
     def show_error(self, message):
         self.terminal_output.setHtml(f"<p style='color: #FF4500;'>[ERROR] {message}</p>")

@@ -182,12 +182,11 @@ class HomePage(QWidget):
         self.info_text = QTextEdit()
         self.info_text.setObjectName("InfoTextArea")
         self.info_text.setReadOnly(True)
-        # Apply Neuropol font directly
+        # Apply font
         from PyQt6.QtGui import QFont
-        neuropol_font = QFont()
-        neuropol_font.setFamily("Neuropol X")
-        neuropol_font.setPointSize(14)
-        self.info_text.setFont(neuropol_font)
+        font = QFont()
+        font.setPointSize(14)
+        self.info_text.setFont(font)
         
         self.info_text.setStyleSheet("""
             QTextEdit#InfoTextArea {
@@ -257,15 +256,10 @@ class HomePage(QWidget):
 
     def apply_theme(self):
         """Apply background theme"""
-        theme = self.main_window.theme_manager
-        background_path = theme.get("backgrounds.home")
-        if background_path:
-            # Set background image using stylesheet
-            self.setStyleSheet(f"""
-                HomePage {{
-                    background-image: url({background_path});
-                    background-repeat: no-repeat;
-                    background-position: center;
-                    background-attachment: fixed;
-                }}
-            """)
+        colors = self.main_window.theme_manager.get_theme_colors()
+        # Apply theme colors to the page
+        self.setStyleSheet(f"""
+            HomePage {{
+                background-color: {colors['background']};
+            }}
+        """)

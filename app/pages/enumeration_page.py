@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (QWidget, QPushButton, QLabel, QLineEdit, QTextEdit,
 from PyQt6.QtCore import pyqtSignal, QSize, Qt, QThreadPool
 from PyQt6.QtGui import QPixmap, QIcon, QShortcut, QKeySequence
 
-from app.core import custom_scripts
+from app.tools import dns_utils
 from app.core.validators import InputValidator
 from app.core.exporter import exporter
 from app.core.base_worker import CommandWorker
@@ -230,8 +230,88 @@ class EnumerationPage(QWidget):
         self.target_input.textChanged.connect(self.check_target_type)
         target_row.addWidget(self.target_input)
         controls_layout.addLayout(target_row)
+        
+        # Create stacked widget for different tool controls
+        self.controls_stack = QStackedWidget()
+        
+        # DNS controls
+        self.dns_controls = self.create_dns_controls()
+        self.controls_stack.addWidget(self.dns_controls)
+        
+        # Port scan controls  
+        self.port_controls = self.create_port_controls()
+        self.controls_stack.addWidget(self.port_controls)
+        
+        # RPC controls
+        self.rpc_controls = self.create_rpc_controls()
+        self.controls_stack.addWidget(self.rpc_controls)
+        
+        # SMB controls
+        self.smb_controls = self.create_smb_controls()
+        self.controls_stack.addWidget(self.smb_controls)
+        
+        # SMTP controls
+        self.smtp_controls = self.create_smtp_controls()
+        self.controls_stack.addWidget(self.smtp_controls)
+        
+        # SNMP controls
+        self.snmp_controls = self.create_snmp_controls()
+        self.controls_stack.addWidget(self.snmp_controls)
+        
+        # HTTP controls
+        self.http_controls = self.create_http_controls()
+        self.controls_stack.addWidget(self.http_controls)
+        
+        # API controls
+        self.api_controls = self.create_api_controls()
+        self.controls_stack.addWidget(self.api_controls)
+        
+        # LDAP controls
+        self.ldap_controls = self.create_ldap_controls()
+        self.controls_stack.addWidget(self.ldap_controls)
+        
+        # Database controls
+        self.db_controls = self.create_db_controls()
+        self.controls_stack.addWidget(self.db_controls)
+        
+        # IKE controls
+        self.ike_controls = self.create_ike_controls()
+        self.controls_stack.addWidget(self.ike_controls)
+        
+        # AV/Firewall controls
+        self.av_firewall_controls = self.create_av_firewall_controls()
+        self.controls_stack.addWidget(self.av_firewall_controls)
+        
+        controls_layout.addWidget(self.controls_stack)
+        
+        # === Actions Row ===
+        action_row = QHBoxLayout()
+        action_row.addStretch()
+        self.run_button = QPushButton("Run")
+        self.run_button.setFixedWidth(80)
+        self.run_button.clicked.connect(self.toggle_scan)
+        action_row.addWidget(self.run_button)
 
-        # === Second Row: Record Type Checkboxes ===
+        self.export_combo = QComboBox()
+        self.export_combo.addItems(["JSON", "CSV", "XML", "Advanced Report", "Create Session"])
+        self.export_combo.setFixedWidth(130)
+        action_row.addWidget(self.export_combo)
+
+        self.export_button = QPushButton("Export")
+        self.export_button.setFixedWidth(80)
+        self.export_button.setEnabled(False)
+        self.export_button.clicked.connect(self.export_results)
+        action_row.addWidget(self.export_button)
+
+        controls_layout.addLayout(action_row)
+        return controls_frame
+    
+    def create_dns_controls(self):
+        """Create DNS-specific controls"""
+        dns_widget = QWidget()
+        layout = QVBoxLayout(dns_widget)
+
+        # Record Type Checkboxes
         record_row = QHBoxLayout()
         types_label = QLabel("Types:")
         types_label.setFixedWidth(110)
@@ -239,11 +319,10 @@ class EnumerationPage(QWidget):
         record_row.addWidget(types_label)
         
         self._create_record_checkboxes(record_row)
-
         record_row.addStretch()
-        controls_layout.addLayout(record_row)
+        layout.addLayout(record_row)
 
-        # === DNS Row ===
+        # DNS Server
         dns_row = QHBoxLayout()
         dns_label = QLabel("DNS:")
         dns_label.setFixedWidth(110)
@@ -253,9 +332,9 @@ class EnumerationPage(QWidget):
         self.dns_input.setFixedWidth(400)
         dns_row.addWidget(self.dns_input)
         dns_row.addStretch()
-        controls_layout.addLayout(dns_row)
+        layout.addLayout(dns_row)
 
-        # === Third Row: Method & Wordlist/Bruteforce ===
+        # Method & Wordlist/Bruteforce
         method_row = QHBoxLayout()
         method_label = QLabel("Method:")
         method_label.setFixedWidth(110)
@@ -270,37 +349,814 @@ class EnumerationPage(QWidget):
         self.populate_wordlists()
         method_row.addWidget(self.wordlist_combo, 1)
 
-        # Bruteforce options on same line
+        # Bruteforce options
         self._create_bruteforce_options(method_row)
         method_row.addStretch()
-
         self.method_row_layout = method_row
-        controls_layout.addLayout(method_row)
-
-        # === Fourth Row: Actions ===
-        action_row = QHBoxLayout()
-        action_row.addStretch()
-        self.run_button = QPushButton("Run")
-        self.run_button.setFixedWidth(80)
-        self.run_button.clicked.connect(self.toggle_scan)
-        action_row.addWidget(self.run_button)
-
-        self.export_combo = QComboBox()
-        self.export_combo.addItems(["JSON", "CSV", "XML", "Advanced Report", "Sessions"])
-        self.export_combo.setFixedWidth(130)
-        action_row.addWidget(self.export_combo)
-
-        self.export_button = QPushButton("Export")
-        self.export_button.setFixedWidth(80)
-        self.export_button.setEnabled(False)
-        self.export_button.clicked.connect(self.export_results)
-        action_row.addWidget(self.export_button)
-
-        controls_layout.addLayout(action_row)
-
-        # === Visibility Toggle ===
+        layout.addLayout(method_row)
+        
         self.toggle_method_options("Wordlist")
-        return controls_frame
+        return dns_widget
+    
+    def create_port_controls(self):
+        """Create port scanning specific controls"""
+        port_widget = QWidget()
+        layout = QVBoxLayout(port_widget)
+        
+        # Scan Type
+        scan_type_row = QHBoxLayout()
+        scan_type_label = QLabel("Scan Type:")
+        scan_type_label.setFixedWidth(110)
+        scan_type_row.addWidget(scan_type_label)
+        self.scan_type_combo = QComboBox()
+        self.scan_type_combo.addItems(["TCP Connect", "Network Sweep"])
+        self.scan_type_combo.setFixedWidth(150)
+        scan_type_row.addWidget(self.scan_type_combo)
+        scan_type_row.addStretch()
+        layout.addLayout(scan_type_row)
+        
+        # Port Range
+        port_row = QHBoxLayout()
+        port_label = QLabel("Ports:")
+        port_label.setFixedWidth(110)
+        port_row.addWidget(port_label)
+        self.port_input = QLineEdit()
+        self.port_input.setPlaceholderText("80,443,1-1000 or leave empty for common ports")
+        port_row.addWidget(self.port_input)
+        layout.addLayout(port_row)
+        
+        # Quick port selections
+        quick_ports_row = QHBoxLayout()
+        quick_ports_label = QLabel("Quick:")
+        quick_ports_label.setFixedWidth(110)
+        quick_ports_row.addWidget(quick_ports_label)
+        
+        self.common_ports_btn = QPushButton("Common")
+        self.common_ports_btn.clicked.connect(lambda: self.port_input.setText("21,22,23,25,53,80,110,135,139,143,443,993,995,3389"))
+        quick_ports_row.addWidget(self.common_ports_btn)
+        
+        self.top100_btn = QPushButton("Top 100")
+        self.top100_btn.clicked.connect(lambda: self.port_input.setText("1-100"))
+        quick_ports_row.addWidget(self.top100_btn)
+        
+        self.top1000_btn = QPushButton("Top 1000")
+        self.top1000_btn.clicked.connect(lambda: self.port_input.setText("1-1000"))
+        quick_ports_row.addWidget(self.top1000_btn)
+        
+        quick_ports_row.addStretch()
+        layout.addLayout(quick_ports_row)
+        
+        return port_widget
+    
+    def create_rpc_controls(self):
+        """Create RPC enumeration specific controls"""
+        rpc_widget = QWidget()
+        layout = QVBoxLayout(rpc_widget)
+        
+        # Authentication
+        auth_row = QHBoxLayout()
+        auth_label = QLabel("Auth:")
+        auth_label.setFixedWidth(110)
+        auth_row.addWidget(auth_label)
+        self.auth_combo = QComboBox()
+        self.auth_combo.addItems(["Anonymous", "Credentials"])
+        self.auth_combo.setFixedWidth(150)
+        self.auth_combo.currentTextChanged.connect(self.toggle_rpc_auth)
+        auth_row.addWidget(self.auth_combo)
+        auth_row.addStretch()
+        layout.addLayout(auth_row)
+        
+        # Username
+        user_row = QHBoxLayout()
+        user_label = QLabel("Username:")
+        user_label.setFixedWidth(110)
+        user_row.addWidget(user_label)
+        self.rpc_username = QLineEdit()
+        self.rpc_username.setPlaceholderText("Domain username")
+        self.rpc_username.setVisible(False)
+        user_row.addWidget(self.rpc_username)
+        layout.addLayout(user_row)
+        
+        # Password
+        pass_row = QHBoxLayout()
+        pass_label = QLabel("Password:")
+        pass_label.setFixedWidth(110)
+        pass_row.addWidget(pass_label)
+        self.rpc_password = QLineEdit()
+        self.rpc_password.setPlaceholderText("Password")
+        self.rpc_password.setEchoMode(QLineEdit.EchoMode.Password)
+        self.rpc_password.setVisible(False)
+        pass_row.addWidget(self.rpc_password)
+        layout.addLayout(pass_row)
+        
+        return rpc_widget
+    
+    def toggle_rpc_auth(self, auth_type):
+        """Toggle RPC authentication fields"""
+        show_creds = (auth_type == "Credentials")
+        self.rpc_username.setVisible(show_creds)
+        self.rpc_password.setVisible(show_creds)
+    
+    def create_smb_controls(self):
+        """Create SMB enumeration specific controls"""
+        smb_widget = QWidget()
+        layout = QVBoxLayout(smb_widget)
+        
+        # Scan Type
+        scan_type_row = QHBoxLayout()
+        scan_type_label = QLabel("Scan Type:")
+        scan_type_label.setFixedWidth(110)
+        scan_type_row.addWidget(scan_type_label)
+        self.smb_scan_type = QComboBox()
+        self.smb_scan_type.addItems(["Basic Info", "Share Enumeration", "Vulnerability Scan"])
+        self.smb_scan_type.setFixedWidth(150)
+        scan_type_row.addWidget(self.smb_scan_type)
+        scan_type_row.addStretch()
+        layout.addLayout(scan_type_row)
+        
+        # Authentication
+        auth_row = QHBoxLayout()
+        auth_label = QLabel("Auth:")
+        auth_label.setFixedWidth(110)
+        auth_row.addWidget(auth_label)
+        self.smb_auth_combo = QComboBox()
+        self.smb_auth_combo.addItems(["Anonymous", "Credentials"])
+        self.smb_auth_combo.setFixedWidth(150)
+        self.smb_auth_combo.currentTextChanged.connect(self.toggle_smb_auth)
+        auth_row.addWidget(self.smb_auth_combo)
+        auth_row.addStretch()
+        layout.addLayout(auth_row)
+        
+        # Username
+        user_row = QHBoxLayout()
+        user_label = QLabel("Username:")
+        user_label.setFixedWidth(110)
+        user_row.addWidget(user_label)
+        self.smb_username = QLineEdit()
+        self.smb_username.setPlaceholderText("Domain\\username or username")
+        self.smb_username.setVisible(False)
+        user_row.addWidget(self.smb_username)
+        layout.addLayout(user_row)
+        
+        # Password
+        pass_row = QHBoxLayout()
+        pass_label = QLabel("Password:")
+        pass_label.setFixedWidth(110)
+        pass_row.addWidget(pass_label)
+        self.smb_password = QLineEdit()
+        self.smb_password.setPlaceholderText("Password")
+        self.smb_password.setEchoMode(QLineEdit.EchoMode.Password)
+        self.smb_password.setVisible(False)
+        pass_row.addWidget(self.smb_password)
+        layout.addLayout(pass_row)
+        
+        return smb_widget
+    
+    def toggle_smb_auth(self, auth_type):
+        """Toggle SMB authentication fields"""
+        show_creds = (auth_type == "Credentials")
+        self.smb_username.setVisible(show_creds)
+        self.smb_password.setVisible(show_creds)
+    
+    def create_smtp_controls(self):
+        """Create SMTP enumeration specific controls"""
+        smtp_widget = QWidget()
+        layout = QVBoxLayout(smtp_widget)
+        
+        # Port
+        port_row = QHBoxLayout()
+        port_label = QLabel("Port:")
+        port_label.setFixedWidth(110)
+        port_row.addWidget(port_label)
+        self.smtp_port = QLineEdit()
+        self.smtp_port.setText("25")
+        self.smtp_port.setFixedWidth(100)
+        port_row.addWidget(self.smtp_port)
+        port_row.addStretch()
+        layout.addLayout(port_row)
+        
+        # Domain
+        domain_row = QHBoxLayout()
+        domain_label = QLabel("Domain:")
+        domain_label.setFixedWidth(110)
+        domain_row.addWidget(domain_label)
+        self.smtp_domain = QLineEdit()
+        self.smtp_domain.setPlaceholderText("Target domain for RCPT TO (optional)")
+        domain_row.addWidget(self.smtp_domain)
+        layout.addLayout(domain_row)
+        
+        # HELO Name
+        helo_row = QHBoxLayout()
+        helo_label = QLabel("HELO Name:")
+        helo_label.setFixedWidth(110)
+        helo_row.addWidget(helo_label)
+        self.smtp_helo = QLineEdit()
+        self.smtp_helo.setText("test.local")
+        self.smtp_helo.setPlaceholderText("HELO/EHLO identifier")
+        helo_row.addWidget(self.smtp_helo)
+        layout.addLayout(helo_row)
+        
+        # Wordlist
+        wordlist_row = QHBoxLayout()
+        wordlist_label = QLabel("Wordlist:")
+        wordlist_label.setFixedWidth(110)
+        wordlist_row.addWidget(wordlist_label)
+        self.smtp_wordlist = QComboBox()
+        self.populate_smtp_wordlists()
+        wordlist_row.addWidget(self.smtp_wordlist)
+        layout.addLayout(wordlist_row)
+        
+        return smtp_widget
+    
+    def populate_smtp_wordlists(self):
+        """Populate SMTP wordlist dropdown"""
+        self.smtp_wordlist.addItem("Default usernames", None)
+        wordlist_dir = os.path.join(self.main_window.project_root, "resources", "wordlists")
+        if os.path.exists(wordlist_dir):
+            for filename in os.listdir(wordlist_dir):
+                if filename.endswith(".txt"):
+                    self.smtp_wordlist.addItem(filename, os.path.join(wordlist_dir, filename))
+    
+    def create_snmp_controls(self):
+        """Create SNMP enumeration specific controls"""
+        snmp_widget = QWidget()
+        layout = QVBoxLayout(snmp_widget)
+        
+        # SNMP Version
+        version_row = QHBoxLayout()
+        version_label = QLabel("Version:")
+        version_label.setFixedWidth(110)
+        version_row.addWidget(version_label)
+        self.snmp_version = QComboBox()
+        self.snmp_version.addItems(["2c", "1", "3"])
+        self.snmp_version.setFixedWidth(100)
+        version_row.addWidget(self.snmp_version)
+        version_row.addStretch()
+        layout.addLayout(version_row)
+        
+        # Scan Type
+        scan_type_row = QHBoxLayout()
+        scan_type_label = QLabel("Scan Type:")
+        scan_type_label.setFixedWidth(110)
+        scan_type_row.addWidget(scan_type_label)
+        self.snmp_scan_type = QComboBox()
+        self.snmp_scan_type.addItems(["Basic Info", "Users", "Processes", "Software", "Network", "Full Enumeration"])
+        self.snmp_scan_type.setFixedWidth(150)
+        scan_type_row.addWidget(self.snmp_scan_type)
+        scan_type_row.addStretch()
+        layout.addLayout(scan_type_row)
+        
+        # Community Strings
+        community_row = QHBoxLayout()
+        community_label = QLabel("Communities:")
+        community_label.setFixedWidth(110)
+        community_row.addWidget(community_label)
+        self.snmp_communities = QLineEdit()
+        self.snmp_communities.setText("public,private,community")
+        self.snmp_communities.setPlaceholderText("Comma-separated community strings")
+        community_row.addWidget(self.snmp_communities)
+        layout.addLayout(community_row)
+        
+        # Quick community buttons
+        quick_comm_row = QHBoxLayout()
+        quick_comm_label = QLabel("Quick:")
+        quick_comm_label.setFixedWidth(110)
+        quick_comm_row.addWidget(quick_comm_label)
+        
+        self.default_comm_btn = QPushButton("Default")
+        self.default_comm_btn.clicked.connect(lambda: self.snmp_communities.setText("public,private,community"))
+        quick_comm_row.addWidget(self.default_comm_btn)
+        
+        self.extended_comm_btn = QPushButton("Extended")
+        self.extended_comm_btn.clicked.connect(lambda: self.snmp_communities.setText("public,private,community,manager,admin,administrator,root,guest,read,write,test,cisco,default,snmp"))
+        quick_comm_row.addWidget(self.extended_comm_btn)
+        
+        quick_comm_row.addStretch()
+        layout.addLayout(quick_comm_row)
+        
+        return snmp_widget
+    
+    def create_http_controls(self):
+        """Create HTTP enumeration specific controls"""
+        http_widget = QWidget()
+        layout = QVBoxLayout(http_widget)
+        
+        # Scan Type
+        scan_type_row = QHBoxLayout()
+        scan_type_label = QLabel("Scan Type:")
+        scan_type_label.setFixedWidth(110)
+        scan_type_row.addWidget(scan_type_label)
+        self.http_scan_type = QComboBox()
+        self.http_scan_type.addItems(["Basic Fingerprint", "Directory Enum", "Nmap Scripts", "Nikto Scan", "Full Scan"])
+        self.http_scan_type.setFixedWidth(150)
+        scan_type_row.addWidget(self.http_scan_type)
+        scan_type_row.addStretch()
+        layout.addLayout(scan_type_row)
+        
+        # Extensions
+        ext_row = QHBoxLayout()
+        ext_label = QLabel("Extensions:")
+        ext_label.setFixedWidth(110)
+        ext_row.addWidget(ext_label)
+        self.http_extensions = QLineEdit()
+        self.http_extensions.setText(".php,.html,.asp,.aspx,.jsp")
+        self.http_extensions.setPlaceholderText("Comma-separated file extensions")
+        ext_row.addWidget(self.http_extensions)
+        layout.addLayout(ext_row)
+        
+        # Wordlist
+        wordlist_row = QHBoxLayout()
+        wordlist_label = QLabel("Wordlist:")
+        wordlist_label.setFixedWidth(110)
+        wordlist_row.addWidget(wordlist_label)
+        self.http_wordlist = QComboBox()
+        self.populate_http_wordlists()
+        wordlist_row.addWidget(self.http_wordlist)
+        layout.addLayout(wordlist_row)
+        
+        # Quick extension buttons
+        quick_ext_row = QHBoxLayout()
+        quick_ext_label = QLabel("Quick:")
+        quick_ext_label.setFixedWidth(110)
+        quick_ext_row.addWidget(quick_ext_label)
+        
+        self.php_ext_btn = QPushButton("PHP")
+        self.php_ext_btn.clicked.connect(lambda: self.http_extensions.setText(".php,.phtml,.php3,.php4,.php5"))
+        quick_ext_row.addWidget(self.php_ext_btn)
+        
+        self.asp_ext_btn = QPushButton("ASP")
+        self.asp_ext_btn.clicked.connect(lambda: self.http_extensions.setText(".asp,.aspx,.asmx,.ashx"))
+        quick_ext_row.addWidget(self.asp_ext_btn)
+        
+        self.jsp_ext_btn = QPushButton("JSP")
+        self.jsp_ext_btn.clicked.connect(lambda: self.http_extensions.setText(".jsp,.jsf,.jspx,.do"))
+        quick_ext_row.addWidget(self.jsp_ext_btn)
+        
+        quick_ext_row.addStretch()
+        layout.addLayout(quick_ext_row)
+        
+        return http_widget
+    
+    def populate_http_wordlists(self):
+        """Populate HTTP wordlist dropdown"""
+        self.http_wordlist.addItem("Default directories", None)
+        wordlist_dir = os.path.join(self.main_window.project_root, "resources", "wordlists")
+        if os.path.exists(wordlist_dir):
+            for filename in os.listdir(wordlist_dir):
+                if filename.endswith(".txt"):
+                    self.http_wordlist.addItem(filename, os.path.join(wordlist_dir, filename))
+    
+    def create_api_controls(self):
+        """Create API enumeration specific controls"""
+        api_widget = QWidget()
+        layout = QVBoxLayout(api_widget)
+        
+        # Scan Type
+        scan_type_row = QHBoxLayout()
+        scan_type_label = QLabel("Scan Type:")
+        scan_type_label.setFixedWidth(110)
+        scan_type_row.addWidget(scan_type_label)
+        self.api_scan_type = QComboBox()
+        self.api_scan_type.addItems(["Basic Discovery", "Gobuster Enum", "HTTP Methods", "Auth Bypass", "Vulnerability Test", "Full Scan"])
+        self.api_scan_type.setFixedWidth(150)
+        scan_type_row.addWidget(self.api_scan_type)
+        scan_type_row.addStretch()
+        layout.addLayout(scan_type_row)
+        
+        # Wordlist
+        wordlist_row = QHBoxLayout()
+        wordlist_label = QLabel("Wordlist:")
+        wordlist_label.setFixedWidth(110)
+        wordlist_row.addWidget(wordlist_label)
+        self.api_wordlist = QComboBox()
+        self.populate_api_wordlists()
+        wordlist_row.addWidget(self.api_wordlist)
+        layout.addLayout(wordlist_row)
+        
+        # Common API patterns info
+        info_row = QHBoxLayout()
+        info_label = QLabel("Patterns:")
+        info_label.setFixedWidth(110)
+        info_row.addWidget(info_label)
+        patterns_text = QLabel("/api, /api/v1, /rest, /graphql, /swagger")
+        patterns_text.setStyleSheet("color: #888; font-size: 10pt;")
+        info_row.addWidget(patterns_text)
+        layout.addLayout(info_row)
+        
+        return api_widget
+    
+    def populate_api_wordlists(self):
+        """Populate API wordlist dropdown"""
+        self.api_wordlist.addItem("Default API endpoints", None)
+        wordlist_dir = os.path.join(self.main_window.project_root, "resources", "wordlists")
+        if os.path.exists(wordlist_dir):
+            for filename in os.listdir(wordlist_dir):
+                if filename.endswith(".txt"):
+                    self.api_wordlist.addItem(filename, os.path.join(wordlist_dir, filename))
+    
+    def create_ldap_controls(self):
+        """Create LDAP enumeration specific controls"""
+        ldap_widget = QWidget()
+        layout = QVBoxLayout(ldap_widget)
+        
+        # Port and SSL
+        port_row = QHBoxLayout()
+        port_label = QLabel("Port:")
+        port_label.setFixedWidth(110)
+        port_row.addWidget(port_label)
+        self.ldap_port = QLineEdit()
+        self.ldap_port.setText("389")
+        self.ldap_port.setFixedWidth(100)
+        port_row.addWidget(self.ldap_port)
+        
+        self.ldap_ssl_checkbox = QCheckBox("Use SSL/TLS (636)")
+        self.ldap_ssl_checkbox.stateChanged.connect(self.toggle_ldap_ssl)
+        port_row.addWidget(self.ldap_ssl_checkbox)
+        port_row.addStretch()
+        layout.addLayout(port_row)
+        
+        # Scan Type
+        scan_type_row = QHBoxLayout()
+        scan_type_label = QLabel("Scan Type:")
+        scan_type_label.setFixedWidth(110)
+        scan_type_row.addWidget(scan_type_label)
+        self.ldap_scan_type = QComboBox()
+        self.ldap_scan_type.addItems(["Basic Info", "Anonymous Enum", "Authenticated Enum", "Full Scan"])
+        self.ldap_scan_type.setFixedWidth(150)
+        self.ldap_scan_type.currentTextChanged.connect(self.toggle_ldap_auth)
+        scan_type_row.addWidget(self.ldap_scan_type)
+        scan_type_row.addStretch()
+        layout.addLayout(scan_type_row)
+        
+        # Base DN
+        base_dn_row = QHBoxLayout()
+        base_dn_label = QLabel("Base DN:")
+        base_dn_label.setFixedWidth(110)
+        base_dn_row.addWidget(base_dn_label)
+        self.ldap_base_dn = QLineEdit()
+        self.ldap_base_dn.setPlaceholderText("DC=domain,DC=com (auto-detected if empty)")
+        base_dn_row.addWidget(self.ldap_base_dn)
+        layout.addLayout(base_dn_row)
+        
+        # Authentication section
+        auth_label = QLabel("Authentication (for Authenticated Enum):")
+        auth_label.setStyleSheet("color: #87CEEB; font-weight: bold;")
+        layout.addWidget(auth_label)
+        
+        # Username
+        user_row = QHBoxLayout()
+        user_label = QLabel("Username:")
+        user_label.setFixedWidth(110)
+        user_row.addWidget(user_label)
+        self.ldap_username = QLineEdit()
+        self.ldap_username.setPlaceholderText("Domain\\username or username@domain.com")
+        self.ldap_username.setVisible(False)
+        user_row.addWidget(self.ldap_username)
+        layout.addLayout(user_row)
+        
+        # Password
+        pass_row = QHBoxLayout()
+        pass_label = QLabel("Password:")
+        pass_label.setFixedWidth(110)
+        pass_row.addWidget(pass_label)
+        self.ldap_password = QLineEdit()
+        self.ldap_password.setPlaceholderText("Password")
+        self.ldap_password.setEchoMode(QLineEdit.EchoMode.Password)
+        self.ldap_password.setVisible(False)
+        pass_row.addWidget(self.ldap_password)
+        layout.addLayout(pass_row)
+        
+        return ldap_widget
+    
+    def toggle_ldap_ssl(self, state):
+        """Toggle LDAP SSL port"""
+        if state == 2:  # Checked
+            self.ldap_port.setText("636")
+        else:
+            self.ldap_port.setText("389")
+    
+    def toggle_ldap_auth(self, scan_type):
+        """Toggle LDAP authentication fields"""
+        show_auth = scan_type in ["Authenticated Enum", "Full Scan"]
+        self.ldap_username.setVisible(show_auth)
+        self.ldap_password.setVisible(show_auth)
+    
+    def create_db_controls(self):
+        """Create database enumeration specific controls"""
+        db_widget = QWidget()
+        layout = QVBoxLayout(db_widget)
+        
+        # Database Type
+        db_type_row = QHBoxLayout()
+        db_type_label = QLabel("DB Type:")
+        db_type_label.setFixedWidth(110)
+        db_type_row.addWidget(db_type_label)
+        self.db_type_combo = QComboBox()
+        self.db_type_combo.addItems(["MSSQL", "Oracle"])
+        self.db_type_combo.setFixedWidth(150)
+        self.db_type_combo.currentTextChanged.connect(self.toggle_db_type)
+        db_type_row.addWidget(self.db_type_combo)
+        db_type_row.addStretch()
+        layout.addLayout(db_type_row)
+        
+        # Port
+        port_row = QHBoxLayout()
+        port_label = QLabel("Port:")
+        port_label.setFixedWidth(110)
+        port_row.addWidget(port_label)
+        self.db_port = QLineEdit()
+        self.db_port.setText("1433")
+        self.db_port.setFixedWidth(100)
+        port_row.addWidget(self.db_port)
+        port_row.addStretch()
+        layout.addLayout(port_row)
+        
+        # Scan Type
+        scan_type_row = QHBoxLayout()
+        scan_type_label = QLabel("Scan Type:")
+        scan_type_label.setFixedWidth(110)
+        scan_type_row.addWidget(scan_type_label)
+        self.db_scan_type = QComboBox()
+        self.db_scan_type.addItems(["Basic Info", "Scripts", "Custom Query", "Full Scan"])
+        self.db_scan_type.setFixedWidth(150)
+        self.db_scan_type.currentTextChanged.connect(self.toggle_db_options)
+        scan_type_row.addWidget(self.db_scan_type)
+        scan_type_row.addStretch()
+        layout.addLayout(scan_type_row)
+        
+        # Oracle SID (for Oracle only)
+        sid_row = QHBoxLayout()
+        sid_label = QLabel("Oracle SID:")
+        sid_label.setFixedWidth(110)
+        sid_row.addWidget(sid_label)
+        self.oracle_sid = QLineEdit()
+        self.oracle_sid.setText("DB11g")
+        self.oracle_sid.setPlaceholderText("Oracle SID for brute force")
+        self.oracle_sid.setVisible(False)
+        sid_row.addWidget(self.oracle_sid)
+        layout.addLayout(sid_row)
+        
+        # Custom Query
+        query_row = QHBoxLayout()
+        query_label = QLabel("Query:")
+        query_label.setFixedWidth(110)
+        query_row.addWidget(query_label)
+        self.db_query = QLineEdit()
+        self.db_query.setPlaceholderText("SELECT name FROM sys.databases")
+        self.db_query.setVisible(False)
+        query_row.addWidget(self.db_query)
+        layout.addLayout(query_row)
+        
+        # Quick query buttons
+        quick_query_row = QHBoxLayout()
+        quick_query_label = QLabel("Quick:")
+        quick_query_label.setFixedWidth(110)
+        quick_query_row.addWidget(quick_query_label)
+        
+        self.list_dbs_btn = QPushButton("List DBs")
+        self.list_dbs_btn.clicked.connect(lambda: self.db_query.setText("SELECT name FROM sys.databases"))
+        self.list_dbs_btn.setVisible(False)
+        quick_query_row.addWidget(self.list_dbs_btn)
+        
+        self.list_users_btn = QPushButton("List Users")
+        self.list_users_btn.clicked.connect(lambda: self.db_query.setText("SELECT name FROM sys.server_principals WHERE type = 'S'"))
+        self.list_users_btn.setVisible(False)
+        quick_query_row.addWidget(self.list_users_btn)
+        
+        self.version_btn = QPushButton("Version")
+        self.version_btn.clicked.connect(lambda: self.db_query.setText("SELECT @@VERSION"))
+        self.version_btn.setVisible(False)
+        quick_query_row.addWidget(self.version_btn)
+        
+        quick_query_row.addStretch()
+        layout.addLayout(quick_query_row)
+        
+        # Authentication section
+        auth_label = QLabel("Authentication (for Scripts/Query):")
+        auth_label.setStyleSheet("color: #87CEEB; font-weight: bold;")
+        layout.addWidget(auth_label)
+        
+        # Username
+        user_row = QHBoxLayout()
+        user_label = QLabel("Username:")
+        user_label.setFixedWidth(110)
+        user_row.addWidget(user_label)
+        self.db_username = QLineEdit()
+        self.db_username.setPlaceholderText("sa")
+        user_row.addWidget(self.db_username)
+        layout.addLayout(user_row)
+        
+        # Password
+        pass_row = QHBoxLayout()
+        pass_label = QLabel("Password:")
+        pass_label.setFixedWidth(110)
+        pass_row.addWidget(pass_label)
+        self.db_password = QLineEdit()
+        self.db_password.setPlaceholderText("Password")
+        self.db_password.setEchoMode(QLineEdit.EchoMode.Password)
+        pass_row.addWidget(self.db_password)
+        layout.addLayout(pass_row)
+        
+        return db_widget
+    
+    def toggle_db_type(self, db_type):
+        """Toggle database type specific options"""
+        is_oracle = (db_type == "Oracle")
+        self.oracle_sid.setVisible(is_oracle)
+        
+        # Update default port
+        if is_oracle:
+            self.db_port.setText("1521")
+        else:
+            self.db_port.setText("1433")
+    
+    def toggle_db_options(self, scan_type):
+        """Toggle database scan options"""
+        show_query = (scan_type == "Custom Query")
+        self.db_query.setVisible(show_query)
+        self.list_dbs_btn.setVisible(show_query)
+        self.list_users_btn.setVisible(show_query)
+        self.version_btn.setVisible(show_query)
+    
+    def create_ike_controls(self):
+        """Create IKE enumeration specific controls"""
+        ike_widget = QWidget()
+        layout = QVBoxLayout(ike_widget)
+        
+        # Port
+        port_row = QHBoxLayout()
+        port_label = QLabel("Port:")
+        port_label.setFixedWidth(110)
+        port_row.addWidget(port_label)
+        self.ike_port = QLineEdit()
+        self.ike_port.setText("500")
+        self.ike_port.setFixedWidth(100)
+        port_row.addWidget(self.ike_port)
+        port_row.addStretch()
+        layout.addLayout(port_row)
+        
+        # Scan Type
+        scan_type_row = QHBoxLayout()
+        scan_type_label = QLabel("Scan Type:")
+        scan_type_label.setFixedWidth(110)
+        scan_type_row.addWidget(scan_type_label)
+        self.ike_scan_type = QComboBox()
+        self.ike_scan_type.addItems(["Basic Info", "Detailed Scan", "Transform Enum", "Full Scan"])
+        self.ike_scan_type.setFixedWidth(150)
+        scan_type_row.addWidget(self.ike_scan_type)
+        scan_type_row.addStretch()
+        layout.addLayout(scan_type_row)
+        
+        # Aggressive Mode
+        mode_row = QHBoxLayout()
+        mode_label = QLabel("Mode:")
+        mode_label.setFixedWidth(110)
+        mode_row.addWidget(mode_label)
+        self.ike_aggressive_mode = QCheckBox("Aggressive Mode (-M)")
+        self.ike_aggressive_mode.setChecked(True)
+        mode_row.addWidget(self.ike_aggressive_mode)
+        mode_row.addStretch()
+        layout.addLayout(mode_row)
+        
+        # Tool info
+        info_row = QHBoxLayout()
+        info_label = QLabel("Tool:")
+        info_label.setFixedWidth(110)
+        info_row.addWidget(info_label)
+        tool_info = QLabel("Requires ike-scan tool")
+        tool_info.setStyleSheet("color: #888; font-size: 10pt;")
+        info_row.addWidget(tool_info)
+        layout.addLayout(info_row)
+        
+        # IPSec config info
+        config_label = QLabel("IPSec Configuration Files:")
+        config_label.setStyleSheet("color: #87CEEB; font-weight: bold;")
+        layout.addWidget(config_label)
+        
+        config_info = QLabel("/etc/ipsec.conf, /etc/ipsec.secrets")
+        config_info.setStyleSheet("color: #888; font-size: 9pt; margin-left: 20px;")
+        layout.addWidget(config_info)
+        
+        return ike_widget
+    
+    def create_av_firewall_controls(self):
+        """Create AV/Firewall detection specific controls"""
+        av_widget = QWidget()
+        layout = QVBoxLayout(av_widget)
+        
+        # Detection Type
+        detection_type_row = QHBoxLayout()
+        detection_type_label = QLabel("Detection:")
+        detection_type_label.setFixedWidth(110)
+        detection_type_row.addWidget(detection_type_label)
+        self.av_detection_type = QComboBox()
+        self.av_detection_type.addItems(["WAF Detection", "Firewall Detection", "Evasion Test", "AV Payload Gen", "Full Detection"])
+        self.av_detection_type.setFixedWidth(150)
+        self.av_detection_type.currentTextChanged.connect(self.toggle_av_options)
+        detection_type_row.addWidget(self.av_detection_type)
+        detection_type_row.addStretch()
+        layout.addLayout(detection_type_row)
+        
+        # Port (for WAF detection)
+        port_row = QHBoxLayout()
+        port_label = QLabel("Port:")
+        port_label.setFixedWidth(110)
+        port_row.addWidget(port_label)
+        self.av_port = QLineEdit()
+        self.av_port.setText("80")
+        self.av_port.setFixedWidth(100)
+        port_row.addWidget(self.av_port)
+        port_row.addStretch()
+        layout.addLayout(port_row)
+        
+        # Payload Type (for AV testing)
+        payload_row = QHBoxLayout()
+        payload_label = QLabel("Payload:")
+        payload_label.setFixedWidth(110)
+        payload_row.addWidget(payload_label)
+        self.av_payload_type = QComboBox()
+        self.av_payload_type.addItems(["msfvenom", "shellter"])
+        self.av_payload_type.setFixedWidth(150)
+        self.av_payload_type.setVisible(False)
+        payload_row.addWidget(self.av_payload_type)
+        payload_row.addStretch()
+        layout.addLayout(payload_row)
+        
+        # Tool requirements info
+        tools_label = QLabel("Tool Requirements:")
+        tools_label.setStyleSheet("color: #87CEEB; font-weight: bold;")
+        layout.addWidget(tools_label)
+        
+        tools_info = QLabel("nmap (firewall detection), msfvenom (payload generation)")
+        tools_info.setStyleSheet("color: #888; font-size: 9pt; margin-left: 20px;")
+        layout.addWidget(tools_info)
+        
+        # Detection methods info
+        methods_label = QLabel("Detection Methods:")
+        methods_label.setStyleSheet("color: #87CEEB; font-weight: bold;")
+        layout.addWidget(methods_label)
+        
+        methods_info = QLabel("WAF: HTTP headers/responses, Firewall: nmap ACK/SYN scans")
+        methods_info.setStyleSheet("color: #888; font-size: 9pt; margin-left: 20px;")
+        layout.addWidget(methods_info)
+        
+        return av_widget
+    
+    def toggle_av_options(self, detection_type):
+        """Toggle AV/Firewall detection options"""
+        show_payload = (detection_type == "AV Payload Gen")
+        self.av_payload_type.setVisible(show_payload)
+    
+    def run_ike_scan(self):
+        """Execute IKE enumeration scan"""
+        target = self.target_input.text().strip()
+        if not target:
+            self.show_error("Please enter a target IP or domain")
+            return
+        
+        from app.tools.ike_utils import run_ike_enumeration
+        from PyQt6.QtCore import QThreadPool
+        
+        # Get scan parameters
+        port = int(self.ike_port.text() or "500")
+        scan_type_map = {
+            "Basic Info": "basic",
+            "Detailed Scan": "detailed",
+            "Transform Enum": "transforms",
+            "Full Scan": "full"
+        }
+        scan_type = scan_type_map.get(self.ike_scan_type.currentText(), "basic")
+        aggressive_mode = self.ike_aggressive_mode.isChecked()
+        
+        self.is_scanning = True
+        self.run_button.setText("Cancel")
+        self.run_button.setStyleSheet("background-color: red; color: white;")
+        
+        self.terminal_output.clear()
+        self.progress_widget.setVisible(True)
+        self.status_updated.emit(f"Starting IKE enumeration on {target}:{port}...")
+        
+        # Clear previous results
+        self.last_scan_results = {}
+        self.export_button.setEnabled(False)
+        
+        # Create and start worker
+        self.current_worker = run_ike_enumeration(
+            target=target,
+            scan_type=scan_type,
+            port=port,
+            aggressive_mode=aggressive_mode,
+            output_callback=self.append_terminal_output,
+            results_callback=self.store_scan_results
+        )
+        
+        # Connect signals
+        self.current_worker.signals.finished.connect(self.on_scan_finished)
+        self.current_worker.signals.progress_start.connect(self.start_progress)
+        self.current_worker.signals.error.connect(self.on_scan_error)
+        
+        # Start worker
+        QThreadPool.globalInstance().start(self.current_worker)
 
     def create_output_section(self):
         output_frame = QFrame()
@@ -328,7 +1184,7 @@ class EnumerationPage(QWidget):
             {"id": "ldap_enum", "title": "LDAP/S Enumeration", "desc": "Query LDAP directory services.", "icon": "resources/icons/1I.png"},
             {"id": "db_enum", "title": "Database Enumeration", "desc": "Scan for database services and info.", "icon": "resources/icons/1J.png"},
             {"id": "ike_enum", "title": "IKE Enumeration", "desc": "Scan IKE/IPSec configurations.", "icon": "resources/icons/1K.png"},
-            {"id": "osint_enum", "title": "OSINT Gathering", "desc": "Contactless information gathering.", "icon": "resources/icons/1L.png"},
+
             {"id": "av_detect", "title": "AV/Firewall Detection", "desc": "Detect security controls and evasion.", "icon": "resources/icons/1M.png"},
         ]
 
@@ -371,6 +1227,34 @@ class EnumerationPage(QWidget):
         self.update_tool_buttons()
         self.highlight_selected_tool(tool_id)
         self.status_updated.emit(f"Selected: {tool_id.replace('_', ' ').title()}")
+        
+        # Switch controls based on tool
+        if tool_id == "dns_enum":
+            self.controls_stack.setCurrentIndex(0)  # DNS controls
+        elif tool_id == "port_scan":
+            self.controls_stack.setCurrentIndex(1)  # Port controls
+        elif tool_id == "rpc_enum":
+            self.controls_stack.setCurrentIndex(2)  # RPC controls
+        elif tool_id == "smb_enum":
+            self.controls_stack.setCurrentIndex(3)  # SMB controls
+        elif tool_id == "smtp_enum":
+            self.controls_stack.setCurrentIndex(4)  # SMTP controls
+        elif tool_id == "snmp_enum":
+            self.controls_stack.setCurrentIndex(5)  # SNMP controls
+        elif tool_id == "http_enum":
+            self.controls_stack.setCurrentIndex(6)  # HTTP controls
+        elif tool_id == "api_enum":
+            self.controls_stack.setCurrentIndex(7)  # API controls
+        elif tool_id == "ldap_enum":
+            self.controls_stack.setCurrentIndex(8)  # LDAP controls
+        elif tool_id == "db_enum":
+            self.controls_stack.setCurrentIndex(9)  # Database controls
+        elif tool_id == "ike_enum":
+            self.controls_stack.setCurrentIndex(10)  # IKE controls
+        elif tool_id == "av_detect":
+            self.controls_stack.setCurrentIndex(11)  # AV/Firewall controls
+        else:
+            self.controls_stack.setCurrentIndex(0)  # Default to DNS
     
     def highlight_selected_tool(self, selected_id):
         for i, button in enumerate(self.main_tool_buttons):
@@ -443,7 +1327,30 @@ class EnumerationPage(QWidget):
         if self.is_scanning:
             self.cancel_scan()
         else:
-            self.run_host_wordlist_scan()
+            if self.current_submenu == "port_scan":
+                self.run_port_scan()
+            elif self.current_submenu == "rpc_enum":
+                self.run_rpc_scan()
+            elif self.current_submenu == "smb_enum":
+                self.run_smb_scan()
+            elif self.current_submenu == "smtp_enum":
+                self.run_smtp_scan()
+            elif self.current_submenu == "snmp_enum":
+                self.run_snmp_scan()
+            elif self.current_submenu == "http_enum":
+                self.run_http_scan()
+            elif self.current_submenu == "api_enum":
+                self.run_api_scan()
+            elif self.current_submenu == "ldap_enum":
+                self.run_ldap_scan()
+            elif self.current_submenu == "db_enum":
+                self.run_db_scan()
+            elif self.current_submenu == "ike_enum":
+                self.run_ike_scan()
+            elif self.current_submenu == "av_detect":
+                self.run_av_firewall_scan()
+            else:
+                self.run_host_wordlist_scan()
     
     def cancel_scan(self):
         if self.current_worker:
@@ -474,7 +1381,7 @@ class EnumerationPage(QWidget):
             self.last_scan_results = {}
             self.export_button.setEnabled(False)
             
-            self.current_worker = custom_scripts.query_ptr_records(
+            self.current_worker = dns_utils.query_ptr_records(
                 ip_range=target,
                 dns_server=dns_server,
                 output_callback=self.append_terminal_output,
@@ -523,10 +1430,291 @@ class EnumerationPage(QWidget):
         # Show enumeration message at the beginning
         if selected_types or direct_query_types:
             self.append_terminal_output(f"<p style='color: #00BFFF;'>Enumerating.... Please wait....</p><br>")
+    
+    def run_ldap_scan(self):
+        """Execute LDAP enumeration scan"""
+        target = self.target_input.text().strip()
+        if not target:
+            self.show_error("Please enter a target IP or domain")
+            return
+        
+        from app.tools.ldap_utils import run_ldap_enumeration
+        from PyQt6.QtCore import QThreadPool
+        
+        # Get scan parameters
+        port = int(self.ldap_port.text() or "389")
+        use_ssl = self.ldap_ssl_checkbox.isChecked()
+        scan_type_map = {
+            "Basic Info": "basic",
+            "Anonymous Enum": "anonymous", 
+            "Authenticated Enum": "authenticated",
+            "Full Scan": "full"
+        }
+        scan_type = scan_type_map.get(self.ldap_scan_type.currentText(), "basic")
+        base_dn = self.ldap_base_dn.text().strip() or None
+        username = self.ldap_username.text().strip() or None
+        password = self.ldap_password.text().strip() or None
+        
+        self.is_scanning = True
+        self.run_button.setText("Cancel")
+        self.run_button.setStyleSheet("background-color: red; color: white;")
+        
+        self.terminal_output.clear()
+        self.progress_widget.setVisible(True)
+        self.status_updated.emit(f"Starting LDAP enumeration on {target}:{port}...")
+        
+        # Clear previous results
+        self.last_scan_results = {}
+        self.export_button.setEnabled(False)
+        
+        # Create and start worker
+        self.current_worker = run_ldap_enumeration(
+            target=target,
+            scan_type=scan_type,
+            port=port,
+            use_ssl=use_ssl,
+            username=username,
+            password=password,
+            base_dn=base_dn,
+            output_callback=self.append_terminal_output,
+            results_callback=self.store_scan_results
+        )
+        
+        # Connect signals
+        self.current_worker.signals.finished.connect(self.on_scan_finished)
+        self.current_worker.signals.progress_start.connect(self.start_progress)
+        self.current_worker.signals.error.connect(self.on_scan_error)
+        
+        # Start worker
+        QThreadPool.globalInstance().start(self.current_worker)
+    
+    def on_scan_error(self, error_msg):
+        """Handle scan errors"""
+        self.append_terminal_output(f"<p style='color: #FF6B6B;'>Error: {error_msg}</p>")
+        self.on_scan_finished()
+    
+    def start_progress(self, message):
+        """Start progress indication"""
+        self.progress_widget.start_progress(message)
+    
+    def on_scan_finished(self):
+        """Handle scan completion"""
+        self.is_scanning = False
+        self.run_button.setText("Run")
+        self.run_button.setStyleSheet("")
+        self.progress_widget.setVisible(False)
+        self.status_updated.emit("Scan completed")
+        
+        if self.last_scan_results:
+            self.export_button.setEnabled(True)
+    
+    def store_scan_results(self, results):
+        """Store scan results for export"""
+        self.last_scan_results = results
+        self.last_scan_target = self.target_input.text().strip()
+    
+    def show_error(self, message):
+        """Show error message"""
+        self.append_terminal_output(f"<p style='color: #FF6B6B;'>Error: {message}</p>")
+    
+    def append_terminal_output(self, text):
+        """Append text to terminal output"""
+        if hasattr(self, 'terminal_output'):
+            self.terminal_output.append(text)
+    
+    def populate_wordlists(self):
+        """Populate DNS wordlist dropdown"""
+        self.wordlist_combo.addItem("Default subdomains", None)
+        wordlist_dir = os.path.join(self.main_window.project_root, "resources", "wordlists")
+        if os.path.exists(wordlist_dir):
+            for filename in os.listdir(wordlist_dir):
+                if filename.endswith(".txt"):
+                    self.wordlist_combo.addItem(filename, os.path.join(wordlist_dir, filename))
+    
+    def run_port_scan(self):
+        """Placeholder for port scan"""
+        self.show_error("Port scanning not implemented yet")
+    
+    def run_rpc_scan(self):
+        """Placeholder for RPC scan"""
+        self.show_error("RPC scanning not implemented yet")
+    
+    def run_smb_scan(self):
+        """Placeholder for SMB scan"""
+        self.show_error("SMB scanning not implemented yet")
+    
+    def run_smtp_scan(self):
+        """Placeholder for SMTP scan"""
+        self.show_error("SMTP scanning not implemented yet")
+    
+    def run_snmp_scan(self):
+        """Placeholder for SNMP scan"""
+        self.show_error("SNMP scanning not implemented yet")
+    
+    def run_http_scan(self):
+        """Placeholder for HTTP scan"""
+        self.show_error("HTTP scanning not implemented yet")
+    
+    def run_api_scan(self):
+        """Placeholder for API scan"""
+        self.show_error("API scanning not implemented yet")
+    
+    def export_results(self):
+        """Export scan results"""
+        if not self.last_scan_results:
+            self.show_error("No results to export")
+            return
+        
+        export_format = self.export_combo.currentText()
+        self.status_updated.emit(f"Exporting results as {export_format}...")
+    
+    def setup_shortcuts(self):
+        """Setup keyboard shortcuts"""
+        pass
+    
+    def apply_theme(self):
+        """Apply current theme"""
+        pass
+    
+    def update_status_bar(self, title, description):
+        """Update status bar with tool info"""
+        self.status_updated.emit(f"{title}: {description}")
+    
+    def clear_status_bar(self):
+        """Clear status bar"""
+        self.status_updated.emit("")
+    
+    def run_ptr_scan(self):
+        """Placeholder for PTR scan"""
+        self.show_error("PTR scanning not fully implemented")
+    
+    def run_zone_transfer(self):
+        """Placeholder for zone transfer"""
+        self.show_error("Zone transfer not implemented yet")
+    
+    def run_basic_records(self):
+        """Placeholder for basic records"""
+        self.show_error("Basic records scan not implemented yet")
+    
+    def update_progress(self, value):
+        """Update progress bar"""
+        if hasattr(self, 'progress_widget'):
+            self.progress_widget.update_progress(value)
+    
+    def run_av_firewall_scan(self):
+        """Execute AV/Firewall detection scan"""
+        target = self.target_input.text().strip()
+        if not target:
+            self.show_error("Please enter a target IP or domain")
+            return
+        
+        from app.tools.av_firewall_utils import run_av_firewall_detection
+        from PyQt6.QtCore import QThreadPool
+        
+        # Get scan parameters
+        detection_type_map = {
+            "WAF Detection": "waf",
+            "Firewall Detection": "firewall",
+            "Evasion Test": "evasion",
+            "AV Payload Gen": "payload",
+            "Full Detection": "full"
+        }
+        scan_type = detection_type_map.get(self.av_detection_type.currentText(), "waf")
+        port = int(self.av_port.text() or "80")
+        payload_type = self.av_payload_type.currentText()
+        
+        self.is_scanning = True
+        self.run_button.setText("Cancel")
+        self.run_button.setStyleSheet("background-color: red; color: white;")
+        
+        self.terminal_output.clear()
+        self.progress_widget.setVisible(True)
+        self.status_updated.emit(f"Starting {scan_type.upper()} detection on {target}...")
+        
+        # Clear previous results
+        self.last_scan_results = {}
+        self.export_button.setEnabled(False)
+        
+        # Create and start worker
+        self.current_worker = run_av_firewall_detection(
+            target=target,
+            scan_type=scan_type,
+            port=port,
+            payload_type=payload_type,
+            output_callback=self.append_terminal_output,
+            results_callback=self.store_scan_results
+        )
+        
+        # Connect signals
+        self.current_worker.signals.finished.connect(self.on_scan_finished)
+        self.current_worker.signals.progress_start.connect(self.start_progress)
+        self.current_worker.signals.error.connect(self.on_scan_error)
+        
+        # Start worker
+        QThreadPool.globalInstance().start(self.current_worker)
+    
+    def run_db_scan(self):
+        """Execute database enumeration scan"""
+        target = self.target_input.text().strip()
+        if not target:
+            self.show_error("Please enter a target IP or domain")
+            return
+        
+        from app.tools.db_utils import run_database_enumeration
+        from PyQt6.QtCore import QThreadPool
+        
+        # Get scan parameters
+        db_type = self.db_type_combo.currentText().lower()
+        port = int(self.db_port.text() or ("1433" if db_type == "mssql" else "1521"))
+        scan_type_map = {
+            "Basic Info": "basic",
+            "Scripts": "scripts",
+            "Custom Query": "query",
+            "Full Scan": "full"
+        }
+        scan_type = scan_type_map.get(self.db_scan_type.currentText(), "basic")
+        username = self.db_username.text().strip() or None
+        password = self.db_password.text().strip() or None
+        custom_query = self.db_query.text().strip() or None
+        oracle_sid = self.oracle_sid.text().strip() or "DB11g"
+        
+        self.is_scanning = True
+        self.run_button.setText("Cancel")
+        self.run_button.setStyleSheet("background-color: red; color: white;")
+        
+        self.terminal_output.clear()
+        self.progress_widget.setVisible(True)
+        self.status_updated.emit(f"Starting {db_type.upper()} enumeration on {target}:{port}...")
+        
+        # Clear previous results
+        self.last_scan_results = {}
+        self.export_button.setEnabled(False)
+        
+        # Create and start worker
+        self.current_worker = run_database_enumeration(
+            target=target,
+            db_type=db_type,
+            scan_type=scan_type,
+            port=port,
+            username=username,
+            password=password,
+            custom_query=custom_query,
+            oracle_sid=oracle_sid,
+            output_callback=self.append_terminal_output,
+            results_callback=self.store_scan_results
+        )
+        
+        # Connect signals
+        self.current_worker.signals.finished.connect(self.on_scan_finished)
+        self.current_worker.signals.progress_start.connect(self.start_progress)
+        self.current_worker.signals.error.connect(self.on_scan_error)
+        
+        # Start worker
+        QThreadPool.globalInstance().start(self.current_worker)
         
         # Handle direct queries for MX, NS, TXT first
         if direct_query_types:
-            custom_scripts.query_direct_records(
+            dns_utils.query_direct_records(
                 target=target,
                 record_types=direct_query_types,
                 dns_server=dns_server,
@@ -536,7 +1724,7 @@ class EnumerationPage(QWidget):
         
         # Handle wordlist/bruteforce for A and CNAME
         if selected_types:
-            self.current_worker = custom_scripts.enumerate_hostnames(
+            self.current_worker = dns_utils.enumerate_hostnames(
                 target=target,
                 wordlist_path=wordlist_path,
                 record_types=selected_types,
@@ -565,7 +1753,7 @@ class EnumerationPage(QWidget):
         self.terminal_output.clear()
         self.progress_widget.setVisible(False)
         self.status_updated.emit(f"Attempting zone transfer on {target}...")
-        custom_scripts.run_zone_transfer(
+        dns_utils.run_zone_transfer(
             target=target,
             output_callback=self.append_terminal_output,
             status_callback=self.update_status_bar_text,
@@ -580,7 +1768,7 @@ class EnumerationPage(QWidget):
         self.terminal_output.clear()
         self.progress_widget.setVisible(False)
         self.status_updated.emit(f"Fetching NS/MX/TXT records for {target}...")
-        records = custom_scripts.fetch_basic_records(target)
+        records = dns_utils.fetch_basic_records(target)
         for rtype, values in records.items():
             if values:
                 self.append_terminal_output(f"<p style='color:#00FF41;'><b>{rtype} Records:</b></p>")
@@ -588,6 +1776,306 @@ class EnumerationPage(QWidget):
                     self.append_terminal_output(f"<p style='color:#DCDCDC;'>&nbsp;&nbsp;&nbsp;-&gt; {value}</p>")
         self.status_updated.emit("Basic record scan complete")
         self.on_scan_finished()
+    
+    def run_port_scan(self):
+        """Run port scanning based on selected options"""
+        from app.tools import port_utils
+        
+        target = self.target_input.text().strip()
+        if not target:
+            self.show_error("Please enter a target")
+            return
+        
+        scan_type = self.scan_type_combo.currentText()
+        
+        self.is_scanning = True
+        self.run_button.setText("Cancel")
+        self.run_button.setStyleSheet("background-color: red; color: white;")
+        self.terminal_output.clear()
+        self.progress_widget.setVisible(True)
+        
+        # Clear previous scan results
+        self.last_scan_results = {}
+        self.export_button.setEnabled(False)
+        
+        if scan_type == "Network Sweep":
+            self.current_worker = port_utils.run_network_sweep(
+                network_range=target,
+                output_callback=self.append_terminal_output,
+                status_callback=self.update_status_bar_text,
+                finished_callback=self.on_scan_finished,
+                results_callback=self.store_scan_results,
+                progress_callback=self.update_progress,
+                progress_start_callback=self.start_progress
+            )
+        else:  # TCP Connect
+            try:
+                ports = port_utils.parse_port_range(self.port_input.text().strip())
+                self.current_worker = port_utils.run_port_scan(
+                    target=target,
+                    ports=ports,
+                    output_callback=self.append_terminal_output,
+                    status_callback=self.update_status_bar_text,
+                    finished_callback=self.on_scan_finished,
+                    results_callback=self.store_scan_results,
+                    progress_callback=self.update_progress,
+                    progress_start_callback=self.start_progress
+                )
+            except ValueError as e:
+                self.show_error(f"Invalid port range: {str(e)}")
+                self.is_scanning = False
+                self.run_button.setText("Run")
+                self.run_button.setStyleSheet("")
+                return
+    
+    def run_rpc_scan(self):
+        """Run RPC enumeration"""
+        from app.tools import rpc_utils
+        
+        target = self.target_input.text().strip()
+        if not target:
+            self.show_error("Please enter a target")
+            return
+        
+        username = self.rpc_username.text().strip() if self.auth_combo.currentText() == "Credentials" else ""
+        password = self.rpc_password.text().strip() if self.auth_combo.currentText() == "Credentials" else ""
+        
+        self.is_scanning = True
+        self.run_button.setText("Cancel")
+        self.run_button.setStyleSheet("background-color: red; color: white;")
+        self.terminal_output.clear()
+        self.progress_widget.setVisible(False)
+        
+        # Clear previous scan results
+        self.last_scan_results = {}
+        self.export_button.setEnabled(False)
+        
+        self.current_worker = rpc_utils.run_rpc_enumeration(
+            target=target,
+            username=username,
+            password=password,
+            output_callback=self.append_terminal_output,
+            status_callback=self.update_status_bar_text,
+            finished_callback=self.on_scan_finished,
+            results_callback=self.store_scan_results
+        )
+    
+    def run_smb_scan(self):
+        """Run SMB enumeration"""
+        from app.tools import smb_utils
+        
+        target = self.target_input.text().strip()
+        if not target:
+            self.show_error("Please enter a target")
+            return
+        
+        scan_type_map = {
+            "Basic Info": "basic",
+            "Share Enumeration": "shares", 
+            "Vulnerability Scan": "vulns"
+        }
+        scan_type = scan_type_map[self.smb_scan_type.currentText()]
+        
+        username = self.smb_username.text().strip() if self.smb_auth_combo.currentText() == "Credentials" else ""
+        password = self.smb_password.text().strip() if self.smb_auth_combo.currentText() == "Credentials" else ""
+        
+        self.is_scanning = True
+        self.run_button.setText("Cancel")
+        self.run_button.setStyleSheet("background-color: red; color: white;")
+        self.terminal_output.clear()
+        self.progress_widget.setVisible(False)
+        
+        # Clear previous scan results
+        self.last_scan_results = {}
+        self.export_button.setEnabled(False)
+        
+        self.current_worker = smb_utils.run_smb_enumeration(
+            target=target,
+            username=username,
+            password=password,
+            scan_type=scan_type,
+            output_callback=self.append_terminal_output,
+            status_callback=self.update_status_bar_text,
+            finished_callback=self.on_scan_finished,
+            results_callback=self.store_scan_results
+        )
+    
+    def run_smtp_scan(self):
+        """Run SMTP enumeration"""
+        from app.tools import smtp_utils
+        
+        target = self.target_input.text().strip()
+        if not target:
+            self.show_error("Please enter a target")
+            return
+        
+        try:
+            port = int(self.smtp_port.text().strip() or "25")
+        except ValueError:
+            self.show_error("Invalid port number")
+            return
+        
+        domain = self.smtp_domain.text().strip() or target
+        helo_name = self.smtp_helo.text().strip() or "test.local"
+        wordlist_path = self.smtp_wordlist.currentData()
+        
+        self.is_scanning = True
+        self.run_button.setText("Cancel")
+        self.run_button.setStyleSheet("background-color: red; color: white;")
+        self.terminal_output.clear()
+        self.progress_widget.setVisible(True)
+        
+        # Clear previous scan results
+        self.last_scan_results = {}
+        self.export_button.setEnabled(False)
+        
+        self.current_worker = smtp_utils.run_smtp_enumeration(
+            target=target,
+            port=port,
+            wordlist_path=wordlist_path,
+            domain=domain,
+            helo_name=helo_name,
+            output_callback=self.append_terminal_output,
+            status_callback=self.update_status_bar_text,
+            finished_callback=self.on_scan_finished,
+            results_callback=self.store_scan_results,
+            progress_callback=self.update_progress,
+            progress_start_callback=self.start_progress
+        )
+    
+    def run_snmp_scan(self):
+        """Run SNMP enumeration"""
+        from app.tools import snmp_utils
+        
+        target = self.target_input.text().strip()
+        if not target:
+            self.show_error("Please enter a target")
+            return
+        
+        version = self.snmp_version.currentText()
+        
+        scan_type_map = {
+            "Basic Info": "basic",
+            "Users": "users",
+            "Processes": "processes",
+            "Software": "software",
+            "Network": "network",
+            "Full Enumeration": "full"
+        }
+        scan_type = scan_type_map[self.snmp_scan_type.currentText()]
+        
+        communities_text = self.snmp_communities.text().strip()
+        communities = [c.strip() for c in communities_text.split(',') if c.strip()] if communities_text else snmp_utils.get_default_communities()
+        
+        self.is_scanning = True
+        self.run_button.setText("Cancel")
+        self.run_button.setStyleSheet("background-color: red; color: white;")
+        self.terminal_output.clear()
+        self.progress_widget.setVisible(True)
+        
+        # Clear previous scan results
+        self.last_scan_results = {}
+        self.export_button.setEnabled(False)
+        
+        self.current_worker = snmp_utils.run_snmp_enumeration(
+            target=target,
+            communities=communities,
+            scan_type=scan_type,
+            version=version,
+            output_callback=self.append_terminal_output,
+            status_callback=self.update_status_bar_text,
+            finished_callback=self.on_scan_finished,
+            results_callback=self.store_scan_results,
+            progress_callback=self.update_progress,
+            progress_start_callback=self.start_progress
+        )
+    
+    def run_http_scan(self):
+        """Run HTTP enumeration"""
+        from app.tools import http_utils
+        
+        target = self.target_input.text().strip()
+        if not target:
+            self.show_error("Please enter a target")
+            return
+        
+        scan_type_map = {
+            "Basic Fingerprint": "basic",
+            "Directory Enum": "directories",
+            "Nmap Scripts": "nmap",
+            "Nikto Scan": "nikto",
+            "Full Scan": "full"
+        }
+        scan_type = scan_type_map[self.http_scan_type.currentText()]
+        
+        extensions_text = self.http_extensions.text().strip()
+        extensions = [ext.strip() for ext in extensions_text.split(',') if ext.strip()] if extensions_text else None
+        
+        wordlist_path = self.http_wordlist.currentData()
+        
+        self.is_scanning = True
+        self.run_button.setText("Cancel")
+        self.run_button.setStyleSheet("background-color: red; color: white;")
+        self.terminal_output.clear()
+        self.progress_widget.setVisible(True)
+        
+        # Clear previous scan results
+        self.last_scan_results = {}
+        self.export_button.setEnabled(False)
+        
+        self.current_worker = http_utils.run_http_enumeration(
+            target=target,
+            scan_type=scan_type,
+            wordlist_path=wordlist_path,
+            extensions=extensions,
+            output_callback=self.append_terminal_output,
+            status_callback=self.update_status_bar_text,
+            finished_callback=self.on_scan_finished,
+            results_callback=self.store_scan_results,
+            progress_callback=self.update_progress,
+            progress_start_callback=self.start_progress
+        )
+    
+    def run_api_scan(self):
+        """Run API enumeration"""
+        from app.tools import api_utils
+        
+        target = self.target_input.text().strip()
+        if not target:
+            self.show_error("Please enter a target")
+            return
+        
+        scan_type_map = {
+            "Basic Discovery": "basic",
+            "Gobuster Enum": "gobuster",
+            "HTTP Methods": "methods",
+            "Auth Bypass": "auth",
+            "Vulnerability Test": "vulns",
+            "Full Scan": "full"
+        }
+        scan_type = scan_type_map[self.api_scan_type.currentText()]
+        
+        wordlist_path = self.api_wordlist.currentData()
+        
+        self.is_scanning = True
+        self.run_button.setText("Cancel")
+        self.run_button.setStyleSheet("background-color: red; color: white;")
+        self.terminal_output.clear()
+        self.progress_widget.setVisible(False)
+        
+        # Clear previous scan results
+        self.last_scan_results = {}
+        self.export_button.setEnabled(False)
+        
+        self.current_worker = api_utils.run_api_enumeration(
+            target=target,
+            scan_type=scan_type,
+            wordlist_path=wordlist_path,
+            output_callback=self.append_terminal_output,
+            status_callback=self.update_status_bar_text,
+            finished_callback=self.on_scan_finished,
+            results_callback=self.store_scan_results
+        )
 
     def populate_wordlists(self):
         wordlist_dir = os.path.join(self.main_window.project_root, "resources", "wordlists")
@@ -662,8 +2150,8 @@ class EnumerationPage(QWidget):
     def export_results(self):
         export_format = self.export_combo.currentText()
         
-        if export_format == "Sessions":
-            self.open_session_management()
+        if export_format == "Create Session":
+            self.create_session_with_current_scan()
             return
         
         if not self.last_scan_results:
@@ -708,9 +2196,20 @@ class EnumerationPage(QWidget):
         reporting_widget = AdvancedReportingWidget(dialog)
         
         # Load current scan data
+        scan_types = {
+            'dns_enum': 'dns_enum',
+            'port_scan': 'port_scan', 
+            'rpc_enum': 'rpc_enum',
+            'smb_enum': 'smb_enum',
+            'smtp_enum': 'smtp_enum',
+            'snmp_enum': 'snmp_enum',
+            'http_enum': 'http_enum',
+            'api_enum': 'api_enum'
+        }
+        scan_type = scan_types.get(self.current_submenu, 'unknown')
         scan_data = {
             'target': self.target_input.text().strip(),
-            'scan_type': 'dns_enum',
+            'scan_type': scan_type,
             'results': self.last_scan_results,
             'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
             'duration': 'Unknown'
@@ -742,6 +2241,67 @@ class EnumerationPage(QWidget):
         layout.addWidget(session_widget)
         dialog.exec()
     
+    def create_session_with_current_scan(self):
+        """Create a new session with current scan results"""
+        from app.core.session_manager import session_manager
+        from app.core.scan_database import scan_db
+        from app.core.error_context import handle_errors
+        
+        if not self.last_scan_results:
+            self.show_error("No scan results to create session with")
+            return
+        
+        try:
+            with handle_errors("Session Creation", show_dialog=False):
+                target = self.target_input.text().strip() or "unknown"
+                
+                # Create new session
+                scan_type_names = {
+                    "dns_enum": "DNS Scan",
+                    "port_scan": "Port Scan", 
+                    "rpc_enum": "RPC Scan",
+                    "smb_enum": "SMB Scan",
+                    "smtp_enum": "SMTP Scan",
+                    "snmp_enum": "SNMP Scan",
+                    "http_enum": "HTTP Scan",
+                    "api_enum": "API Scan"
+                }
+                scan_type_name = scan_type_names.get(self.current_submenu, "Scan")
+                session = session_manager.create_session(
+                    name=f"{scan_type_name} - {target}",
+                    description=f"{scan_type_name.lower()} results for {target}",
+                    targets=[target]
+                )
+                
+                # Save scan to database
+                scan_types = {
+                    'dns_enum': 'dns_enum',
+                    'port_scan': 'port_scan',
+                    'rpc_enum': 'rpc_enum'
+                }
+                scan_type = scan_types.get(self.current_submenu, 'unknown')
+                scan_id = scan_db.save_scan(
+                    target=target,
+                    scan_type=scan_type,
+                    results=self.last_scan_results,
+                    duration=0
+                )
+                
+                if scan_id:
+                    # Associate scan with session
+                    session_manager.add_scan_to_session(session['id'], scan_id)
+                    self.append_terminal_output(
+                        f"<p style='color: #00FF41;'>[SESSION] Created new session '{session['name']}' with scan results</p><br>"
+                    )
+                else:
+                    self.append_terminal_output(
+                        f"<p style='color: #FFAA00;'>[SESSION] Created session but failed to save scan</p><br>"
+                    )
+        except Exception as e:
+            self.append_terminal_output(
+                f"<p style='color: #FF4500;'>[SESSION ERROR] Failed to create session: {str(e)}</p><br>"
+            )
+    
     def on_session_changed(self, session_id):
         """Handle session change event"""
         from app.core.session_manager import session_manager
@@ -752,9 +2312,15 @@ class EnumerationPage(QWidget):
             try:
                 # Save current scan to database
                 target = self.target_input.text().strip() or "unknown"
+                scan_types = {
+                    'dns_enum': 'dns_enum',
+                    'port_scan': 'port_scan',
+                    'rpc_enum': 'rpc_enum'
+                }
+                scan_type = scan_types.get(self.current_submenu, 'unknown')
                 scan_id = scan_db.save_scan(
                     target=target,
-                    scan_type='dns_enum',
+                    scan_type=scan_type,
                     results=self.last_scan_results,
                     duration=0  # Duration not tracked in this context
                 )

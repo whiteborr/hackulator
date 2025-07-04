@@ -5,8 +5,7 @@ from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtGui import QFontDatabase, QAction, QKeySequence
 from PyQt6.QtWidgets import QApplication
 
-from app.theme_manager import ThemeManager
-from app.core.advanced_theme_manager import AdvancedThemeManager
+from app.core.unified_theme_manager import get_theme_manager
 from app.widgets.animated_stacked_widget import AnimatedStackedWidget
 from app.pages.home_page import HomePage
 from app.pages.enumeration_page import EnumerationPage
@@ -35,9 +34,8 @@ class MainWindow(QMainWindow):
         self.setWindowFlags(Qt.WindowType.Window)
         
         self.load_custom_font()
-        self.theme_manager = ThemeManager(project_root=self.project_root)
-        self.advanced_theme_manager = AdvancedThemeManager(self.project_root)
-        self.advanced_theme_manager.theme_changed.connect(self.on_theme_changed)
+        self.theme_manager = get_theme_manager(self.project_root)
+        self.theme_manager.theme_changed.connect(self.on_theme_changed)
         
         # Create menu bar
         self.create_menu_bar()
@@ -123,8 +121,8 @@ class MainWindow(QMainWindow):
         # Initialize system tray
         self.setup_system_tray()
         
-        # Apply initial advanced theme
-        self.advanced_theme_manager.apply_theme('dark')
+        # Apply initial theme
+        self.theme_manager.apply_theme()
         
     def create_menu_bar(self):
         """Create application menu bar"""
@@ -194,17 +192,10 @@ class MainWindow(QMainWindow):
         theme_menu = view_menu.addMenu('&Themes')
         
         # Quick theme actions
-        dark_action = QAction('&Dark Theme', self)
-        dark_action.triggered.connect(lambda: self.advanced_theme_manager.apply_theme('dark'))
-        theme_menu.addAction(dark_action)
-        
-        light_action = QAction('&Light Theme', self)
-        light_action.triggered.connect(lambda: self.advanced_theme_manager.apply_theme('light'))
-        theme_menu.addAction(light_action)
-        
-        cyberpunk_action = QAction('&Cyberpunk Theme', self)
-        cyberpunk_action.triggered.connect(lambda: self.advanced_theme_manager.apply_theme('cyberpunk'))
-        theme_menu.addAction(cyberpunk_action)
+        for theme_key, theme_name in self.theme_manager.get_available_themes():
+            action = QAction(f'&{theme_name}', self)
+            action.triggered.connect(lambda checked, key=theme_key: self.theme_manager.set_theme(key))
+            theme_menu.addAction(action)
         
         view_menu.addSeparator()
         
@@ -348,7 +339,7 @@ class MainWindow(QMainWindow):
         elif page_name == "cracking":
             self.stack.animate_to_widget(self.cracking_page)
             self.status_bar.showMessage("Password Cracking Tools")
-        elif page_name == "osint":
+        elif page_name == "osint" or page_name == "osint_recon":
             self.stack.animate_to_widget(self.osint_page)
             self.status_bar.showMessage("OSINT & Reconnaissance Tools")
         elif page_name == "findings":
@@ -616,5 +607,5 @@ class MainWindow(QMainWindow):
     
     def on_theme_changed(self, theme_name):
         """Handle theme change event"""
-        theme_display_name = self.advanced_theme_manager.available_themes[theme_name]['name']
+        theme_display_name = self.theme_manager.get_theme_colors(theme_name)['name']
         self.status_bar.showMessage(f"Theme changed to: {theme_display_name}")

@@ -5,6 +5,7 @@ from PyQt6.QtGui import QFontDatabase
 from app.main_window import MainWindow
 from app.core.logger import logger
 from app.core.config import config
+from app.core.error_handler import setup_global_error_handling
 
 def main():
     """
@@ -13,6 +14,9 @@ def main():
     # --- Application Setup ---
     # This MUST be the first thing that happens.
     app = QApplication(sys.argv)
+    
+    # Setup global error handling
+    setup_global_error_handling()
 
     # --- Configuration and Logging ---
     project_root = os.path.dirname(os.path.abspath(__file__))

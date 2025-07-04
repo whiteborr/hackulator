@@ -29,5 +29,20 @@
     "status": "active",
     "tags": [],
     "notes": ""
+  },
+  "51fbd4ce": {
+    "id": "51fbd4ce",
+    "name": "DNS Scan - 192.168.1.0",
+    "description": "DNS enumeration results for 192.168.1.0",
+    "created_date": "2025-07-04T10:44:17.741719",
+    "targets": [
+      "192.168.1.0"
+    ],
+    "scan_ids": [
+      4
+    ],
+    "status": "active",
+    "tags": [],
+    "notes": ""
   }
 }

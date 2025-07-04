@@ -55,6 +55,10 @@ class OSINTPage(QWidget):
         social_tab = self.create_social_tab()
         self.tab_widget.addTab(social_tab, "Social Media")
         
+        # Metadata Analysis Tab
+        metadata_tab = self.create_metadata_tab()
+        self.tab_widget.addTab(metadata_tab, "Metadata Analysis")
+        
         self.main_layout.addWidget(self.tab_widget)
 
     def create_breach_tab(self):
@@ -193,6 +197,67 @@ class OSINTPage(QWidget):
         self.social_output.setReadOnly(True)
         self.social_output.setPlaceholderText("Social media intelligence will appear here...")
         right_layout.addWidget(self.social_output)
+        
+        layout.addWidget(left_panel)
+        layout.addWidget(right_panel)
+        
+        return tab
+    
+    def create_metadata_tab(self):
+        tab = QWidget()
+        layout = QHBoxLayout(tab)
+        
+        # Left panel - controls
+        left_panel = QFrame()
+        left_panel.setFixedWidth(250)
+        left_layout = QVBoxLayout(left_panel)
+        
+        left_layout.addWidget(QLabel("File Upload:"))
+        
+        # File selection
+        file_row = QHBoxLayout()
+        self.file_path_input = QLineEdit()
+        self.file_path_input.setPlaceholderText("Select file or drag & drop")
+        self.file_browse_btn = QPushButton("Browse")
+        self.file_browse_btn.clicked.connect(self.browse_file)
+        file_row.addWidget(self.file_path_input)
+        file_row.addWidget(self.file_browse_btn)
+        left_layout.addLayout(file_row)
+        
+        left_layout.addWidget(QLabel("Analysis Options:"))
+        
+        # Analysis buttons
+        buttons = [
+            ("Extract Metadata", self.extract_metadata),
+            ("Detailed Analysis", self.detailed_analysis),
+            ("Security Check", self.security_check),
+            ("Clear Results", self.clear_metadata_results)
+        ]
+        
+        self.metadata_buttons = []
+        for text, method in buttons:
+            btn = QPushButton(text)
+            btn.clicked.connect(method)
+            btn.setMinimumHeight(35)
+            left_layout.addWidget(btn)
+            self.metadata_buttons.append(btn)
+        
+        # Tool info
+        left_layout.addWidget(QLabel("Tool Requirements:"))
+        tool_info = QLabel("Requires exiftool")
+        tool_info.setStyleSheet("color: #888; font-size: 10pt;")
+        left_layout.addWidget(tool_info)
+        
+        left_layout.addStretch()
+        
+        # Right panel - output
+        right_panel = QFrame()
+        right_layout = QVBoxLayout(right_panel)
+        
+        self.metadata_output = QTextEdit()
+        self.metadata_output.setReadOnly(True)
+        self.metadata_output.setPlaceholderText("Metadata analysis results will appear here...")
+        right_layout.addWidget(self.metadata_output)
         
         layout.addWidget(left_panel)
         layout.addWidget(right_panel)
@@ -395,6 +460,171 @@ class OSINTPage(QWidget):
         <p style='color: #00FF41;'>[INFO] Searching Twitter, Facebook, Instagram, GitHub</p>
         <p style='color: #DCDCDC;'>Note: This would run all social media tools</p>
         """)
+    
+    def browse_file(self):
+        """Browse for file to analyze"""
+        from PyQt6.QtWidgets import QFileDialog
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select File for Metadata Analysis",
+            "",
+            "All Files (*);;PDF Files (*.pdf);;Office Files (*.doc *.docx *.xls *.xlsx *.ppt *.pptx);;Images (*.jpg *.jpeg *.png *.gif *.bmp)"
+        )
+        if file_path:
+            self.file_path_input.setText(file_path)
+    
+    def extract_metadata(self):
+        """Extract metadata using exiftool"""
+        file_path = self.file_path_input.text().strip()
+        if not file_path:
+            self.metadata_output.setHtml("<p style='color: #FF4500;'>[ERROR] Please select a file first</p>")
+            return
+        
+        import os
+        if not os.path.exists(file_path):
+            self.metadata_output.setHtml("<p style='color: #FF4500;'>[ERROR] File does not exist</p>")
+            return
+        
+        self.metadata_output.clear()
+        self.metadata_output.setHtml(f"""
+        <p style='color: #64C8FF;'>Extracting metadata from: {os.path.basename(file_path)}</p>
+        <p style='color: #FFD93D;'>Running: exiftool -a -u "{file_path}"</p>
+        """)
+        
+        # Run exiftool command
+        self.run_exiftool_command(file_path, "-a -u")
+    
+    def detailed_analysis(self):
+        """Run detailed metadata analysis"""
+        file_path = self.file_path_input.text().strip()
+        if not file_path:
+            self.metadata_output.setHtml("<p style='color: #FF4500;'>[ERROR] Please select a file first</p>")
+            return
+        
+        import os
+        if not os.path.exists(file_path):
+            self.metadata_output.setHtml("<p style='color: #FF4500;'>[ERROR] File does not exist</p>")
+            return
+        
+        self.metadata_output.clear()
+        self.metadata_output.setHtml(f"""
+        <p style='color: #64C8FF;'>Detailed analysis of: {os.path.basename(file_path)}</p>
+        <p style='color: #FFD93D;'>Running: exiftool -all -s "{file_path}"</p>
+        """)
+        
+        # Run detailed exiftool command
+        self.run_exiftool_command(file_path, "-all -s")
+    
+    def security_check(self):
+        """Check for security-relevant metadata"""
+        file_path = self.file_path_input.text().strip()
+        if not file_path:
+            self.metadata_output.setHtml("<p style='color: #FF4500;'>[ERROR] Please select a file first</p>")
+            return
+        
+        import os
+        if not os.path.exists(file_path):
+            self.metadata_output.setHtml("<p style='color: #FF4500;'>[ERROR] File does not exist</p>")
+            return
+        
+        self.metadata_output.clear()
+        self.metadata_output.setHtml(f"""
+        <p style='color: #64C8FF;'>Security metadata check for: {os.path.basename(file_path)}</p>
+        <p style='color: #FFA500;'>Looking for: Author, Creator, Software, OS, GPS, Comments</p>
+        """)
+        
+        # Run security-focused exiftool command
+        self.run_exiftool_command(file_path, "-Author -Creator -Software -Producer -GPS* -Comment -Subject -Title")
+    
+    def clear_metadata_results(self):
+        """Clear metadata analysis results"""
+        self.metadata_output.clear()
+        self.metadata_output.setPlaceholderText("Metadata analysis results will appear here...")
+    
+    def run_exiftool_command(self, file_path, options):
+        """Run exiftool command and display results"""
+        import subprocess
+        import os
+        
+        try:
+            # Check if exiftool is available
+            result = subprocess.run(['exiftool', '--help'], capture_output=True, text=True, timeout=5)
+            if result.returncode != 0:
+                raise FileNotFoundError("exiftool not found")
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            self.metadata_output.append("""
+            <p style='color: #FFA500;'>⚠ exiftool not available</p>
+            <p style='color: #87CEEB;'>Install exiftool:</p>
+            <p style='margin-left: 20px;'>Windows: Download from https://exiftool.org/</p>
+            <p style='margin-left: 20px;'>Linux: apt-get install exiftool</p>
+            <p style='margin-left: 20px;'>macOS: brew install exiftool</p>
+            """)
+            return
+        
+        try:
+            # Run exiftool command
+            cmd = f'exiftool {options} "{file_path}"'
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
+            
+            if result.returncode == 0 and result.stdout:
+                # Parse and format output
+                output_lines = result.stdout.strip().split('\n')
+                formatted_output = "<div style='font-family: monospace; background: #1a1a1a; padding: 10px; margin: 10px 0;'>"
+                
+                for line in output_lines:
+                    if ':' in line:
+                        key, value = line.split(':', 1)
+                        key = key.strip()
+                        value = value.strip()
+                        
+                        # Highlight security-relevant fields
+                        if key.lower() in ['author', 'creator', 'software', 'producer', 'application']:
+                            formatted_output += f"<span style='color: #FF6B6B;'><b>{key}:</b></span> <span style='color: #FFD93D;'>{value}</span><br>"
+                        elif 'gps' in key.lower():
+                            formatted_output += f"<span style='color: #FF4500;'><b>{key}:</b></span> <span style='color: #FFD93D;'>{value}</span><br>"
+                        else:
+                            formatted_output += f"<span style='color: #87CEEB;'>{key}:</span> <span style='color: #DCDCDC;'>{value}</span><br>"
+                    else:
+                        formatted_output += f"<span style='color: #DCDCDC;'>{line}</span><br>"
+                
+                formatted_output += "</div>"
+                self.metadata_output.append(formatted_output)
+                
+                # Add security summary
+                self.add_security_summary(result.stdout)
+                
+            else:
+                error_msg = result.stderr or "No metadata found"
+                self.metadata_output.append(f"<p style='color: #FF6B6B;'>Error: {error_msg}</p>")
+                
+        except subprocess.TimeoutExpired:
+            self.metadata_output.append("<p style='color: #FF6B6B;'>Command timeout</p>")
+        except Exception as e:
+            self.metadata_output.append(f"<p style='color: #FF6B6B;'>Error: {str(e)}</p>")
+    
+    def add_security_summary(self, output):
+        """Add security-relevant summary"""
+        security_items = []
+        
+        # Check for common security-relevant metadata
+        if 'author' in output.lower():
+            security_items.append("Author information found")
+        if 'creator' in output.lower():
+            security_items.append("Creator information found")
+        if 'software' in output.lower() or 'application' in output.lower():
+            security_items.append("Software/Application details found")
+        if 'gps' in output.lower():
+            security_items.append("GPS location data found")
+        if 'comment' in output.lower():
+            security_items.append("Comments found")
+        
+        if security_items:
+            summary = "<div style='background: #2a1a1a; border-left: 4px solid #FF6B6B; padding: 10px; margin: 10px 0;'>"
+            summary += "<p style='color: #FF6B6B;'><b>Security-Relevant Metadata Found:</b></p>"
+            for item in security_items:
+                summary += f"<p style='color: #FFD93D; margin-left: 20px;'>• {item}</p>"
+            summary += "</div>"
+            self.metadata_output.append(summary)
 
     def setup_shortcuts(self):
         self.back_shortcut = QShortcut(QKeySequence("Escape"), self)

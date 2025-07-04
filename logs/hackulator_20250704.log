@@ -1,8 +1,0 @@
-2025-07-04 02:14:42 - hackulator - INFO - Using default configuration
-2025-07-04 02:14:42 - hackulator - INFO - Application starting...
-2025-07-04 02:14:50 - hackulator - INFO - DNS scan started - Target: example.com, Wordlist: subdomains-top1000.txt, Types: ['A', 'AAAA', 'CNAME']
-2025-07-04 02:14:51 - hackulator - INFO - DNS scan completed - Target: example.com, Results: 1
-2025-07-04 02:15:18 - hackulator - INFO - DNS scan started - Target: example.com, Wordlist: subdomains-top1000.txt, Types: ['A', 'AAAA']
-2025-07-04 02:15:18 - hackulator - INFO - DNS scan completed - Target: example.com, Results: 1
-2025-07-04 02:15:25 - hackulator - INFO - Results exported to exports\scan_results_example.com_1751559325.json
-2025-07-04 02:15:50 - hackulator - INFO - Results exported to exports\scan_results_example.com_1751559350.xml

@@ -22,7 +22,7 @@ A comprehensive penetration testing toolkit built with PyQt6, featuring a comple
 - **Custom Templates**: Save and reuse scan configurations
 - **Scan Scheduling**: Automated scan execution at specified times
 - **Multi-Target Scanning**: Simultaneous scanning of multiple targets
-- **Theme Toggle**: Dark and light interface themes with persistent settings
+- **Advanced Theme System**: Multiple themes (Dark, Light, Cyberpunk, Matrix, Ocean) with persistent settings
 - **Keyboard Shortcuts**: Quick access to common functions via hotkeys
 - **Drag & Drop Support**: Direct file import via drag and drop interface
 - **Advanced Directory Enumeration**: Recursive web directory discovery with intelligent filtering
@@ -36,7 +36,7 @@ A comprehensive penetration testing toolkit built with PyQt6, featuring a comple
 - **Real-time Notifications**: Desktop notifications, system tray integration, and configurable alert system
 - **System Tray Integration**: Minimize to tray with quick access menu and notifications
 - **Context Menus**: Right-click menus for terminal output, input fields, and results areas
-- **Advanced UI Themes**: Multiple color schemes including Dark, Light, Cyberpunk, Matrix, and Ocean themes
+- **Unified Theme Management**: Consolidated theme system with comprehensive styling and resource management
 - **Unit Testing**: Automated test suite for core functionality validation
 - **Integration Testing**: End-to-end workflow testing and component interaction validation
 - **Code Documentation**: Comprehensive API documentation and development guides
@@ -52,44 +52,63 @@ A comprehensive penetration testing toolkit built with PyQt6, featuring a comple
 ## Enumeration Tools
 
 ### 1. DNS Enumeration
-- Subdomain discovery with wordlists
-- Multiple DNS record types (A, AAAA, CNAME, MX, TXT)
-- Wildcard detection and handling
+- **Subdomain discovery**: Wordlist and bruteforce enumeration
+- **DNS record types**: A, AAAA, CNAME, MX, TXT, NS, PTR
+- **Wildcard detection**: Automatic wildcard DNS detection and filtering
+- **Zone transfers**: AXFR zone transfer attempts
+- **PTR enumeration**: Reverse DNS lookups for IP ranges
 
 ### 2. Port Scanning
-- TCP connect scans with service detection
-- Network ping sweeps for host discovery
-- Top ports and custom port ranges
+- **TCP connect scans**: Service detection and banner grabbing
+- **Network sweeps**: Host discovery across network ranges
+- **Port ranges**: Custom ports, common ports, top 100/1000
+- **Service identification**: Automatic service detection on open ports
+- **Multi-threading**: Concurrent scanning for improved performance
 
-### 3. SMB Enumeration
-- SMB/NetBIOS port detection (139, 445)
-- Computer name enumeration via NetBIOS
-- OS detection through SMB negotiation
+### 3. RPC Enumeration
+- **RPC service detection**: Tests RPC port 135 accessibility
+- **Domain enumeration**: User and group enumeration via rpcclient
+- **Authentication modes**: Anonymous and credential-based access
+- **Server information**: Basic RPC server details and capabilities
 
-### 4. SMTP Enumeration
-- User enumeration via VRFY, EXPN, RCPT TO
-- Wordlist-based username testing
-- Mail server probing
+### 4. SMB Enumeration
+- **SMB/NetBIOS detection**: Ports 139 and 445 scanning
+- **Share enumeration**: SMB share discovery and permissions
+- **OS fingerprinting**: Operating system and version detection
+- **NetBIOS information**: Computer names and domain details
+- **Vulnerability scanning**: Tests for MS17-010, MS08-067, and other SMB exploits
+- **Multi-tool integration**: smbclient, nbtscan, and nmap SMB scripts
 
-### 5. SNMP Enumeration
-- SNMP port detection (UDP 161)
-- Community string testing
-- SNMP walks for device information
+### 5. SMTP Enumeration
+- **User enumeration**: VRFY, EXPN, and RCPT TO methods
+- **Wordlist testing**: Custom and default username lists
+- **Mail server probing**: Banner grabbing and server identification
+- **Multi-method fallback**: Automatic fallback between enumeration methods
+- **Custom domains**: Configurable domain for RCPT TO testing
 
-### 6. HTTP/S Fingerprinting
-- Web server identification and fingerprinting
-- SSL/TLS certificate analysis
-- Directory and file discovery
+### 6. SNMP Enumeration
+- **Community string testing**: Brute-force community strings
+- **MIB enumeration**: Specific OID queries for targeted information
+- **System information**: Device details, uptime, and configuration
+- **Security enumeration**: User accounts, processes, and installed software
+- **Network discovery**: Interface and routing table enumeration
+- **Version support**: SNMP v1, v2c, and v3 compatibility
 
-### 7. API Enumeration
-- REST API endpoint discovery
-- HTTP method testing
-- Authentication bypass attempts
+### 7. HTTP/S Fingerprinting
+- **Web server identification**: Server type, version, and technology stack
+- **SSL/TLS analysis**: Certificate details, cipher analysis, and security assessment
+- **Directory enumeration**: Hidden directory and file discovery
+- **Security headers**: Analysis of security-related HTTP headers
+- **Technology detection**: PHP, ASP.NET, WordPress, Drupal, and framework identification
+- **Vulnerability scanning**: Integration with nikto and nmap HTTP scripts
 
-### 8. Database Enumeration
-- Database port scanning (MSSQL, MySQL, PostgreSQL, etc.)
-- Service version detection
-- Connection testing
+### 8. API Enumeration
+- **Endpoint discovery**: REST API, GraphQL, and Swagger endpoint enumeration
+- **HTTP method testing**: Tests GET, POST, PUT, DELETE, PATCH, OPTIONS
+- **Authentication bypass**: Tests for privilege escalation and admin registration
+- **Vulnerability assessment**: SQL injection, NoSQL injection, and parameter pollution
+- **API versioning**: Tests multiple API versions (v1, v2, v3)
+- **Documentation discovery**: Swagger, OpenAPI, and GraphQL introspection
 
 ## Project Structure
 
@@ -99,15 +118,24 @@ hackulator/
 │   ├── core/                      # Core functionality
 │   ├── pages/                     # UI pages
 │   ├── widgets/                   # Custom widgets
+│   ├── tools/                     # Enumeration tool modules
+│   │   ├── recon.py               # DNS reconnaissance and subdomain enumeration
+│   │   ├── dns_utils.py           # DNS utility functions
+│   │   ├── port_scanner.py        # Port scanning functionality
+│   │   ├── port_utils.py          # Port scanning utilities
+│   │   ├── rpc_scanner.py         # RPC enumeration
+│   │   ├── rpc_utils.py           # RPC utilities
+│   │   ├── smb_scanner.py         # SMB enumeration
+│   │   ├── smb_utils.py           # SMB utilities
+│   │   ├── smtp_scanner.py        # SMTP enumeration
+│   │   ├── smtp_utils.py          # SMTP utilities
+│   │   ├── snmp_scanner.py        # SNMP enumeration
+│   │   ├── snmp_utils.py          # SNMP utilities
+│   │   ├── http_scanner.py        # HTTP/S fingerprinting
+│   │   ├── http_utils.py          # HTTP utilities
+│   │   ├── api_scanner.py         # API enumeration
+│   │   └── api_utils.py           # API utilities
 │   └── main_window.py             # Main application window
-├── tools/                         # Enumeration tools
-│   ├── port_scanner.py            # Port scanning tool
-│   ├── smb_enum.py                # SMB enumeration
-│   ├── smtp_enum.py               # SMTP enumeration
-│   ├── snmp_enum.py               # SNMP enumeration
-│   ├── http_enum.py               # HTTP fingerprinting
-│   ├── api_enum.py                # API enumeration
-│   └── db_enum.py                 # Database enumeration
 ├── resources/
 │   ├── fonts/                     # Custom fonts
 │   ├── icons/                     # UI icons
@@ -115,6 +143,8 @@ hackulator/
 │   └── wordlists/                 # Enumeration wordlists
 ├── exports/                       # Scan results
 ├── logs/                          # Application logs
+├── plugins/                       # Plugin system
+├── examples/                      # Usage examples
 └── main.py                        # Application entry point
 ```
 
@@ -442,14 +472,14 @@ python -m unittest tests.test_validators
    - **Help**: Keyboard shortcuts and usage guide (F1)
 
 ### Tool-Specific Usage
-- **DNS**: Domain enumeration with wordlists and record types
-- **Port Scan**: TCP scans, network sweeps, service detection
-- **SMB**: NetBIOS queries, OS detection, range scanning
-- **SMTP**: User enumeration via VRFY/EXPN/RCPT TO
-- **SNMP**: Community testing, SNMP walks, device discovery
-- **HTTP**: Server fingerprinting, SSL analysis, directory scanning
-- **API**: Endpoint discovery, method testing, auth bypass
-- **Database**: Port scanning, service detection, connection testing
+- **DNS**: Domain enumeration with wordlists, bruteforce, zone transfers, PTR lookups
+- **Port Scan**: TCP connect scans, network sweeps, service detection, custom port ranges
+- **RPC**: Domain user/group enumeration, anonymous and authenticated access
+- **SMB**: Share enumeration, OS detection, vulnerability scanning, NetBIOS information
+- **SMTP**: Multi-method user enumeration (VRFY/EXPN/RCPT TO), custom domains
+- **SNMP**: Community brute-force, MIB walking, system and security enumeration
+- **HTTP**: Server fingerprinting, SSL analysis, directory enumeration, security assessment
+- **API**: Endpoint discovery, method testing, authentication bypass, vulnerability testing
 
 ### Advanced Features in Detail
 
@@ -510,7 +540,7 @@ python -m unittest tests.test_validators
   - Input fields: Cut, copy, paste, select all, clear
   - Results areas: Export, copy results, clear results
   - Quick access to common actions without menu navigation
-- **Drag & Drop Support**: Intuitive file handling:
+- **Consolidated Drag & Drop**: Reusable DragDropMixin for intuitive file handling:
   - Drag wordlist files directly to combo boxes
   - Drop target lists into multi-target scanner
   - Visual feedback during drag operations
@@ -776,32 +806,33 @@ Edit `resources/themes/default/theme.json` to customize:
 
 ### Extending Functionality
 The modular architecture supports easy extension:
-1. **New Tools**: Add worker classes with pause/resume and proxy support
+1. **New Enumeration Tools**: Add new scanner modules in `app/tools/` directory
 2. **Custom Analysis**: Extend `VulnerabilityCorrelator` with new rules
 3. **Report Formats**: Add new export formats to `PDFGenerator`
 4. **UI Components**: Create responsive widgets using layout managers
-5. **Proxy Integration**: Extend `ProxyManager` for new proxy types
-6. **Rate Limiting**: Add rate limiting to new tools via `RateLimiter`
-7. **Templates**: Create custom templates for specific scan scenarios
-8. **Scheduling**: Implement automated scan execution workflows
-9. **Multi-Target**: Add bulk scanning capabilities for efficiency
-10. **Themes**: Implement visual customization options
-11. **Shortcuts**: Add keyboard shortcuts for efficient navigation
-12. **Drag & Drop**: Implement intuitive file import capabilities
-13. **Advanced Directory**: Enhanced web directory discovery tools
-14. **Certificate Transparency**: Passive reconnaissance via CT logs
-15. **OSINT**: Multi-source open source intelligence collection
-16. **Vulnerability Scanning**: Automated security assessment integration
-17. **Scan History**: Persistent result storage and management system
-18. **Session Management**: Project organization and workflow management
-19. **Custom Wordlists**: Wordlist creation and management system
-20. **Result Filtering**: Advanced search and filtering capabilities
-21. **Real-time Notifications**: Desktop alerts and system tray integration
-22. **Plugin Architecture**: Extensible plugin system for custom functionality
-23. **API Integration**: External service connectivity and custom API support
-24. **Threat Intelligence**: IOC reputation checking and threat feed integration
-25. **Machine Learning**: Automated pattern detection and anomaly analysis
-26. **Distributed Scanning**: Multi-node scanning support for performance and scalability
+5. **Tool Integration**: Add new external tool integrations (nmap, gobuster, etc.)
+6. **Authentication Methods**: Extend authentication support for enumeration tools
+7. **Protocol Support**: Add new network protocol enumeration capabilities
+8. **Vulnerability Detection**: Implement new vulnerability assessment modules
+9. **Output Parsing**: Add parsers for new tool outputs and formats
+10. **Multi-Target**: Add bulk scanning capabilities for efficiency
+11. **Themes**: Implement visual customization options
+12. **Shortcuts**: Add keyboard shortcuts for efficient navigation
+13. **Drag & Drop**: Implement intuitive file import capabilities
+14. **Advanced Directory**: Enhanced web directory discovery tools
+15. **Certificate Transparency**: Passive reconnaissance via CT logs
+16. **OSINT**: Multi-source open source intelligence collection
+17. **Vulnerability Scanning**: Automated security assessment integration
+18. **Scan History**: Persistent result storage and management system
+19. **Session Management**: Project organization and workflow management
+20. **Custom Wordlists**: Wordlist creation and management system
+21. **Result Filtering**: Advanced search and filtering capabilities
+22. **Real-time Notifications**: Desktop alerts and system tray integration
+23. **Plugin Architecture**: Extensible plugin system for custom functionality
+24. **API Integration**: External service connectivity and custom API support
+25. **Threat Intelligence**: IOC reputation checking and threat feed integration
+26. **Machine Learning**: Automated pattern detection and anomaly analysis
+27. **Distributed Scanning**: Multi-node scanning support for performance and scalability
 
 ## Technical Details
 

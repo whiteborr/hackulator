@@ -1,12 +1,12 @@
-# tests/test_advanced_theme_manager.py
+# tests/test_unified_theme_manager.py
 import unittest
 from unittest.mock import Mock, patch
-from app.core.advanced_theme_manager import AdvancedThemeManager
+from app.core.unified_theme_manager import UnifiedThemeManager
 
-class TestAdvancedThemeManager(unittest.TestCase):
+class TestUnifiedThemeManager(unittest.TestCase):
     
     def setUp(self):
-        self.theme_manager = AdvancedThemeManager("/fake/path")
+        self.theme_manager = UnifiedThemeManager("/fake/path")
     
     def test_available_themes(self):
         themes = self.theme_manager.get_available_themes()
@@ -24,8 +24,8 @@ class TestAdvancedThemeManager(unittest.TestCase):
         self.assertFalse(result)
     
     def test_stylesheet_generation(self):
-        theme = self.theme_manager.available_themes["dark"]
-        stylesheet = self.theme_manager.generate_stylesheet(theme)
+        theme = self.theme_manager.themes["dark"]
+        stylesheet = self.theme_manager._generate_stylesheet(theme)
         self.assertIn("QMainWindow", stylesheet)
         self.assertIn(theme["background"], stylesheet)
 
