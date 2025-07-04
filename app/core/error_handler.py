@@ -3,14 +3,21 @@ import sys
 import traceback
 import logging
 from datetime import datetime
+from pathlib import Path
 from PyQt6.QtWidgets import QMessageBox, QApplication
+from PyQt6.QtCore import QObject, pyqtSignal
 
-class GlobalErrorHandler:
+class GlobalErrorHandler(QObject):
     """Centralized error handling for the application"""
+    error_occurred = pyqtSignal(str, str)  # error_type, error_message
     
     def __init__(self, log_file="error.log"):
-        self.log_file = log_file
+        super().__init__()
+        self.log_file = Path(log_file)
+        self.log_file.parent.mkdir(exist_ok=True)
         self.setup_logging()
+        self.error_count = 0
+        self.max_errors_per_session = 50
     
     def setup_logging(self):
         """Setup error logging configuration"""

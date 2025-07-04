@@ -92,8 +92,11 @@ class ConfigManager:
         
         return value
     
-    def set(self, key_path, value):
+    def set(self, key_path, value, validate=True):
         """Set configuration value using dot notation"""
+        if validate and not self._validate_config_value(key_path, value):
+            raise ValueError(f"Invalid value for {key_path}: {value}")
+            
         keys = key_path.split('.')
         config = self.config
         
@@ -106,6 +109,18 @@ class ConfigManager:
         # Set the value
         config[keys[-1]] = value
         logger.debug(f"Config updated: {key_path} = {value}")
+        
+    def _validate_config_value(self, key_path, value):
+        """Validate configuration values"""
+        validators = {
+            'dns.timeout': lambda x: isinstance(x, (int, float)) and 0 < x <= 30,
+            'dns.max_workers': lambda x: isinstance(x, int) and 1 <= x <= 200,
+            'ui.animation_duration': lambda x: isinstance(x, int) and 0 <= x <= 2000,
+            'logging.level': lambda x: x in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+        }
+        
+        validator = validators.get(key_path)
+        return validator(value) if validator else True
     
     def get_dns_config(self):
         """Get DNS-specific configuration"""
@@ -122,7 +137,21 @@ class ConfigManager:
     def reset_to_defaults(self):
         """Reset configuration to default values"""
         self.config = self._load_default_config()
+        self.save_config()
         logger.info("Configuration reset to defaults")
+        
+    def backup_config(self):
+        """Create backup of current configuration"""
+        backup_file = self.config_file.with_suffix('.backup.json')
+        try:
+            if self.config_file.exists():
+                import shutil
+                shutil.copy2(self.config_file, backup_file)
+                logger.info(f"Configuration backed up to {backup_file}")
+                return True
+        except Exception as e:
+            logger.error(f"Failed to backup config: {e}")
+        return False
 
 # Global configuration instance
 config = ConfigManager()

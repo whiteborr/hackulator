@@ -52,3 +52,14 @@ Traceback (most recent call last):
 AttributeError: 'AVFirewallWorkerSignals' object has no attribute 'progress_start'
 
 2025-07-04 16:18:40 - INFO - Application starting...
+2025-07-04 16:35:00 - INFO - Application starting...
+2025-07-04 16:35:13 - ERROR - Unhandled exception:
+Traceback (most recent call last):
+  File "C:\Users\allie\Coding Projects\hackulator\app\pages\enumeration_page.py", line 1349, in toggle_scan
+    self.run_ike_scan()
+    ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\allie\Coding Projects\hackulator\app\pages\enumeration_page.py", line 1155, in run_ike_scan
+    self.current_worker.signals.progress_start.connect(self.start_progress)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'IKEWorkerSignals' object has no attribute 'progress_start'
+
