@@ -2,17 +2,21 @@
 import os
 import logging
 import time
+import json
 from PyQt6.QtWidgets import (QWidget, QPushButton, QLabel, QLineEdit, QTextEdit, 
                              QComboBox, QCheckBox, QVBoxLayout, QHBoxLayout, 
-                             QFrame, QSizePolicy, QScrollArea, QStatusBar)
+                             QFrame, QSizePolicy, QScrollArea, QStatusBar, QStackedWidget,
+                             QTreeView, QToolButton)
 from PyQt6.QtCore import pyqtSignal, QSize, Qt, QThreadPool
-from PyQt6.QtGui import QPixmap, QIcon, QShortcut, QKeySequence
+from PyQt6.QtGui import QPixmap, QIcon, QShortcut, QKeySequence, QStandardItemModel, QStandardItem
 
 from app.tools import dns_utils
 from app.core.validators import InputValidator
 from app.core.exporter import exporter
 from app.core.base_worker import CommandWorker
 from app.widgets.progress_widget import ProgressWidget
+from app.core.control_panel_factory import ControlPanelFactory
+from app.core.tool_configs import TOOL_CONFIGS
 import time
 
 class HoverButton(QPushButton):
@@ -41,6 +45,9 @@ class EnumerationPage(QWidget):
         self.main_window = parent
         self.current_submenu = "dns_enum"
         self.setObjectName("EnumerationPage")
+        
+        # Terminal history for each tool
+        self.terminal_history = {}
 
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(10, 10, 10, 10)
@@ -61,25 +68,20 @@ class EnumerationPage(QWidget):
         self.setup_tool_data()
         self.update_tool_buttons()
         self.highlight_selected_tool("dns_enum")
+        self.switch_tool_controls("dns")
         self.setup_shortcuts()
         self.apply_theme()
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
     def create_header(self):
         header_frame = QFrame()
+        header_frame.setObjectName("header_frame")
         header_frame.setFixedHeight(60)
-        header_frame.setStyleSheet("""
-            QFrame {
-                background-color: rgba(0, 0, 0, 100);
-                border-radius: 10px;
-                border: 1px solid rgba(100, 200, 255, 50);
-            }
-        """)
         header_layout = QHBoxLayout(header_frame)
         header_layout.setContentsMargins(15, 10, 15, 10)
 
         self.back_button = QPushButton("\u2190 Back to Home")
-        self.back_button.clicked.connect(lambda: self.navigate_signal.emit("home"))
+        self.back_button.clicked.connect(self.navigate_home)
         self.back_button.setFixedWidth(150)
 
         self.title_label = QLabel("Enumeration Tools")
@@ -93,14 +95,8 @@ class EnumerationPage(QWidget):
 
     def create_tool_panel(self):
         tool_frame = QFrame()
+        tool_frame.setObjectName("tool_panel_frame")
         tool_frame.setFixedWidth(300)
-        tool_frame.setStyleSheet("""
-            QFrame {
-                background-color: rgba(0, 0, 0, 100);
-                border-radius: 10px;
-                border: 1px solid rgba(100, 200, 255, 50);
-            }
-        """)
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -118,13 +114,7 @@ class EnumerationPage(QWidget):
 
     def create_work_area(self):
         work_frame = QFrame()
-        work_frame.setStyleSheet("""
-            QFrame {
-                background-color: rgba(0, 0, 0, 100);
-                border-radius: 10px;
-                border: 1px solid rgba(100, 200, 255, 50);
-            }
-        """)
+        work_frame.setObjectName("work_area_frame")
         work_layout = QVBoxLayout(work_frame)
         work_layout.setContentsMargins(15, 15, 15, 15)
         work_layout.setSpacing(10)
@@ -143,49 +133,23 @@ class EnumerationPage(QWidget):
 
     def _create_record_checkboxes(self, parent_layout):
         """Helper to create record type checkboxes"""
-        checkbox_style = """
-            QCheckBox {
-                spacing: 5px;
-                color: #DCDCDC;
-                font-size: 11pt;
-            }
-            QCheckBox::indicator {
-                width: 16px;
-                height: 16px;
-                border-radius: 8px;
-                border: 2px solid #64C8FF;
-                background-color: transparent;
-            }
-            QCheckBox::indicator:checked {
-                background-color: #64C8FF;
-                border: 2px solid #64C8FF;
-            }
-            QCheckBox::indicator:hover {
-                border: 2px solid #87CEEB;
-            }
-            QCheckBox::indicator:disabled {
-                border: 2px solid #555;
-                background-color: transparent;
-            }
-        """
-        
         self.all_checkbox = QCheckBox("ALL")
-        self.all_checkbox.setStyleSheet(checkbox_style)
+        self.all_checkbox.setProperty("class", "record_type")
         self.all_checkbox.stateChanged.connect(self.toggle_all_records)
         parent_layout.addWidget(self.all_checkbox)
         parent_layout.addSpacing(10)
 
         self.record_type_checkboxes = {}
-        for rtype in ['A', 'CNAME', 'MX', 'TXT', 'NS']:
+        for rtype in ['A', 'CNAME', 'MX', 'TXT', 'NS', 'SRV']:
             cb = QCheckBox(rtype)
-            cb.setStyleSheet(checkbox_style)
+            cb.setProperty("class", "record_type")
             cb.stateChanged.connect(self.update_all_checkbox)
             self.record_type_checkboxes[rtype] = cb
             parent_layout.addWidget(cb)
             parent_layout.addSpacing(10)
 
         self.ptr_checkbox = QCheckBox("PTR")
-        self.ptr_checkbox.setStyleSheet(checkbox_style)
+        self.ptr_checkbox.setProperty("class", "record_type")
         self.ptr_checkbox.setEnabled(False)
         self.ptr_checkbox.stateChanged.connect(self.update_all_checkbox)
         parent_layout.addWidget(self.ptr_checkbox)
@@ -216,9 +180,10 @@ class EnumerationPage(QWidget):
         from PyQt6.QtWidgets import QSpinBox, QStackedWidget
 
         controls_frame = QFrame()
+        controls_frame.setMaximumHeight(200)  # Limit height to make more room for terminal
         controls_layout = QVBoxLayout(controls_frame)
-        controls_layout.setContentsMargins(10, 10, 10, 10)
-        controls_layout.setSpacing(8)
+        controls_layout.setContentsMargins(10, 5, 10, 5)  # Reduce margins
+        controls_layout.setSpacing(5)  # Reduce spacing
 
         # === First Row: Target Input ===
         target_row = QHBoxLayout()
@@ -228,59 +193,37 @@ class EnumerationPage(QWidget):
         self.target_input = QLineEdit()
         self.target_input.setPlaceholderText("Enter target (IP, domain, or range)...")
         self.target_input.textChanged.connect(self.check_target_type)
+        self.target_input.returnPressed.connect(self.toggle_scan)
         target_row.addWidget(self.target_input)
         controls_layout.addLayout(target_row)
         
         # Create stacked widget for different tool controls
         self.controls_stack = QStackedWidget()
+        self.tool_controls = {}
         
-        # DNS controls
-        self.dns_controls = self.create_dns_controls()
-        self.controls_stack.addWidget(self.dns_controls)
+        # Create DNS controls first
+        dns_controls = self.create_dns_controls()
+        self.tool_controls['dns'] = dns_controls
+        self.controls_stack.addWidget(dns_controls)
         
-        # Port scan controls  
-        self.port_controls = self.create_port_controls()
-        self.controls_stack.addWidget(self.port_controls)
+        # Create controls using factory for configured tools
+        for tool_name, config in TOOL_CONFIGS.items():
+            if tool_name != 'dns':  # Skip DNS as we created it above
+                control_panel = ControlPanelFactory.create_panel(config, self)
+                self.tool_controls[tool_name] = control_panel
+                self.controls_stack.addWidget(control_panel)
+                
+                # Connect tool-specific button actions
+                self.connect_tool_buttons(tool_name, control_panel)
         
-        # RPC controls
-        self.rpc_controls = self.create_rpc_controls()
-        self.controls_stack.addWidget(self.rpc_controls)
-        
-        # SMB controls
-        self.smb_controls = self.create_smb_controls()
-        self.controls_stack.addWidget(self.smb_controls)
-        
-        # SMTP controls
-        self.smtp_controls = self.create_smtp_controls()
-        self.controls_stack.addWidget(self.smtp_controls)
-        
-        # SNMP controls
-        self.snmp_controls = self.create_snmp_controls()
-        self.controls_stack.addWidget(self.snmp_controls)
-        
-        # HTTP controls
-        self.http_controls = self.create_http_controls()
-        self.controls_stack.addWidget(self.http_controls)
-        
-        # API controls
-        self.api_controls = self.create_api_controls()
-        self.controls_stack.addWidget(self.api_controls)
-        
-        # LDAP controls
-        self.ldap_controls = self.create_ldap_controls()
-        self.controls_stack.addWidget(self.ldap_controls)
-        
-        # Database controls
-        self.db_controls = self.create_db_controls()
-        self.controls_stack.addWidget(self.db_controls)
-        
-        # IKE controls
-        self.ike_controls = self.create_ike_controls()
-        self.controls_stack.addWidget(self.ike_controls)
-        
-        # AV/Firewall controls
-        self.av_firewall_controls = self.create_av_firewall_controls()
-        self.controls_stack.addWidget(self.av_firewall_controls)
+        # Create remaining controls using existing methods (to be migrated)
+        remaining_tools = ['rpc', 'http', 'api', 'ldap', 'db', 'ike', 'av_firewall']
+        for tool in remaining_tools:
+            method_name = f'create_{tool}_controls'
+            if hasattr(self, method_name):
+                control_panel = getattr(self, method_name)()
+                self.tool_controls[tool] = control_panel
+                self.controls_stack.addWidget(control_panel)
         
         controls_layout.addWidget(self.controls_stack)
         
@@ -291,6 +234,31 @@ class EnumerationPage(QWidget):
         self.run_button.setFixedWidth(80)
         self.run_button.clicked.connect(self.toggle_scan)
         action_row.addWidget(self.run_button)
+
+        # View selection buttons
+        text_icon_path = os.path.join(self.main_window.project_root, "resources", "icons", "text.png")
+        graph_icon_path = os.path.join(self.main_window.project_root, "resources", "icons", "graph.png")
+        
+        self.text_view_btn = QToolButton()
+        if os.path.exists(text_icon_path):
+            self.text_view_btn.setIcon(QIcon(text_icon_path))
+        else:
+            self.text_view_btn.setText("Text")
+        self.text_view_btn.setFixedWidth(40)
+        self.text_view_btn.setCheckable(True)
+        self.text_view_btn.setChecked(True)
+        self.text_view_btn.clicked.connect(lambda: self.set_results_view(True))
+        action_row.addWidget(self.text_view_btn)
+        
+        self.graph_view_btn = QToolButton()
+        if os.path.exists(graph_icon_path):
+            self.graph_view_btn.setIcon(QIcon(graph_icon_path))
+        else:
+            self.graph_view_btn.setText("Graph")
+        self.graph_view_btn.setFixedWidth(40)
+        self.graph_view_btn.setCheckable(True)
+        self.graph_view_btn.clicked.connect(lambda: self.set_results_view(False))
+        action_row.addWidget(self.graph_view_btn)
 
         self.export_combo = QComboBox()
         self.export_combo.addItems(["JSON", "CSV", "XML", "Advanced Report", "Create Session"])
@@ -310,19 +278,19 @@ class EnumerationPage(QWidget):
         """Create DNS-specific controls"""
         dns_widget = QWidget()
         layout = QVBoxLayout(dns_widget)
+        layout.setSpacing(5)  # Reduce spacing between rows
 
-        # Record Type Checkboxes
+        # Record Type Checkboxes - moved up
         record_row = QHBoxLayout()
         types_label = QLabel("Types:")
         types_label.setFixedWidth(110)
-        types_label.setFixedHeight(30)
         record_row.addWidget(types_label)
         
         self._create_record_checkboxes(record_row)
         record_row.addStretch()
         layout.addLayout(record_row)
 
-        # DNS Server
+        # DNS Server - moved up
         dns_row = QHBoxLayout()
         dns_label = QLabel("DNS:")
         dns_label.setFixedWidth(110)
@@ -330,11 +298,12 @@ class EnumerationPage(QWidget):
         self.dns_input = QLineEdit()
         self.dns_input.setPlaceholderText("DNS Server (optional)")
         self.dns_input.setFixedWidth(400)
+        self.dns_input.returnPressed.connect(self.toggle_scan)
         dns_row.addWidget(self.dns_input)
         dns_row.addStretch()
         layout.addLayout(dns_row)
 
-        # Method & Wordlist/Bruteforce
+        # Method & Wordlist/Bruteforce - moved up
         method_row = QHBoxLayout()
         method_label = QLabel("Method:")
         method_label.setFixedWidth(110)
@@ -355,8 +324,24 @@ class EnumerationPage(QWidget):
         self.method_row_layout = method_row
         layout.addLayout(method_row)
         
+        # Add stretch to push everything up
+        layout.addStretch()
+        
         self.toggle_method_options("Wordlist")
+        
+        # Set default selections - only A record
+        self.record_type_checkboxes['A'].setChecked(True)
+        self._set_default_wordlist()
+        
         return dns_widget
+    
+    def _set_default_wordlist(self):
+        """Set default wordlist to subdomains-top1000.txt"""
+        default_wordlist_path = os.path.join(self.main_window.project_root, "resources", "wordlists", "subdomains-top1000.txt")
+        for i in range(self.wordlist_combo.count()):
+            if self.wordlist_combo.itemData(i) == default_wordlist_path:
+                self.wordlist_combo.setCurrentIndex(i)
+                break
     
     def create_port_controls(self):
         """Create port scanning specific controls"""
@@ -382,6 +367,7 @@ class EnumerationPage(QWidget):
         port_row.addWidget(port_label)
         self.port_input = QLineEdit()
         self.port_input.setPlaceholderText("80,443,1-1000 or leave empty for common ports")
+        self.port_input.returnPressed.connect(self.toggle_scan)
         port_row.addWidget(self.port_input)
         layout.addLayout(port_row)
         
@@ -1164,29 +1150,51 @@ class EnumerationPage(QWidget):
         output_layout.setContentsMargins(0, 0, 0, 0)
         output_layout.setSpacing(10)
 
+
+
+        # QStackedWidget to hold both views
+        self.results_stack = QStackedWidget()
+        
+        # Text view (existing QTextEdit)
         self.terminal_output = QTextEdit()
         self.terminal_output.setReadOnly(True)
         self.terminal_output.setPlaceholderText("Tool output will appear here...")
+        self.results_stack.addWidget(self.terminal_output)
+        
+        # Tree view for structured DNS results
+        self.tree_view = QTreeView()
+        self.tree_model = QStandardItemModel()
+        self.tree_model.setHorizontalHeaderLabels(["Domain/Record", "Value"])
+        self.tree_view.setModel(self.tree_model)
+        self.tree_view.setAlternatingRowColors(True)
+        self.results_stack.addWidget(self.tree_view)
+        
+        # Table view for port scan results
+        from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem
+        self.port_table = QTableWidget()
+        self.port_table.setColumnCount(3)
+        self.port_table.setHorizontalHeaderLabels(["Port", "Service", "Banner"])
+        self.port_table.setSortingEnabled(True)
+        self.port_table.setAlternatingRowColors(True)
+        self.results_stack.addWidget(self.port_table)
+        
+        # Set initial view to text
+        self.results_stack.setCurrentIndex(0)
+        self.current_view_is_text = True
 
-        output_layout.addWidget(self.terminal_output)
+        output_layout.addWidget(self.results_stack)
         return output_frame
 
     def setup_tool_data(self):
-        self.main_tools_data = [
-            {"id": "dns_enum", "title": "DNS Enumeration", "desc": "Discover domains, subdomains, and IPs.", "icon": "resources/icons/1A.png"},
-            {"id": "port_scan", "title": "Port Scanning", "desc": "Identify open ports and services running.", "icon": "resources/icons/1B.png"},
-            {"id": "rpc_enum", "title": "RPC Enumeration", "desc": "Enumerate RPC services and endpoints.", "icon": "resources/icons/1C.png"},
-            {"id": "smb_enum", "title": "SMB Enumeration", "desc": "Discover SMB shares and NetBIOS info.", "icon": "resources/icons/1D.png"},
-            {"id": "smtp_enum", "title": "SMTP Enumeration", "desc": "Enumerate email users via SMTP.", "icon": "resources/icons/1E.png"},
-            {"id": "snmp_enum", "title": "SNMP Enumeration", "desc": "Query SNMP for device information.", "icon": "resources/icons/1F.png"},
-            {"id": "http_enum", "title": "HTTP/S Fingerprinting", "desc": "Web server identification and analysis.", "icon": "resources/icons/1G.png"},
-            {"id": "api_enum", "title": "API Enumeration", "desc": "Discover and test API endpoints.", "icon": "resources/icons/1H.png"},
-            {"id": "ldap_enum", "title": "LDAP/S Enumeration", "desc": "Query LDAP directory services.", "icon": "resources/icons/1I.png"},
-            {"id": "db_enum", "title": "Database Enumeration", "desc": "Scan for database services and info.", "icon": "resources/icons/1J.png"},
-            {"id": "ike_enum", "title": "IKE Enumeration", "desc": "Scan IKE/IPSec configurations.", "icon": "resources/icons/1K.png"},
-
-            {"id": "av_detect", "title": "AV/Firewall Detection", "desc": "Detect security controls and evasion.", "icon": "resources/icons/1M.png"},
-        ]
+        import json
+        config_path = os.path.join(self.main_window.project_root, "resources", "config", "tools.json")
+        try:
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+                self.main_tools_data = config['tools']
+        except (FileNotFoundError, json.JSONDecodeError, KeyError):
+            # Fallback to empty list if config fails
+            self.main_tools_data = []
 
         self.main_tool_buttons = []
         for tool in self.main_tools_data:
@@ -1205,6 +1213,7 @@ class EnumerationPage(QWidget):
         self.last_scan_target = ""
         self.is_scanning = False
         self.current_worker = None
+        self.structured_dns_results = {}  # Store structured DNS results for tree view
 
     def create_main_tool_button(self, tool_data):
         button = HoverButton(tool_data["title"], tool_data["desc"], self)
@@ -1216,52 +1225,107 @@ class EnumerationPage(QWidget):
             button.setIcon(icon)
             button.setIconSize(QSize(24, 24))
         button.setText(tool_data["title"])
-        button.setStyleSheet("text-align: left; padding-left: 5px;")
+        button.setStyleSheet("text-align: left; padding-left: 10px;")
+        button.setProperty("class", "tool_button")
         button.clicked.connect(lambda: self.activate_tool_submenu(tool_data["id"]))
         button.enter_signal.connect(self.update_status_bar)
         button.leave_signal.connect(self.clear_status_bar)
         return button
 
     def activate_tool_submenu(self, tool_id):
+        # Save current terminal content
+        if hasattr(self, 'terminal_output') and self.current_submenu:
+            self.terminal_history[self.current_submenu] = self.terminal_output.toHtml()
+        
         self.current_submenu = tool_id
         self.update_tool_buttons()
         self.highlight_selected_tool(tool_id)
         self.status_updated.emit(f"Selected: {tool_id.replace('_', ' ').title()}")
         
-        # Switch controls based on tool
-        if tool_id == "dns_enum":
-            self.controls_stack.setCurrentIndex(0)  # DNS controls
-        elif tool_id == "port_scan":
-            self.controls_stack.setCurrentIndex(1)  # Port controls
-        elif tool_id == "rpc_enum":
-            self.controls_stack.setCurrentIndex(2)  # RPC controls
-        elif tool_id == "smb_enum":
-            self.controls_stack.setCurrentIndex(3)  # SMB controls
-        elif tool_id == "smtp_enum":
-            self.controls_stack.setCurrentIndex(4)  # SMTP controls
-        elif tool_id == "snmp_enum":
-            self.controls_stack.setCurrentIndex(5)  # SNMP controls
-        elif tool_id == "http_enum":
-            self.controls_stack.setCurrentIndex(6)  # HTTP controls
-        elif tool_id == "api_enum":
-            self.controls_stack.setCurrentIndex(7)  # API controls
-        elif tool_id == "ldap_enum":
-            self.controls_stack.setCurrentIndex(8)  # LDAP controls
-        elif tool_id == "db_enum":
-            self.controls_stack.setCurrentIndex(9)  # Database controls
-        elif tool_id == "ike_enum":
-            self.controls_stack.setCurrentIndex(10)  # IKE controls
-        elif tool_id == "av_detect":
-            self.controls_stack.setCurrentIndex(11)  # AV/Firewall controls
+        # Restore terminal history for selected tool
+        if hasattr(self, 'terminal_output'):
+            self.terminal_output.setHtml(self.terminal_history.get(tool_id, ""))
+        
+        # Map tool IDs to control names
+        tool_map = {
+            "dns_enum": "dns",
+            "port_scan": "port", 
+            "smb_enum": "smb",
+            "smtp_enum": "smtp",
+            "snmp_enum": "snmp"
+        }
+        
+        control_name = tool_map.get(tool_id)
+        if control_name:
+            self.switch_tool_controls(control_name)
         else:
-            self.controls_stack.setCurrentIndex(0)  # Default to DNS
+            # Fall back to old method for unconfigured tools
+            self.switch_tool_controls_legacy(tool_id)
+    
+    def switch_tool_controls(self, tool_name):
+        """Switch to controls for specified tool"""
+        if tool_name in self.tool_controls:
+            widget = self.tool_controls[tool_name]
+            index = self.controls_stack.indexOf(widget)
+            if index >= 0:
+                self.controls_stack.setCurrentIndex(index)
+    
+    def switch_tool_controls_legacy(self, tool_id):
+        """Legacy method for switching controls"""
+        # Map remaining tools to their indices
+        legacy_map = {
+            "rpc_enum": "rpc",
+            "http_enum": "http", 
+            "api_enum": "api",
+            "ldap_enum": "ldap",
+            "db_enum": "db",
+            "ike_enum": "ike",
+            "av_detect": "av_firewall"
+        }
+        
+        control_name = legacy_map.get(tool_id)
+        if control_name and control_name in self.tool_controls:
+            widget = self.tool_controls[control_name]
+            index = self.controls_stack.indexOf(widget)
+            if index >= 0:
+                self.controls_stack.setCurrentIndex(index)
+    
+    def connect_tool_buttons(self, tool_name, control_panel):
+        """Connect tool-specific button actions"""
+        controls = control_panel.controls
+        
+        if tool_name == 'port':
+            if 'common_btn' in controls:
+                controls['common_btn'].clicked.connect(
+                    lambda: controls['port_input'].setText("21,22,23,25,53,80,110,135,139,143,443,993,995,3389")
+                )
+            if 'top_100_btn' in controls:
+                controls['top_100_btn'].clicked.connect(
+                    lambda: controls['port_input'].setText("1-100")
+                )
+            if 'top_1000_btn' in controls:
+                controls['top_1000_btn'].clicked.connect(
+                    lambda: controls['port_input'].setText("1-1000")
+                )
+        
+        elif tool_name == 'snmp':
+            if 'default_btn' in controls:
+                controls['default_btn'].clicked.connect(
+                    lambda: controls['snmp_communities'].setText("public,private,community")
+                )
+            if 'extended_btn' in controls:
+                controls['extended_btn'].clicked.connect(
+                    lambda: controls['snmp_communities'].setText("public,private,community,manager,admin,administrator,root,guest,read,write,test,cisco,default,snmp")
+                )
     
     def highlight_selected_tool(self, selected_id):
         for i, button in enumerate(self.main_tool_buttons):
             if self.main_tools_data[i]["id"] == selected_id:
-                button.setStyleSheet("text-align: left; padding-left: 5px; background-color: rgba(100, 200, 255, 100);")
+                button.setProperty("class", "tool_button selected")
             else:
-                button.setStyleSheet("text-align: left; padding-left: 5px;")
+                button.setProperty("class", "tool_button")
+            button.style().unpolish(button)
+            button.style().polish(button)
 
     def update_tool_buttons(self):
         pass  # Tool buttons removed
@@ -1270,14 +1334,43 @@ class EnumerationPage(QWidget):
         if self.ptr_checkbox.isEnabled():
             self.ptr_checkbox.setChecked(state == 2)
         else:
+            # When ALL is selected, check all record types including SRV
             for checkbox in self.record_type_checkboxes.values():
                 checkbox.setChecked(state == 2)
+            if state == 2:  # ALL selected
+                self._set_default_wordlist()
     
     def update_all_checkbox(self):
         all_checked = all(cb.isChecked() for cb in self.record_type_checkboxes.values()) and (not self.ptr_checkbox.isEnabled() or self.ptr_checkbox.isChecked())
         self.all_checkbox.setChecked(all_checked)
+        
+        # Handle SRV selection logic
+        srv_checked = 'SRV' in self.record_type_checkboxes and self.record_type_checkboxes['SRV'].isChecked()
+        other_checked = any(cb.isChecked() for rtype, cb in self.record_type_checkboxes.items() if rtype != 'SRV')
+        all_checked = self.all_checkbox.isChecked()
+        
+        # Always enable all checkboxes (no exclusive SRV mode)
+        self.all_checkbox.setEnabled(True)
+        for cb in self.record_type_checkboxes.values():
+            cb.setEnabled(True)
+        
+        # Set wordlist based on selection
+        if srv_checked and not other_checked and not all_checked:
+            # SRV only - use srv_wordlist.txt
+            srv_wordlist_path = os.path.join(self.main_window.project_root, "resources", "wordlists", "srv_wordlist.txt")
+            for i in range(self.wordlist_combo.count()):
+                if self.wordlist_combo.itemData(i) == srv_wordlist_path:
+                    self.wordlist_combo.setCurrentIndex(i)
+                    break
+        else:
+            # Any other combination - use default wordlist
+            self._set_default_wordlist()
     
     def check_target_type(self, text):
+        # Only process if DNS controls are active
+        if not hasattr(self, 'ptr_checkbox'):
+            return
+            
         # Check if target looks like IP (3 octets with dots)
         import re
         ip_pattern = r'^(\d{1,3}\.){3}'
@@ -1293,10 +1386,11 @@ class EnumerationPage(QWidget):
                 checkbox.setEnabled(False)
                 checkbox.setChecked(False)
             # Hide method row when PTR is active
-            for i in range(self.method_row_layout.count()):
-                item = self.method_row_layout.itemAt(i)
-                if item and item.widget():
-                    item.widget().setVisible(False)
+            if hasattr(self, 'method_row_layout'):
+                for i in range(self.method_row_layout.count()):
+                    item = self.method_row_layout.itemAt(i)
+                    if item and item.widget():
+                        item.widget().setVisible(False)
         else:
             # Enable others, disable PTR
             self.ptr_checkbox.setEnabled(False)
@@ -1305,12 +1399,14 @@ class EnumerationPage(QWidget):
             for checkbox in self.record_type_checkboxes.values():
                 checkbox.setEnabled(True)
             # Show method row when PTR is not active
-            for i in range(self.method_row_layout.count()):
-                item = self.method_row_layout.itemAt(i)
-                if item and item.widget():
-                    item.widget().setVisible(True)
-            # Re-apply method visibility settings
-            self.toggle_method_options(self.method_combo.currentText())
+            if hasattr(self, 'method_row_layout'):
+                for i in range(self.method_row_layout.count()):
+                    item = self.method_row_layout.itemAt(i)
+                    if item and item.widget():
+                        item.widget().setVisible(True)
+                # Re-apply method visibility settings
+                if hasattr(self, 'method_combo'):
+                    self.toggle_method_options(self.method_combo.currentText())
     
     def toggle_method_options(self, method):
         is_wordlist = (method == "Wordlist")
@@ -1366,9 +1462,11 @@ class EnumerationPage(QWidget):
             self.show_error("Please enter a target domain")
             return
         
-        dns_server = self.dns_input.text().strip() or None
+        dns_input = getattr(self, 'dns_input', None)
+        dns_server = dns_input.text().strip() or None if dns_input else None
         
-        if self.ptr_checkbox.isEnabled() and self.ptr_checkbox.isChecked():
+        ptr_checkbox = getattr(self, 'ptr_checkbox', None)
+        if ptr_checkbox and ptr_checkbox.isEnabled() and ptr_checkbox.isChecked():
             # PTR query for IP targets - no wordlist/bruteforce needed
             self.is_scanning = True
             self.run_button.setText("Cancel")
@@ -1396,24 +1494,46 @@ class EnumerationPage(QWidget):
         selected_types = []
         direct_query_types = []
         
-        # For domain targets, process normally
-        for rtype, cb in self.record_type_checkboxes.items():
-            if cb.isChecked():
-                if rtype == 'A':
-                    selected_types.extend(['A', 'AAAA'])
-                elif rtype in ['CNAME']:
-                    selected_types.append(rtype)
-                else:
-                    direct_query_types.append(rtype)
+        # Check if ALL is selected
+        all_checkbox = getattr(self, 'all_checkbox', None)
+        is_all_selected = all_checkbox and all_checkbox.isChecked()
+        
+        # Process record types in order: A/AAAA, CNAME, MX, TXT, NS, then SRV
+        record_order = ['A', 'CNAME', 'MX', 'TXT', 'NS', 'SRV']
+        record_type_checkboxes = getattr(self, 'record_type_checkboxes', {})
+        
+        for rtype in record_order:
+            if rtype in record_type_checkboxes:
+                cb = record_type_checkboxes[rtype]
+                if cb.isChecked() or is_all_selected:
+                    if rtype == 'A':
+                        selected_types.extend(['A', 'AAAA'])
+                    elif rtype in ['CNAME']:
+                        selected_types.append(rtype)
+                    elif rtype == 'SRV':
+                        # SRV always runs separately
+                        continue
+                    else:
+                        direct_query_types.append(rtype)
         
         if not selected_types and not direct_query_types:
-            self.show_error("Please select at least one record type")
-            return
+            # If no types selected but PTR is available, that's fine for IP targets
+            ptr_checkbox = getattr(self, 'ptr_checkbox', None)
+            if not (ptr_checkbox and ptr_checkbox.isEnabled() and ptr_checkbox.isChecked()):
+                self.show_error("Please select at least one record type")
+                return
             
-        method = self.method_combo.currentText()
-        wordlist_path = self.wordlist_combo.currentData() if method == "Wordlist" else None
-        char_sets = [k for k, v in self.char_checkboxes.items() if v.isChecked()] if method == "Bruteforce" else None
-        max_length = self.length_spinbox.value() if method == "Bruteforce" else 3
+        method_combo = getattr(self, 'method_combo', None)
+        method = method_combo.currentText() if method_combo else "Wordlist"
+        
+        wordlist_combo = getattr(self, 'wordlist_combo', None)
+        wordlist_path = wordlist_combo.currentData() if wordlist_combo and method == "Wordlist" else None
+        
+        char_checkboxes = getattr(self, 'char_checkboxes', {})
+        char_sets = [k for k, v in char_checkboxes.items() if v.isChecked()] if method == "Bruteforce" else None
+        
+        length_spinbox = getattr(self, 'length_spinbox', None)
+        max_length = length_spinbox.value() if length_spinbox and method == "Bruteforce" else 3
         
         self.is_scanning = True
         self.run_button.setText("Cancel")
@@ -1430,6 +1550,27 @@ class EnumerationPage(QWidget):
         # Show enumeration message at the beginning
         if selected_types or direct_query_types:
             self.append_terminal_output(f"<p style='color: #00BFFF;'>Enumerating.... Please wait....</p><br>")
+            
+        # Check if SRV scan will be needed after main scan
+        srv_checkbox = getattr(self, 'record_type_checkboxes', {}).get('SRV')
+        needs_srv_scan = (srv_checkbox and srv_checkbox.isChecked()) or is_all_selected
+        
+        # Start the actual enumeration
+        self.current_worker = dns_utils.enumerate_hostnames(
+            target=target,
+            wordlist_path=wordlist_path,
+            record_types=selected_types + direct_query_types,
+            use_bruteforce=(method == "Bruteforce"),
+            char_sets=char_sets,
+            max_length=max_length,
+            dns_server=dns_server,
+            output_callback=self.append_terminal_output,
+            status_callback=self.update_status_bar_text,
+            finished_callback=self._on_dns_scan_finished if needs_srv_scan else self.on_scan_finished,
+            results_callback=self.store_scan_results,
+            progress_callback=self.update_progress,
+            progress_start_callback=self.start_progress
+        )
     
     def run_ldap_scan(self):
         """Execute LDAP enumeration scan"""
@@ -1574,15 +1715,47 @@ class EnumerationPage(QWidget):
     
     def apply_theme(self):
         """Apply current theme"""
-        pass
+        stylesheet_path = os.path.join(self.main_window.project_root, "resources", "themes", "enumeration_page.qss")
+        try:
+            with open(stylesheet_path, 'r') as f:
+                self.setStyleSheet(f.read())
+        except FileNotFoundError:
+            pass
     
     def update_status_bar(self, title, description):
-        """Update status bar with tool info"""
+        """Update status bar with tool info and show enhanced help"""
         self.status_updated.emit(f"{title}: {description}")
+        
+        # Show enhanced help panel for selected tool
+        if hasattr(self.main_window, 'enhanced_help_panel'):
+            tool_map = {
+                "DNS Enumeration": "DNS Enumeration",
+                "Port Scanning": "Port Scanning", 
+                "SMB Enumeration": "SMB Enumeration",
+                "SMTP Enumeration": "SMTP Enumeration",
+                "SNMP Enumeration": "SNMP Enumeration",
+                "HTTP Fingerprinting": "HTTP Enumeration",
+                "API Enumeration": "API Enumeration"
+            }
+            if title in tool_map:
+                self.main_window.enhanced_help_panel.show_tool_help(tool_map[title])
     
     def clear_status_bar(self):
         """Clear status bar"""
         self.status_updated.emit("")
+    
+    def navigate_home(self):
+        """Clean up and navigate to home"""
+        # Cancel any running scans
+        if self.is_scanning and self.current_worker:
+            self.current_worker.is_running = False
+        
+        # Clear heavy UI elements
+        self.terminal_output.clear()
+        self.last_scan_results = {}
+        
+        # Navigate
+        self.navigate_signal.emit("home")
     
     def run_ptr_scan(self):
         """Placeholder for PTR scan"""
@@ -1596,10 +1769,10 @@ class EnumerationPage(QWidget):
         """Placeholder for basic records"""
         self.show_error("Basic records scan not implemented yet")
     
-    def update_progress(self, value):
+    def update_progress(self, completed, found, current_item=None):
         """Update progress bar"""
         if hasattr(self, 'progress_widget'):
-            self.progress_widget.update_progress(value)
+            self.progress_widget.update_progress(completed, found, current_item)
     
     def run_av_firewall_scan(self):
         """Execute AV/Firewall detection scan"""
@@ -1722,25 +1895,7 @@ class EnumerationPage(QWidget):
                 results_callback=self.store_scan_results
             )
         
-        # Handle wordlist/bruteforce for A and CNAME
-        if selected_types:
-            self.current_worker = dns_utils.enumerate_hostnames(
-                target=target,
-                wordlist_path=wordlist_path,
-                record_types=selected_types,
-                use_bruteforce=(method == "Bruteforce"),
-                char_sets=char_sets,
-                max_length=max_length,
-                dns_server=dns_server,
-                output_callback=self.append_terminal_output,
-                status_callback=self.update_status_bar_text,
-                finished_callback=self.on_scan_finished,
-                results_callback=self.store_scan_results,
-                progress_callback=self.update_progress,
-                progress_start_callback=self.start_progress
-            )
-        else:
-            self.on_scan_finished()
+
 
     def run_ptr_scan(self):
         self.show_info("PTR scan functionality not yet implemented.")
@@ -1786,7 +1941,11 @@ class EnumerationPage(QWidget):
             self.show_error("Please enter a target")
             return
         
-        scan_type = self.scan_type_combo.currentText()
+        scan_type = getattr(self, 'scan_type_combo', None)
+        if scan_type:
+            scan_type = scan_type.currentText()
+        else:
+            scan_type = "TCP Connect"
         
         self.is_scanning = True
         self.run_button.setText("Cancel")
@@ -1810,7 +1969,9 @@ class EnumerationPage(QWidget):
             )
         else:  # TCP Connect
             try:
-                ports = port_utils.parse_port_range(self.port_input.text().strip())
+                port_input = getattr(self, 'port_input', None)
+                port_text = port_input.text().strip() if port_input else ""
+                ports = port_utils.parse_port_range(port_text)
                 self.current_worker = port_utils.run_port_scan(
                     target=target,
                     ports=ports,
@@ -1837,8 +1998,9 @@ class EnumerationPage(QWidget):
             self.show_error("Please enter a target")
             return
         
-        username = self.rpc_username.text().strip() if self.auth_combo.currentText() == "Credentials" else ""
-        password = self.rpc_password.text().strip() if self.auth_combo.currentText() == "Credentials" else ""
+        auth_combo = getattr(self, 'auth_combo', None)
+        username = self.rpc_username.text().strip() if auth_combo and auth_combo.currentText() == "Credentials" else ""
+        password = self.rpc_password.text().strip() if auth_combo and auth_combo.currentText() == "Credentials" else ""
         
         self.is_scanning = True
         self.run_button.setText("Cancel")
@@ -1874,10 +2036,12 @@ class EnumerationPage(QWidget):
             "Share Enumeration": "shares", 
             "Vulnerability Scan": "vulns"
         }
-        scan_type = scan_type_map[self.smb_scan_type.currentText()]
+        smb_scan_type = getattr(self, 'smb_scan_type', None)
+        scan_type = scan_type_map[smb_scan_type.currentText()] if smb_scan_type else "basic"
         
-        username = self.smb_username.text().strip() if self.smb_auth_combo.currentText() == "Credentials" else ""
-        password = self.smb_password.text().strip() if self.smb_auth_combo.currentText() == "Credentials" else ""
+        smb_auth_combo = getattr(self, 'smb_auth_combo', None)
+        username = self.smb_username.text().strip() if smb_auth_combo and smb_auth_combo.currentText() == "Credentials" else ""
+        password = self.smb_password.text().strip() if smb_auth_combo and smb_auth_combo.currentText() == "Credentials" else ""
         
         self.is_scanning = True
         self.run_button.setText("Cancel")
@@ -1909,15 +2073,20 @@ class EnumerationPage(QWidget):
             self.show_error("Please enter a target")
             return
         
+        smtp_port = getattr(self, 'smtp_port', None)
         try:
-            port = int(self.smtp_port.text().strip() or "25")
-        except ValueError:
+            port = int(smtp_port.text().strip() or "25") if smtp_port else 25
+        except (ValueError, AttributeError):
             self.show_error("Invalid port number")
             return
         
-        domain = self.smtp_domain.text().strip() or target
-        helo_name = self.smtp_helo.text().strip() or "test.local"
-        wordlist_path = self.smtp_wordlist.currentData()
+        smtp_domain = getattr(self, 'smtp_domain', None)
+        smtp_helo = getattr(self, 'smtp_helo', None)
+        smtp_wordlist = getattr(self, 'smtp_wordlist', None)
+        
+        domain = smtp_domain.text().strip() or target if smtp_domain else target
+        helo_name = smtp_helo.text().strip() or "test.local" if smtp_helo else "test.local"
+        wordlist_path = smtp_wordlist.currentData() if smtp_wordlist else None
         
         self.is_scanning = True
         self.run_button.setText("Cancel")
@@ -1952,7 +2121,8 @@ class EnumerationPage(QWidget):
             self.show_error("Please enter a target")
             return
         
-        version = self.snmp_version.currentText()
+        snmp_version = getattr(self, 'snmp_version', None)
+        version = snmp_version.currentText() if snmp_version else "2c"
         
         scan_type_map = {
             "Basic Info": "basic",
@@ -1962,10 +2132,12 @@ class EnumerationPage(QWidget):
             "Network": "network",
             "Full Enumeration": "full"
         }
-        scan_type = scan_type_map[self.snmp_scan_type.currentText()]
+        snmp_scan_type = getattr(self, 'snmp_scan_type', None)
+        scan_type = scan_type_map[snmp_scan_type.currentText()] if snmp_scan_type else "basic"
         
-        communities_text = self.snmp_communities.text().strip()
-        communities = [c.strip() for c in communities_text.split(',') if c.strip()] if communities_text else snmp_utils.get_default_communities()
+        snmp_communities = getattr(self, 'snmp_communities', None)
+        communities_text = snmp_communities.text().strip() if snmp_communities else ""
+        communities = [c.strip() for c in communities_text.split(',') if c.strip()] if communities_text else []
         
         self.is_scanning = True
         self.run_button.setText("Cancel")
@@ -2006,12 +2178,15 @@ class EnumerationPage(QWidget):
             "Nikto Scan": "nikto",
             "Full Scan": "full"
         }
-        scan_type = scan_type_map[self.http_scan_type.currentText()]
+        http_scan_type = getattr(self, 'http_scan_type', None)
+        scan_type = scan_type_map[http_scan_type.currentText()] if http_scan_type else "basic"
         
-        extensions_text = self.http_extensions.text().strip()
+        http_extensions = getattr(self, 'http_extensions', None)
+        extensions_text = http_extensions.text().strip() if http_extensions else ""
         extensions = [ext.strip() for ext in extensions_text.split(',') if ext.strip()] if extensions_text else None
         
-        wordlist_path = self.http_wordlist.currentData()
+        http_wordlist = getattr(self, 'http_wordlist', None)
+        wordlist_path = http_wordlist.currentData() if http_wordlist else None
         
         self.is_scanning = True
         self.run_button.setText("Cancel")
@@ -2053,9 +2228,11 @@ class EnumerationPage(QWidget):
             "Vulnerability Test": "vulns",
             "Full Scan": "full"
         }
-        scan_type = scan_type_map[self.api_scan_type.currentText()]
+        api_scan_type = getattr(self, 'api_scan_type', None)
+        scan_type = scan_type_map[api_scan_type.currentText()] if api_scan_type else "basic"
         
-        wordlist_path = self.api_wordlist.currentData()
+        api_wordlist = getattr(self, 'api_wordlist', None)
+        wordlist_path = api_wordlist.currentData() if api_wordlist else None
         
         self.is_scanning = True
         self.run_button.setText("Cancel")
@@ -2097,7 +2274,7 @@ class EnumerationPage(QWidget):
         self.scan_shortcut = QShortcut(QKeySequence("F5"), self)
         self.scan_shortcut.activated.connect(self.run_host_wordlist_scan)
         self.back_shortcut = QShortcut(QKeySequence("Escape"), self)
-        self.back_shortcut.activated.connect(lambda: self.navigate_signal.emit("home"))
+        self.back_shortcut.activated.connect(self.navigate_home)
 
     def append_terminal_output(self, text):
         self.terminal_output.insertHtml(text)
@@ -2106,23 +2283,39 @@ class EnumerationPage(QWidget):
 
     def update_status_bar_text(self, text):
         self.status_updated.emit(text)
+    
+    def start_progress(self, total_items, message="Scanning..."):
+        """Start progress tracking"""
+        if hasattr(self, 'progress_widget'):
+            self.progress_widget.start_progress(total_items, message)
 
     def store_scan_results(self, results):
         if not hasattr(self, 'last_scan_results') or not self.last_scan_results:
             self.last_scan_results = {}
         
-        
-        # Merge new results with existing results
-        for domain, record_types in results.items():
-            if domain not in self.last_scan_results:
-                self.last_scan_results[domain] = {}
-            for record_type, values in record_types.items():
-                if record_type not in self.last_scan_results[domain]:
-                    self.last_scan_results[domain][record_type] = []
-                # Avoid duplicates
-                for value in values:
-                    if value not in self.last_scan_results[domain][record_type]:
-                        self.last_scan_results[domain][record_type].append(value)
+        # Store results based on scan type
+        if self.current_submenu == "port_scan":
+            # Handle port scan results
+            self.last_scan_results.update(results)
+            self.populate_port_table(results)
+        else:
+            # Handle DNS results
+            self.structured_dns_results = results
+            
+            # Merge new results with existing results
+            for domain, record_types in results.items():
+                if domain not in self.last_scan_results:
+                    self.last_scan_results[domain] = {}
+                for record_type, values in record_types.items():
+                    if record_type not in self.last_scan_results[domain]:
+                        self.last_scan_results[domain][record_type] = []
+                    # Avoid duplicates
+                    for value in values:
+                        if value not in self.last_scan_results[domain][record_type]:
+                            self.last_scan_results[domain][record_type].append(value)
+            
+            # Update tree view with structured results
+            self.populate_tree_view(results)
         
         self.export_button.setEnabled(True)
 
@@ -2139,6 +2332,41 @@ class EnumerationPage(QWidget):
         self.run_button.setText("Run")
         self.run_button.setStyleSheet("")
         self.current_worker = None
+    
+    def _on_dns_scan_finished(self):
+        """Handle DNS scan completion - run SRV scan if SRV is selected"""
+        # Check if SRV should be run
+        srv_checkbox = getattr(self, 'record_type_checkboxes', {}).get('SRV')
+        all_checkbox = getattr(self, 'all_checkbox', None)
+        
+        should_run_srv = (srv_checkbox and srv_checkbox.isChecked()) or (all_checkbox and all_checkbox.isChecked())
+        
+        if should_run_srv:
+            self.append_terminal_output("<p style='color: #00BFFF;'>Starting SRV enumeration...</p><br>")
+            
+            target = self.target_input.text().strip()
+            dns_server = getattr(self, 'dns_input', None)
+            dns_server = dns_server.text().strip() or None if dns_server else None
+            
+            # Run SRV scan with srv_wordlist.txt
+            srv_wordlist_path = os.path.join(self.main_window.project_root, "resources", "wordlists", "srv_wordlist.txt")
+            
+            self.current_worker = dns_utils.enumerate_hostnames(
+                target=target,
+                wordlist_path=srv_wordlist_path,
+                record_types=['SRV'],
+                use_bruteforce=False,
+                dns_server=dns_server,
+                output_callback=self.append_terminal_output,
+                status_callback=self.update_status_bar_text,
+                finished_callback=self.on_scan_finished,
+                results_callback=self.store_scan_results,
+                progress_callback=self.update_progress,
+                progress_start_callback=self.start_progress
+            )
+        else:
+            # No SRV scan needed, finish normally
+            self.on_scan_finished()
 
     def show_error(self, message):
         self.terminal_output.setHtml(f"<p style='color: #FF4500;'>[ERROR] {message}</p>")
@@ -2336,3 +2564,131 @@ class EnumerationPage(QWidget):
                 self.append_terminal_output(
                     f"<p style='color: #FF4500;'>[SESSION ERROR] Failed to associate scan: {str(e)}</p><br>"
                 )
+    
+    def toggle_results_view(self):
+        """Toggle between text and tree view for DNS results"""
+        if self.current_view_is_text:
+            # Switch to tree view
+            self.results_stack.setCurrentIndex(1)
+            self.view_toggle_btn.setText("Text View")
+            self.current_view_is_text = False
+        else:
+            # Switch to text view
+            self.results_stack.setCurrentIndex(0)
+            self.view_toggle_btn.setText("Graph View")
+            self.current_view_is_text = True
+    
+    def populate_tree_view(self, structured_results):
+        """Populate QTreeView with structured DNS results"""
+        # Clear existing model
+        self.tree_model.clear()
+        self.tree_model.setHorizontalHeaderLabels(["Domain/Record", "Value"])
+        
+        if not structured_results:
+            return
+        
+        # Create root item for the target domain
+        target_domain = self.target_input.text().strip() or "DNS Results"
+        root_item = QStandardItem(target_domain)
+        root_item.setEditable(False)
+        self.tree_model.appendRow([root_item, QStandardItem("")])
+        
+        # Add each domain and its records
+        for domain, record_types in structured_results.items():
+            # Create domain item
+            domain_item = QStandardItem(domain)
+            domain_item.setEditable(False)
+            domain_count_item = QStandardItem(f"{len(record_types)} record types")
+            domain_count_item.setEditable(False)
+            
+            # Add record types under domain
+            for record_type, values in record_types.items():
+                record_item = QStandardItem(f"{record_type} Records")
+                record_item.setEditable(False)
+                record_count_item = QStandardItem(f"{len(values)} entries")
+                record_count_item.setEditable(False)
+                
+                # Add individual values
+                for value in values:
+                    value_item = QStandardItem(value)
+                    value_item.setEditable(False)
+                    record_item.appendRow([value_item, QStandardItem("")])
+                
+                domain_item.appendRow([record_item, record_count_item])
+            
+            root_item.appendRow([domain_item, domain_count_item])
+        
+        # Expand the tree to show structure
+        self.tree_view.expandAll()
+        
+        # Resize columns to content
+        self.tree_view.resizeColumnToContents(0)
+        self.tree_view.resizeColumnToContents(1)
+    def set_results_view(self, is_text_view):
+        """Set results view to text or graph"""
+        self.current_view_is_text = is_text_view
+        
+        # Update button states
+        self.text_view_btn.setChecked(is_text_view)
+        self.graph_view_btn.setChecked(not is_text_view)
+        
+        # Switch view
+        if is_text_view:
+            self.results_stack.setCurrentIndex(0)  # Text view
+        else:
+            # Choose appropriate graph view based on current tool
+            if self.current_submenu == "port_scan":
+                self.results_stack.setCurrentIndex(2)  # Port table
+            else:
+                self.results_stack.setCurrentIndex(1)  # DNS tree
+    
+    def populate_port_table(self, port_results):
+        """Populate port table with scan results"""
+        from PyQt6.QtWidgets import QTableWidgetItem
+        from PyQt6.QtCore import Qt
+        
+        # Clear existing data
+        self.port_table.setRowCount(0)
+        
+        if not port_results:
+            return
+        
+        # Extract port data from results
+        ports_data = []
+        for target, data in port_results.items():
+            if isinstance(data, dict) and 'open_ports' in data:
+                for port_info in data['open_ports']:
+                    if isinstance(port_info, dict):
+                        ports_data.append({
+                            'port': str(port_info.get('port', 'Unknown')),
+                            'service': port_info.get('service', 'Unknown'),
+                            'banner': port_info.get('banner', '')
+                        })
+                    else:
+                        # Handle simple port number format
+                        ports_data.append({
+                            'port': str(port_info),
+                            'service': 'Unknown',
+                            'banner': ''
+                        })
+        
+        # Populate table
+        self.port_table.setRowCount(len(ports_data))
+        for row, port_data in enumerate(ports_data):
+            # Port column
+            port_item = QTableWidgetItem(port_data['port'])
+            port_item.setFlags(port_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.port_table.setItem(row, 0, port_item)
+            
+            # Service column
+            service_item = QTableWidgetItem(port_data['service'])
+            service_item.setFlags(service_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.port_table.setItem(row, 1, service_item)
+            
+            # Banner column
+            banner_item = QTableWidgetItem(port_data['banner'])
+            banner_item.setFlags(banner_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.port_table.setItem(row, 2, banner_item)
+        
+        # Resize columns to content
+        self.port_table.resizeColumnsToContents()

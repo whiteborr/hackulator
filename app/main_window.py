@@ -121,6 +121,11 @@ class MainWindow(QMainWindow):
         # Initialize system tray
         self.setup_system_tray()
         
+        # Initialize enhanced help panel
+        from app.widgets.enhanced_help_panel import EnhancedHelpPanel
+        self.enhanced_help_panel = EnhancedHelpPanel(self)
+        self.enhanced_help_panel.hide()
+        
         # Apply initial theme
         self.theme_manager.apply_theme()
         
@@ -231,6 +236,15 @@ class MainWindow(QMainWindow):
         
         # Help menu
         help_menu = menubar.addMenu('&Help')
+        
+        # Enhanced Help action
+        help_action = QAction('&Tool Help', self)
+        help_action.setShortcut(QKeySequence('F1'))
+        help_action.setStatusTip('Show detailed tool help and documentation')
+        help_action.triggered.connect(self.show_enhanced_help)
+        help_menu.addAction(help_action)
+        
+        help_menu.addSeparator()
         
         # About action
         about_action = QAction('&About', self)
@@ -604,6 +618,14 @@ class MainWindow(QMainWindow):
         self.status_bar.showMessage("Session Management opened")
         dialog.exec()
         self.status_bar.showMessage("Session Management closed")
+    
+    def show_enhanced_help(self):
+        """Show enhanced help panel"""
+        if hasattr(self, 'enhanced_help_panel'):
+            self.enhanced_help_panel.show()
+            self.status_bar.showMessage("Enhanced help panel opened - F1 to close")
+        else:
+            self.status_bar.showMessage("Enhanced help panel not available")
     
     def on_theme_changed(self, theme_name):
         """Handle theme change event"""

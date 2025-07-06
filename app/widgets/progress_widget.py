@@ -52,6 +52,10 @@ class ProgressWidget(QWidget):
         self.status_label = QLabel("Ready")
         self.status_label.setStyleSheet("color: #64C8FF; font-size: 11pt; font-weight: bold;")
         
+        self.current_item_label = QLabel("")
+        self.current_item_label.setStyleSheet("color: #FFD700; font-size: 10pt; font-style: italic;")
+        self.current_item_label.hide()
+        
         self.eta_label = QLabel("ETA: --:--")
         self.eta_label.setStyleSheet("color: #DCDCDC; font-size: 11pt;")
         
@@ -68,6 +72,7 @@ class ProgressWidget(QWidget):
         stats_layout.addWidget(self.eta_label)
         
         layout.addLayout(stats_layout)
+        layout.addWidget(self.current_item_label)
     
     def start_progress(self, total_items, status="Processing..."):
         """Start progress tracking"""
@@ -81,11 +86,15 @@ class ProgressWidget(QWidget):
         self.status_label.setText(status)
         self.update_display()
     
-    def update_progress(self, completed_items, results_found=None):
+    def update_progress(self, completed_items, results_found=None, current_item=None):
         """Update progress values"""
         self.completed_items = completed_items
         if results_found is not None:
             self.results_found = results_found
+        
+        if current_item:
+            self.current_item_label.setText(f"Current: {current_item}")
+            self.current_item_label.show()
         
         self.progress_bar.setValue(completed_items)
         self.update_display()
@@ -138,6 +147,8 @@ class ProgressWidget(QWidget):
         self.eta_label.setText("ETA: --:--")
         self.speed_label.setText("Speed: -- items/s")
         self.results_label.setText("Found: 0")
+        self.current_item_label.setText("")
+        self.current_item_label.hide()
         self.start_time = None
         self.completed_items = 0
         self.results_found = 0

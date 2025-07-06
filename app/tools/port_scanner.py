@@ -80,7 +80,7 @@ class PortScanWorker(QRunnable):
             # Store results
             if open_ports:
                 self.results[self.target] = {
-                    'tcp_ports': [{'port': port, 'service': service} for port, service in open_ports]
+                    'open_ports': [{'port': port, 'service': service, 'banner': ''} for port, service in open_ports]
                 }
                 self.signals.results_ready.emit(self.results)
                 self.signals.output.emit(f"<br><p style='color: #00FF41;'>Found {len(open_ports)} open ports</p>")

@@ -31,6 +31,9 @@ class SubdomainGenerator:
     
     def _generate_bruteforce(self):
         """Generate subdomains using bruteforce patterns"""
+        # Always yield empty string first to test the domain itself
+        yield ""
+        
         chars = self._build_charset()
         if not chars:
             return
@@ -52,6 +55,9 @@ class SubdomainGenerator:
     
     def _generate_wordlist(self):
         """Generate subdomains from wordlist file"""
+        # Always yield empty string first to test the domain itself
+        yield ""
+        
         if self.wordlist_path and os.path.exists(self.wordlist_path):
             try:
                 with open(self.wordlist_path, 'r') as file:
@@ -76,7 +82,7 @@ class WorkerSignals(QObject):
     finished = pyqtSignal()
     wildcard_result = pyqtSignal(str)
     results_ready = pyqtSignal(dict)
-    progress_update = pyqtSignal(int, int)
+    progress_update = pyqtSignal(int, int, str)
     progress_start = pyqtSignal(int)
     result_found = pyqtSignal(str, str, list)
 
@@ -125,7 +131,8 @@ class HostWordlistWorker(QRunnable):
             'MX': lambda r: f"{r.preference} {r.exchange.to_text().rstrip('.')}",
             'TXT': lambda r: b''.join(r.strings).decode('utf-8', errors='ignore').replace('"', ''),
             'NS': lambda r: r.target.to_text().rstrip('.'),
-            'PTR': lambda r: r.target.to_text().rstrip('.')
+            'PTR': lambda r: r.target.to_text().rstrip('.'),
+            'SRV': lambda r: f"{r.priority} {r.weight} {r.port} {r.target.to_text().rstrip('.')}"
         }
         return formatters.get(record_type, lambda r: r.to_text())
 
@@ -150,27 +157,62 @@ class HostWordlistWorker(QRunnable):
         if not self.is_running:
             return
         
-        domain = f"{subdomain}.{self.target}"
         for record_type in self.record_types:
             if not self.is_running:
                 return
-            try:
-                answers = self.resolver.resolve(domain, record_type)
-                formatter = self._get_formatter(record_type)
-                values = [formatter(r) for r in answers]
-                
-                # Filter out wildcard results
-                if record_type == "A" and self.wildcard_ips and set(values).issubset(self.wildcard_ips):
-                    continue
-                    
-                if values:
-                    # Emit result as soon as it's found
-                    self.signals.result_found.emit(domain, record_type, values)
-
-            except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.Timeout):
+            
+            if record_type == 'SRV':
+                # SRV records are handled separately, not per subdomain
                 continue
-            except Exception:
-                pass
+            else:
+                # Handle regular subdomain queries
+                domain = f"{subdomain}.{self.target}" if subdomain else self.target
+                try:
+                    answers = self.resolver.resolve(domain, record_type)
+                    formatter = self._get_formatter(record_type)
+                    values = [formatter(r) for r in answers]
+                    
+                    # Filter out wildcard results
+                    if record_type == "A" and self.wildcard_ips and set(values).issubset(self.wildcard_ips):
+                        continue
+                        
+                    if values:
+                        # Emit result as soon as it's found
+                        self.signals.result_found.emit(domain, record_type, values)
+
+                except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.Timeout):
+                    continue
+                except Exception:
+                    pass
+    
+    def _query_srv_records(self, subdomain):
+        """Query SRV records using service wordlist"""
+        import os
+        srv_wordlist_path = os.path.join(os.path.dirname(__file__), '..', '..', 'resources', 'wordlists', 'srv_wordlist.txt')
+        
+        try:
+            with open(srv_wordlist_path, 'r') as f:
+                services = [line.strip() for line in f if line.strip()]
+        except FileNotFoundError:
+            services = ['_http', '_https', '_ftp', '_ssh', '_smtp', '_pop3', '_imap', '_ldap', '_kerberos']
+        
+        for srv in services:
+            if not self.is_running:
+                return
+            
+            for protocol in ['_tcp', '_udp']:
+                fqdn = f"{srv}.{protocol}.{self.target}"
+                try:
+                    answers = self.resolver.resolve(fqdn, 'SRV')
+                    formatter = self._get_formatter('SRV')
+                    values = [formatter(r) for r in answers]
+                    
+                    if values:
+                        self.signals.result_found.emit(fqdn, 'SRV', values)
+                except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.Timeout):
+                    continue
+                except Exception:
+                    pass
 
     def _get_subdomains(self):
         """Get subdomains from the injected generator"""
@@ -195,22 +237,31 @@ class HostWordlistWorker(QRunnable):
             if self.subdomain_generator.use_bruteforce:
                 self.signals.output.emit(f"<p style='color: #00BFFF;'>Bruteforcing.... Please wait....</p><br>")
             
+            # Get total count for progress tracking
+            subdomains = list(self._get_subdomains())
+            total_count = len(subdomains)
+            self.signals.progress_start.emit(total_count)
+            
             completed_count = 0
             all_results = defaultdict(lambda: defaultdict(list))
 
+            # Handle SRV records separately (once per service, not per subdomain)
+            if 'SRV' in self.record_types:
+                self._query_srv_records(None)
+            
             with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                futures = {executor.submit(self.query_subdomain, sub) for sub in self._get_subdomains()}
+                future_to_sub = {executor.submit(self.query_subdomain, sub): sub for sub in subdomains}
                 
-                for future in concurrent.futures.as_completed(futures):
+                for future in concurrent.futures.as_completed(future_to_sub):
                     if not self.is_running:
-                        for f in futures:
+                        for f in future_to_sub:
                             f.cancel()
                         break
                     
                     future.result()
                     completed_count += 1
-                    if completed_count % 10 == 0:
-                        self.signals.progress_update.emit(completed_count, len(all_results))
+                    current_sub = future_to_sub[future]
+                    self.signals.progress_update.emit(completed_count, len(all_results), current_sub)
             
             if self.is_running:
                 final_count = getattr(self, 'final_result_count', len(all_results))
@@ -345,7 +396,8 @@ class PTRWorker(QRunnable):
                     
                     # Update progress every 10 IPs or at the end
                     if self.completed_count % 10 == 0 or self.completed_count == len(ips):
-                        self.signals.progress_update.emit(self.completed_count, self.results_count)
+                        current_ip = str(future_to_ip[future]) if future in future_to_ip else "..."
+                        self.signals.progress_update.emit(self.completed_count, self.results_count, current_ip)
             
             # Final results summary already sent individually
         except Exception as e:

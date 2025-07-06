@@ -44,6 +44,7 @@ class AdvancedReportingWidget(QWidget):
         super().__init__(parent)
         self.current_scan_data = {}
         self.report_history = []
+        self.last_generated_report = None
         self.setup_ui()
         self.setup_connections()
     
@@ -171,6 +172,25 @@ class AdvancedReportingWidget(QWidget):
         """)
         gen_layout.addWidget(self.generate_btn)
         
+        # Open report button (initially hidden)
+        self.open_report_btn = QPushButton("Open Generated Report")
+        self.open_report_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                padding: 10px;
+                font-size: 14px;
+                font-weight: bold;
+                border-radius: 5px;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            }
+        """)
+        self.open_report_btn.setVisible(False)
+        gen_layout.addWidget(self.open_report_btn)
+        
         # Output display
         self.output_text = QTextEdit()
         self.output_text.setMaximumHeight(150)
@@ -263,11 +283,14 @@ class AdvancedReportingWidget(QWidget):
         self.load_file_btn.clicked.connect(self.load_from_file)
         self.preview_template_btn.clicked.connect(self.preview_template)
         self.refresh_history_btn.clicked.connect(self.refresh_history)
-        self.open_report_btn.clicked.connect(self.open_selected_report)
+        self.open_report_btn.clicked.connect(self.open_generated_report)
         self.delete_report_btn.clicked.connect(self.delete_selected_report)
         
         # Auto-update data summary when combo changes
         self.report_type_combo.currentTextChanged.connect(self.update_template_preview)
+        
+        # Connect open report button in history tab
+        self.open_report_btn_history = None  # Will be set in setup_history_tab
     
     def load_scan_data(self, scan_data):
         """Load scan data from external source"""
@@ -383,6 +406,9 @@ class AdvancedReportingWidget(QWidget):
         self.worker.finished.connect(self.on_report_generated)
         self.worker.start()
         
+        # Hide open button during generation
+        self.open_report_btn.setVisible(False)
+        
         self.output_text.append(f"Generating {report_type} report in {output_format} format...")
     
     def on_report_generated(self, success, filepath, message):
@@ -397,10 +423,14 @@ class AdvancedReportingWidget(QWidget):
             # Add to history
             self.add_to_history(filepath)
             
-            # Open report option
+            # Show open report button
+            self.last_generated_report = filepath
+            self.open_report_btn.setVisible(True)
+            
             self.output_text.append("Report generated successfully!")
         else:
             self.output_text.append(f"ERROR: {message}")
+            self.open_report_btn.setVisible(False)
     
     def add_to_history(self, filepath):
         """Add report to history"""
@@ -505,3 +535,24 @@ class AdvancedReportingWidget(QWidget):
                     f"Failed to delete report:\n{str(e)}"
                 )
                 self.output_text.append(f"Error deleting report: {str(e)}")
+    
+    def open_generated_report(self):
+        """Open the last generated report"""
+        if not self.last_generated_report or not os.path.exists(self.last_generated_report):
+            self.output_text.append("No report file found to open.")
+            return
+        
+        try:
+            import subprocess
+            import platform
+            
+            if platform.system() == 'Windows':
+                os.startfile(self.last_generated_report)
+            elif platform.system() == 'Darwin':  # macOS
+                subprocess.run(['open', self.last_generated_report])
+            else:  # Linux
+                subprocess.run(['xdg-open', self.last_generated_report])
+            
+            self.output_text.append(f"Opened report: {os.path.basename(self.last_generated_report)}")
+        except Exception as e:
+            self.output_text.append(f"Could not open report: {str(e)}")
