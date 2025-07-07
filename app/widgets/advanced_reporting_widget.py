@@ -151,7 +151,7 @@ class AdvancedReportingWidget(QWidget):
         self.progress_bar.setVisible(False)
         gen_layout.addWidget(self.progress_bar)
         
-        # Generate button
+        # Generate/Open button (dual purpose)
         self.generate_btn = QPushButton("Generate Advanced Report")
         self.generate_btn.setStyleSheet("""
             QPushButton {
@@ -172,24 +172,8 @@ class AdvancedReportingWidget(QWidget):
         """)
         gen_layout.addWidget(self.generate_btn)
         
-        # Open report button (initially hidden)
-        self.open_report_btn = QPushButton("Open Generated Report")
-        self.open_report_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                padding: 10px;
-                font-size: 14px;
-                font-weight: bold;
-                border-radius: 5px;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            }
-        """)
-        self.open_report_btn.setVisible(False)
-        gen_layout.addWidget(self.open_report_btn)
+        # Track button state
+        self.button_is_open_mode = False
         
         # Output display
         self.output_text = QTextEdit()
@@ -278,19 +262,15 @@ class AdvancedReportingWidget(QWidget):
     
     def setup_connections(self):
         """Setup signal connections"""
-        self.generate_btn.clicked.connect(self.generate_report)
+        self.generate_btn.clicked.connect(self.handle_main_button_click)
         self.load_current_btn.clicked.connect(self.load_current_scan)
         self.load_file_btn.clicked.connect(self.load_from_file)
         self.preview_template_btn.clicked.connect(self.preview_template)
         self.refresh_history_btn.clicked.connect(self.refresh_history)
-        self.open_report_btn.clicked.connect(self.open_generated_report)
         self.delete_report_btn.clicked.connect(self.delete_selected_report)
         
         # Auto-update data summary when combo changes
         self.report_type_combo.currentTextChanged.connect(self.update_template_preview)
-        
-        # Connect open report button in history tab
-        self.open_report_btn_history = None  # Will be set in setup_history_tab
     
     def load_scan_data(self, scan_data):
         """Load scan data from external source"""
@@ -323,6 +303,7 @@ class AdvancedReportingWidget(QWidget):
         }
         self.update_data_summary()
         self.output_text.append("Current scan data loaded successfully.")
+        self.reset_button_to_generate_mode()
     
     def load_from_file(self):
         """Load scan data from file"""
@@ -367,6 +348,7 @@ class AdvancedReportingWidget(QWidget):
             
             self.load_scan_data(scan_data)
             self.output_text.append(f"Successfully loaded scan data from: {file_path}")
+            self.reset_button_to_generate_mode()
             
         except Exception as e:
             QMessageBox.critical(
@@ -406,8 +388,7 @@ class AdvancedReportingWidget(QWidget):
         self.worker.finished.connect(self.on_report_generated)
         self.worker.start()
         
-        # Hide open button during generation
-        self.open_report_btn.setVisible(False)
+        # Keep button in generate mode during generation
         
         self.output_text.append(f"Generating {report_type} report in {output_format} format...")
     
@@ -416,21 +397,23 @@ class AdvancedReportingWidget(QWidget):
         self.progress_bar.setVisible(False)
         self.generate_btn.setEnabled(True)
         
-        if success:
+        # Debug output
+        self.output_text.append(f"DEBUG: success={success}, filepath='{filepath}', message='{message}'")
+        
+        if success and filepath:
             self.output_text.append(f"SUCCESS: {message}")
             self.output_text.append(f"Report saved to: {filepath}")
             
             # Add to history
             self.add_to_history(filepath)
             
-            # Show open report button
+            # Switch button to open mode
             self.last_generated_report = filepath
-            self.open_report_btn.setVisible(True)
+            self.set_button_to_open_mode()
             
             self.output_text.append("Report generated successfully!")
         else:
             self.output_text.append(f"ERROR: {message}")
-            self.open_report_btn.setVisible(False)
     
     def add_to_history(self, filepath):
         """Add report to history"""
@@ -535,6 +518,54 @@ class AdvancedReportingWidget(QWidget):
                     f"Failed to delete report:\n{str(e)}"
                 )
                 self.output_text.append(f"Error deleting report: {str(e)}")
+    
+    def handle_main_button_click(self):
+        """Handle main button click - either generate or open"""
+        if self.button_is_open_mode:
+            self.open_generated_report()
+        else:
+            self.generate_report()
+    
+    def set_button_to_open_mode(self):
+        """Set button to open mode"""
+        self.button_is_open_mode = True
+        self.generate_btn.setText("Open Generated Report")
+        self.generate_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                padding: 10px;
+                font-size: 14px;
+                font-weight: bold;
+                border-radius: 5px;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            }
+        """)
+    
+    def reset_button_to_generate_mode(self):
+        """Reset button to generate mode"""
+        self.button_is_open_mode = False
+        self.generate_btn.setText("Generate Advanced Report")
+        self.generate_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #2ecc71;
+                color: white;
+                border: none;
+                padding: 10px;
+                font-size: 14px;
+                font-weight: bold;
+                border-radius: 5px;
+            }
+            QPushButton:hover {
+                background-color: #27ae60;
+            }
+            QPushButton:disabled {
+                background-color: #95a5a6;
+            }
+        """)
     
     def open_generated_report(self):
         """Open the last generated report"""

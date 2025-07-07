@@ -1,0 +1,6 @@
+Domain,Type,Value
+192.168.1.110,open_ports,"{'port': 53, 'protocol': 'tcp', 'service': 'domain', 'state': 'open', 'banner': ''}"
+192.168.1.110,open_ports,"{'port': 88, 'protocol': 'tcp', 'service': 'kerberos-sec', 'state': 'open', 'banner': ''}"
+192.168.1.110,open_ports,"{'port': 135, 'protocol': 'tcp', 'service': 'msrpc', 'state': 'open', 'banner': ''}"
+192.168.1.110,open_ports,"{'port': 139, 'protocol': 'tcp', 'service': 'netbios-ssn', 'state': 'open', 'banner': ''}"
+192.168.1.110,open_ports,"{'port': 445, 'protocol': 'tcp', 'service': 'microsoft-ds', 'state': 'open', 'banner': ''}"

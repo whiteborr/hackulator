@@ -1,0 +1,17 @@
+Domain,Type,Value
+example.com,A,23.192.228.80
+example.com,A,23.192.228.84
+example.com,A,23.215.0.136
+example.com,A,23.215.0.138
+example.com,A,96.7.128.175
+example.com,A,96.7.128.198
+example.com,AAAA,2600:1406:3a00:21::173e:2e65
+example.com,AAAA,2600:1406:3a00:21::173e:2e66
+example.com,AAAA,2600:1406:bc00:53::b81e:94c8
+example.com,AAAA,2600:1406:bc00:53::b81e:94ce
+example.com,AAAA,2600:1408:ec00:36::1736:7f24
+example.com,AAAA,2600:1408:ec00:36::1736:7f31
+www.example.com,A,23.40.52.204
+www.example.com,A,23.40.52.208
+www.example.com,AAAA,2600:1415:9c00:6::1728:346c
+www.example.com,AAAA,2600:1415:9c00:6::1728:346f

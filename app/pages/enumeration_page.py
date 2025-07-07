@@ -16,7 +16,16 @@ from app.core.exporter import exporter
 from app.core.base_worker import CommandWorker
 from app.widgets.progress_widget import ProgressWidget
 from app.core.control_panel_factory import ControlPanelFactory
-from app.core.tool_configs import TOOL_CONFIGS
+import json
+import os
+
+def load_tool_configs():
+    """Load tool configurations from JSON file"""
+    config_path = os.path.join(os.path.dirname(__file__), '..', 'core', 'tool_configs.json')
+    with open(config_path, 'r') as f:
+        return json.load(f)
+
+TOOL_CONFIGS = load_tool_configs()
 import time
 
 class HoverButton(QPushButton):
@@ -354,43 +363,85 @@ class EnumerationPage(QWidget):
         scan_type_label.setFixedWidth(110)
         scan_type_row.addWidget(scan_type_label)
         self.scan_type_combo = QComboBox()
-        self.scan_type_combo.addItems(["TCP Connect", "Network Sweep"])
-        self.scan_type_combo.setFixedWidth(150)
+        self.scan_type_combo.addItems([
+            "Network Sweep", "TCP Connect", "SYN Stealth", "Nmap TCP Connect", 
+            "UDP Scan", "UDP + SYN", "OS Detection", "Service Detection"
+        ])
+        self.scan_type_combo.setFixedWidth(200)
+        self.scan_type_combo.currentTextChanged.connect(self.on_port_scan_type_changed)
         scan_type_row.addWidget(self.scan_type_combo)
         scan_type_row.addStretch()
         layout.addLayout(scan_type_row)
         
         # Port Range
-        port_row = QHBoxLayout()
-        port_label = QLabel("Ports:")
-        port_label.setFixedWidth(110)
-        port_row.addWidget(port_label)
+        self.port_row = QHBoxLayout()
+        self.port_label = QLabel("Ports:")
+        self.port_label.setFixedWidth(110)
+        self.port_row.addWidget(self.port_label)
         self.port_input = QLineEdit()
-        self.port_input.setPlaceholderText("80,443,1-1000 or leave empty for common ports")
+        self.port_input.setPlaceholderText("80,443,1-1000 (required for port scan)")
+        
+        # Update target placeholder for port scanning
+        if hasattr(self, 'target_input'):
+            self.target_input.setPlaceholderText("Enter target (IP, domain, IP range: 192.168.1.1-254 or 192.168.1.0/24)")
         self.port_input.returnPressed.connect(self.toggle_scan)
-        port_row.addWidget(self.port_input)
-        layout.addLayout(port_row)
+        self.port_row.addWidget(self.port_input)
+        layout.addLayout(self.port_row)
         
         # Quick port selections
-        quick_ports_row = QHBoxLayout()
-        quick_ports_label = QLabel("Quick:")
-        quick_ports_label.setFixedWidth(110)
-        quick_ports_row.addWidget(quick_ports_label)
+        self.quick_ports_row = QHBoxLayout()
+        self.quick_ports_label = QLabel("Quick:")
+        self.quick_ports_label.setFixedWidth(110)
+        self.quick_ports_row.addWidget(self.quick_ports_label)
         
         self.common_ports_btn = QPushButton("Common")
-        self.common_ports_btn.clicked.connect(lambda: self.port_input.setText("21,22,23,25,53,80,110,135,139,143,443,993,995,3389"))
-        quick_ports_row.addWidget(self.common_ports_btn)
+        self.common_ports_btn.clicked.connect(self.set_common_ports)
+        self.quick_ports_row.addWidget(self.common_ports_btn)
         
         self.top100_btn = QPushButton("Top 100")
         self.top100_btn.clicked.connect(lambda: self.port_input.setText("1-100"))
-        quick_ports_row.addWidget(self.top100_btn)
+        self.quick_ports_row.addWidget(self.top100_btn)
         
         self.top1000_btn = QPushButton("Top 1000")
         self.top1000_btn.clicked.connect(lambda: self.port_input.setText("1-1000"))
-        quick_ports_row.addWidget(self.top1000_btn)
+        self.quick_ports_row.addWidget(self.top1000_btn)
         
-        quick_ports_row.addStretch()
-        layout.addLayout(quick_ports_row)
+        self.quick_ports_row.addStretch()
+        layout.addLayout(self.quick_ports_row)
+        
+        # Run Aggressive checkbox
+        self.aggressive_row = QHBoxLayout()
+        aggressive_label = QLabel("Options:")
+        aggressive_label.setFixedWidth(110)
+        self.aggressive_row.addWidget(aggressive_label)
+        self.run_aggressive_checkbox = QCheckBox("Run Aggressive")
+        self.aggressive_row.addWidget(self.run_aggressive_checkbox)
+        self.aggressive_row.addStretch()
+        layout.addLayout(self.aggressive_row)
+        
+        # Enhanced Stealth checkbox
+        self.stealth_row = QHBoxLayout()
+        stealth_label = QLabel("Stealth:")
+        stealth_label.setFixedWidth(110)
+        self.stealth_row.addWidget(stealth_label)
+        self.enhanced_stealth_checkbox = QCheckBox("Enhanced Stealth")
+        self.enhanced_stealth_checkbox.stateChanged.connect(self.on_stealth_mode_changed)
+        self.stealth_row.addWidget(self.enhanced_stealth_checkbox)
+        self.stealth_row.addStretch()
+        layout.addLayout(self.stealth_row)
+        
+        # Stealth options (hidden by default)
+        self.decoy_row = QHBoxLayout()
+        self.decoy_label = QLabel("Decoy IPs:")
+        self.decoy_label.setFixedWidth(110)
+        self.decoy_row.addWidget(self.decoy_label)
+        self.decoy_ips_input = QLineEdit()
+        self.decoy_ips_input.setPlaceholderText("192.168.1.100,192.168.1.101")
+        self.decoy_row.addWidget(self.decoy_ips_input)
+        layout.addLayout(self.decoy_row)
+        
+        # Set initial visibility (Network Sweep selected by default)
+        self.on_port_scan_type_changed("Network Sweep")
         
         return port_widget
     
@@ -1173,10 +1224,18 @@ class EnumerationPage(QWidget):
         from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem
         self.port_table = QTableWidget()
         self.port_table.setColumnCount(3)
-        self.port_table.setHorizontalHeaderLabels(["Port", "Service", "Banner"])
+        self.port_table.setHorizontalHeaderLabels(["Port", "Service", "State"])
         self.port_table.setSortingEnabled(True)
         self.port_table.setAlternatingRowColors(True)
         self.results_stack.addWidget(self.port_table)
+        
+        # Results table for IP addresses found in scans
+        self.results_table = QTableWidget()
+        self.results_table.setColumnCount(3)
+        self.results_table.setHorizontalHeaderLabels(["IP Address", "Status", "Method"])
+        self.results_table.setSortingEnabled(True)
+        self.results_table.setAlternatingRowColors(True)
+        self.results_stack.addWidget(self.results_table)
         
         # Set initial view to text
         self.results_stack.setCurrentIndex(0)
@@ -1295,17 +1354,28 @@ class EnumerationPage(QWidget):
         controls = control_panel.controls
         
         if tool_name == 'port':
+            # Connect scan type change handler
+            if 'scan_type_combo' in controls:
+                controls['scan_type_combo'].currentTextChanged.connect(self.on_port_scan_type_changed)
+                # Set initial visibility
+                self.on_port_scan_type_changed(controls['scan_type_combo'].currentText())
+            
+            # Set default values
+            if 'ping_timeout' in controls:
+                controls['ping_timeout'].setValue(2000)
+            
+            # Connect button actions
             if 'common_btn' in controls:
                 controls['common_btn'].clicked.connect(
-                    lambda: controls['port_input'].setText("21,22,23,25,53,80,110,135,139,143,443,993,995,3389")
+                    lambda: self.set_common_ports_for_control_panel(controls['port_input'])
                 )
-            if 'top_100_btn' in controls:
-                controls['top_100_btn'].clicked.connect(
-                    lambda: controls['port_input'].setText("1-100")
-                )
-            if 'top_1000_btn' in controls:
-                controls['top_1000_btn'].clicked.connect(
+            if 'top1000_btn' in controls:
+                controls['top1000_btn'].clicked.connect(
                     lambda: controls['port_input'].setText("1-1000")
+                )
+            if 'all_btn' in controls:
+                controls['all_btn'].clicked.connect(
+                    lambda: controls['port_input'].setText("1-65535")
                 )
         
         elif tool_name == 'snmp':
@@ -1769,10 +1839,118 @@ class EnumerationPage(QWidget):
         """Placeholder for basic records"""
         self.show_error("Basic records scan not implemented yet")
     
-    def update_progress(self, completed, found, current_item=None):
+    def update_progress(self, completed, found, status_msg=None):
         """Update progress bar"""
         if hasattr(self, 'progress_widget'):
-            self.progress_widget.update_progress(completed, found, current_item)
+            # Use provided status message or default
+            if not status_msg:
+                status_msg = "Scanning..."
+            self.progress_widget.update_progress(completed, found, status_msg)
+    
+    def set_common_ports(self):
+        """Set common ports in the port input field"""
+        from app.tools.port_scanner import get_common_ports
+        common_ports = get_common_ports()
+        port_text = ','.join(map(str, common_ports))
+        
+        # Get port input from current control panel or direct attribute
+        port_input = None
+        if 'port' in self.tool_controls:
+            control_panel = self.tool_controls['port']
+            if hasattr(control_panel, 'controls') and 'port_input' in control_panel.controls:
+                port_input = control_panel.controls['port_input']
+        
+        if not port_input:
+            port_input = getattr(self, 'port_input', None)
+        
+        if port_input:
+            port_input.setText(port_text)
+    
+    def set_common_ports_for_control_panel(self, port_input):
+        """Set common ports for control panel port input"""
+        from app.tools.port_scanner import get_common_ports
+        common_ports = get_common_ports()
+        port_text = ','.join(map(str, common_ports))
+        port_input.setText(port_text)
+    
+    def on_port_scan_type_changed(self, scan_type):
+        """Handle port scan type changes to show/hide fields"""
+        if 'port' in self.tool_controls:
+            control_panel = self.tool_controls['port']
+            if hasattr(control_panel, 'controls'):
+                controls = control_panel.controls
+                
+                # Show/hide controls based on scan type
+                if scan_type == 'Ping Sweep':
+                    # Show ping options
+                    if 'ping_timeout' in controls:
+                        controls['ping_timeout'].setVisible(True)
+                    # Hide nmap options
+                    if 'timing_combo' in controls:
+                        controls['timing_combo'].setVisible(False)
+                    if 'enhanced_stealth_checkbox' in controls:
+                        controls['enhanced_stealth_checkbox'].setVisible(False)
+                    if 'parallelism_slider' in controls:
+                        controls['parallelism_slider'].setVisible(False)
+                    # Hide targeted scan options
+                    if 'target_scan_combo' in controls:
+                        controls['target_scan_combo'].setVisible(False)
+                    # Hide port fields
+                    controls.get('port_input', {}).setVisible(False)
+                    for btn in ['common_btn', 'top1000_btn', 'all_btn']:
+                        controls.get(btn, {}).setVisible(False)
+                        
+                elif scan_type == 'Nmap Sweep':
+                    # Hide ping options
+                    if 'ping_timeout' in controls:
+                        controls['ping_timeout'].setVisible(False)
+                    # Show nmap options
+                    if 'timing_combo' in controls:
+                        controls['timing_combo'].setVisible(True)
+                    if 'enhanced_stealth_checkbox' in controls:
+                        controls['enhanced_stealth_checkbox'].setVisible(True)
+                    if 'parallelism_slider' in controls:
+                        controls['parallelism_slider'].setVisible(True)
+                    # Hide targeted scan options
+                    if 'target_scan_combo' in controls:
+                        controls['target_scan_combo'].setVisible(False)
+                    # Hide port fields
+                    controls.get('port_input', {}).setVisible(False)
+                    for btn in ['common_btn', 'top1000_btn', 'all_btn']:
+                        controls.get(btn, {}).setVisible(False)
+                        
+                elif scan_type == 'Targeted Scan':
+                    # Hide ping and nmap sweep options
+                    if 'ping_timeout' in controls:
+                        controls['ping_timeout'].setVisible(False)
+                    if 'timing_combo' in controls:
+                        controls['timing_combo'].setVisible(False)
+                    if 'enhanced_stealth_checkbox' in controls:
+                        controls['enhanced_stealth_checkbox'].setVisible(False)
+                    if 'parallelism_slider' in controls:
+                        controls['parallelism_slider'].setVisible(False)
+                    # Show targeted scan options
+                    if 'target_scan_combo' in controls:
+                        controls['target_scan_combo'].setVisible(True)
+                    # Show port fields
+                    if 'port_input' in controls:
+                        controls['port_input'].setVisible(True)
+                    for btn in ['common_btn', 'top1000_btn', 'all_btn']:
+                        if btn in controls:
+                            controls[btn].setVisible(True)
+                
+                # Update label visibility
+                for child in control_panel.findChildren(QLabel):
+                    if child.text() == 'Ports:':
+                        child.setVisible(scan_type == 'Targeted Scan')
+                    elif child.text() == 'Target Type:':
+                        child.setVisible(scan_type == 'Targeted Scan')
+                    elif child.text() == 'Timeout:':
+                        child.setVisible(scan_type == 'Ping Sweep')
+                    elif child.text() == 'Parallelism:':
+                        child.setVisible(scan_type == 'Nmap Sweep')
+    
+
     
     def run_av_firewall_scan(self):
         """Execute AV/Firewall detection scan"""
@@ -1883,19 +2061,7 @@ class EnumerationPage(QWidget):
         self.current_worker.signals.error.connect(self.on_scan_error)
         
         # Start worker
-        QThreadPool.globalInstance().start(self.current_worker)
-        
-        # Handle direct queries for MX, NS, TXT first
-        if direct_query_types:
-            dns_utils.query_direct_records(
-                target=target,
-                record_types=direct_query_types,
-                dns_server=dns_server,
-                output_callback=self.append_terminal_output,
-                results_callback=self.store_scan_results
-            )
-        
-
+        QThreadPool.globalInstance().start(self.current_worker)         
 
     def run_ptr_scan(self):
         self.show_info("PTR scan functionality not yet implemented.")
@@ -1933,62 +2099,270 @@ class EnumerationPage(QWidget):
         self.on_scan_finished()
     
     def run_port_scan(self):
-        """Run port scanning based on selected options"""
+        """Execute Port Scanning with workflow-based scan types"""
         from app.tools import port_utils
         
         target = self.target_input.text().strip()
         if not target:
             self.show_error("Please enter a target")
             return
+
+        # Get scan parameters from control panel
+        control_panel = self.tool_controls['port']
+        controls = control_panel.controls
+        scan_type = controls['scan_type_combo'].currentText()
+        os_detect = controls.get('os_detection_checkbox', {}).isChecked() if hasattr(controls.get('os_detection_checkbox', {}), 'isChecked') else False
+        service_detect = controls.get('service_detection_checkbox', {}).isChecked() if hasattr(controls.get('service_detection_checkbox', {}), 'isChecked') else False
+        ports_text = controls['port_input'].text().strip()
+
+        # Only Targeted Scan needs ports (except OS detection)
+        if scan_type == "Targeted Scan":
+            target_scan_type = controls.get('target_scan_combo', {}).currentText() if hasattr(controls.get('target_scan_combo', {}), 'currentText') else "TCP connect scan"
+            if target_scan_type != "OS detection" and not ports_text:
+                self.show_error("Please specify ports for this scan type")
+                return
         
-        scan_type = getattr(self, 'scan_type_combo', None)
-        if scan_type:
-            scan_type = scan_type.currentText()
-        else:
-            scan_type = "TCP Connect"
-        
+
+
         self.is_scanning = True
         self.run_button.setText("Cancel")
         self.run_button.setStyleSheet("background-color: red; color: white;")
         self.terminal_output.clear()
         self.progress_widget.setVisible(True)
-        
-        # Clear previous scan results
+        self.status_updated.emit(f"Starting {scan_type} on {target}...")
+
         self.last_scan_results = {}
         self.export_button.setEnabled(False)
-        
-        if scan_type == "Network Sweep":
-            self.current_worker = port_utils.run_network_sweep(
-                network_range=target,
-                output_callback=self.append_terminal_output,
-                status_callback=self.update_status_bar_text,
-                finished_callback=self.on_scan_finished,
-                results_callback=self.store_scan_results,
-                progress_callback=self.update_progress,
-                progress_start_callback=self.start_progress
-            )
-        else:  # TCP Connect
+
+        # Handle Full Scan Workflow
+        if "Full Scan Workflow" in scan_type:
+            from app.tools.nmap_scanner import run_full_scan
+            include_udp = controls.get('include_udp_checkbox', {}).isChecked() if hasattr(controls.get('include_udp_checkbox', {}), 'isChecked') else False
+            run_aggressive = controls.get('run_aggressive_checkbox', {}).isChecked() if hasattr(controls.get('run_aggressive_checkbox', {}), 'isChecked') else False
+            
+            self.append_terminal_output(f"<p style='color: #00BFFF;'>Starting Full Scan Workflow on {target}...</p><br>")
+            self.append_terminal_output(f"<p style='color: #FFAA00;'>UDP Scan: {'Enabled' if include_udp else 'Disabled'}</p>")
+            self.append_terminal_output(f"<p style='color: #FFAA00;'>Aggressive Scan: {'Enabled' if run_aggressive else 'Disabled'}</p><br>")
+            
             try:
-                port_input = getattr(self, 'port_input', None)
-                port_text = port_input.text().strip() if port_input else ""
-                ports = port_utils.parse_port_range(port_text)
-                self.current_worker = port_utils.run_port_scan(
-                    target=target,
-                    ports=ports,
-                    output_callback=self.append_terminal_output,
-                    status_callback=self.update_status_bar_text,
-                    finished_callback=self.on_scan_finished,
-                    results_callback=self.store_scan_results,
-                    progress_callback=self.update_progress,
-                    progress_start_callback=self.start_progress
-                )
-            except ValueError as e:
-                self.show_error(f"Invalid port range: {str(e)}")
-                self.is_scanning = False
-                self.run_button.setText("Run")
-                self.run_button.setStyleSheet("")
+                results = run_full_scan(target, run_udp=include_udp, run_aggressive=run_aggressive)
+                
+                for scan_result in results['scan_sequence']:
+                    self.append_terminal_output(f"<p style='color: #87CEEB;'>[{scan_result['scan_type'].upper()}]</p>")
+                    if scan_result['success']:
+                        self.append_terminal_output(f"<pre style='color: #DCDCDC;'>{scan_result['output']}</pre>")
+                    else:
+                        self.append_terminal_output(f"<p style='color: #FF4500;'>Error: {scan_result['error']}</p>")
+                    self.append_terminal_output("<br>")
+                
+                if results['all_success']:
+                    self.append_terminal_output(f"<p style='color: #00FF41;'>Full scan workflow completed successfully</p>")
+                else:
+                    self.append_terminal_output(f"<p style='color: #FFAA00;'>Full scan workflow completed with some errors</p>")
+                
+                self.on_scan_finished()
                 return
+                
+            except Exception as e:
+                self.append_terminal_output(f"<p style='color: #FF4500;'>Full scan workflow failed: {str(e)}</p>")
+                self.on_scan_finished()
+                return
+        # Use nmap_scanner for all port scanning operations
+        from app.tools.nmap_scanner import (scan_network_sweep, scan_syn, scan_tcp_connect, 
+                                           scan_service_detection, scan_os_detection, 
+                                           scan_udp, scan_aggressive, scan_targeted)
+        
+        try:
+            if scan_type == "Ping Sweep":
+                # Run ping sweep with custom -n and -w values
+                import subprocess
+                
+                ping_n = '1'  # Always use 1 ping
+                ping_w = str(controls.get('ping_timeout', {}).value() if hasattr(controls.get('ping_timeout', {}), 'value') else 2000)
+                
+                # Handle different target formats
+                targets = []
+                if target.endswith('.0'):
+                    # Subnet format: 192.168.1.0 -> 192.168.1.1-254
+                    base = target[:-1]
+                    targets = [f"{base}{i}" for i in range(1, 255)]
+                    self.append_terminal_output(f"<p style='color: #87CEEB;'>Ping sweep subnet {target} ({len(targets)} hosts, 100 threads)...</p><br>")
+                    # Start progress widget
+                    if hasattr(self, 'progress_widget'):
+                        self.progress_widget.start_progress(len(targets), "Ping sweep...")
+                elif '-' in target:
+                    # Range format: 192.168.1.1-6 -> 192.168.1.1 to 192.168.1.6
+                    parts = target.split('-')
+                    if len(parts) == 2:
+                        start_ip = parts[0].strip()
+                        end_part = parts[1].strip()
+                        
+                        ip_parts = start_ip.split('.')
+                        if len(ip_parts) == 4:
+                            base = '.'.join(ip_parts[:3]) + '.'
+                            start_octet = int(ip_parts[3])
+                            end_octet = int(end_part)
+                            targets = [f"{base}{i}" for i in range(start_octet, end_octet + 1)]
+                            self.append_terminal_output(f"<p style='color: #87CEEB;'>Ping sweep range {target} ({len(targets)} hosts, 100 threads)...</p><br>")
+                        else:
+                            targets = [target]
+                    else:
+                        targets = [target]
+                else:
+                    targets = [target]
+                    if hasattr(self, 'progress_widget'):
+                        self.progress_widget.start_progress(1, "Ping sweep...")
+                
+                import concurrent.futures
+                
+                def ping_host(ip):
+                    try:
+                        result = subprocess.run(["ping", "-n", ping_n, "-w", ping_w, ip],
+                                              capture_output=True, text=True, timeout=5)
+                        if "TTL=" in result.stdout:
+                            return ip
+                    except:
+                        pass
+                    return None
+                
+                alive_count = 0
+                completed_count = 0
+                total_targets = len(targets)
+                
+                with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
+                    future_to_ip = {executor.submit(ping_host, ip): ip for ip in targets}
+                    for future in concurrent.futures.as_completed(future_to_ip):
+                        if not self.is_scanning:
+                            break
+                        result = future.result()
+                        completed_count += 1
+                        
+                        if result:
+                            self.append_terminal_output(f"<p style='color: #00FF41;'>Host {result} is up (ping)</p><br>")
+                            alive_count += 1
+                        
+                        # Update progress widget
+                        if hasattr(self, 'progress_widget'):
+                            status_msg = f"Scanning {result}" if result else "Scanning..."
+                            self.progress_widget.update_progress(completed_count, alive_count, status_msg)
+                        
+                        # Force UI update to show results immediately
+                        from PyQt6.QtWidgets import QApplication
+                        QApplication.processEvents()
+                
+                self.append_terminal_output(f"<p style='color: #00FF41;'>Ping sweep completed. Found {alive_count} alive host(s).</p>")
+                
+                # Store results for export - extract IPs from terminal output
+                import re
+                terminal_text = self.terminal_output.toPlainText()
+                found_ips = re.findall(r'Host (\d+\.\d+\.\d+\.\d+) is up \(ping\)', terminal_text)
+                
+                if found_ips:
+                    ping_results = {ip: {'status': 'up', 'method': 'ping'} for ip in found_ips}
+                    self.store_scan_results(ping_results)
+                
+                self.on_scan_finished()
+                return
+                
+            elif scan_type == "Nmap Sweep":
+                # Use threaded worker for nmap sweep
+                from app.tools.nmap_scanner import NetworkSweepWorker
+                from PyQt6.QtCore import QThreadPool
+                
+                # Get nmap options
+                timing = controls['timing_combo'].currentText() if 'timing_combo' in controls else 'T3'
+                stealth_mode = controls['enhanced_stealth_checkbox'].isChecked() if 'enhanced_stealth_checkbox' in controls else False
+                parallelism = controls['parallelism_slider'].value() if 'parallelism_slider' in controls else 100
+                
+                self.current_worker = NetworkSweepWorker(target, stealth_mode, None, timing, parallelism)
+                self.current_worker.signals.output.connect(self.append_terminal_output)
+                self.current_worker.signals.status.connect(self.update_status_bar_text)
+                self.current_worker.signals.progress_start.connect(self.start_progress)
+                self.current_worker.signals.progress_update.connect(lambda completed, found: self.update_progress(completed, found, f"Nmap scanning: {target}"))
+                self.current_worker.signals.finished.connect(self.on_nmap_scan_finished)
+                
+                QThreadPool.globalInstance().start(self.current_worker)
+                return
+            
+            elif scan_type == "Targeted Scan":
+                # Handle targeted scan types
+                target_scan_type = controls.get('target_scan_combo', {}).currentText() if hasattr(controls.get('target_scan_combo', {}), 'currentText') else "TCP connect scan"
+                
+                result = scan_targeted(target, target_scan_type, ports_text or "80,443")
+                
+                if result['success']:
+                    # Format output similar to other scans
+                    self.append_terminal_output(f"<p style='color: #87CEEB;'>Starting {target_scan_type} on {target}...</p><br>")
+                    # Process nmap output line by line with proper formatting
+                    for line in result['output'].split('\n'):
+                        if line.strip():
+                            self.append_terminal_output(f"<p style='color: #DCDCDC;'>{line}</p><br>")
+                    self.append_terminal_output(f"<p style='color: #00FF41;'>{target_scan_type} completed successfully</p><br>")
+                    
+                    # Parse and store results for table view and export
+                    parsed_results = self.parse_nmap_output(result['output'], target)
+                    if parsed_results:
+                        self.store_scan_results(parsed_results)
+                else:
+                    error_msg = result.get('error', 'Unknown error')
+                    output_msg = result.get('output', '')
+                    self.append_terminal_output(f"<p style='color: #FF4500;'>Error: {error_msg}</p>")
+                    if output_msg:
+                        self.append_terminal_output(f"<p style='color: #FFAA00;'>Debug: {output_msg}</p>")
+                
+                self.on_scan_finished()
+                return
+            
+            else:
+                # Handle other scan types
+                if "SYN Stealth" in scan_type:
+                    result = scan_syn(target, full=True)
+                elif "TCP Connect" in scan_type:
+                    result = scan_tcp_connect(target, ports_text or "22,80,443")
+                elif "Service Detection" in scan_type:
+                    result = scan_service_detection(target, ports_text or "22,80,443")
+                elif "OS Detection" in scan_type:
+                    result = scan_os_detection(target)
+                elif "UDP Scan" in scan_type:
+                    result = scan_udp(target, 100)
+                elif "Aggressive" in scan_type:
+                    result = scan_aggressive(target)
+                else:
+                    result = scan_tcp_connect(target, ports_text or "22,80,443")
+                
+                if result['success']:
+                    self.append_terminal_output(f"<pre style='color: #DCDCDC;'>{result['output']}</pre>")
+                else:
+                    error_msg = result.get('error', 'Unknown error')
+                    output_msg = result.get('output', '')
+                    self.append_terminal_output(f"<p style='color: #FF4500;'>Error: {error_msg}</p>")
+                    if output_msg:
+                        self.append_terminal_output(f"<p style='color: #FFAA00;'>Debug: {output_msg}</p>")
+                
+                self.on_scan_finished()
+            
+        except Exception as e:
+            self.append_terminal_output(f"<p style='color: #FF4500;'>Exception in port scan: {str(e)}</p>")
+            self.is_scanning = False
+            self.run_button.setText("Run")
+            self.run_button.setStyleSheet("")
+            self.on_scan_finished()
+            return
     
+    def on_nmap_scan_finished(self):
+        """Handle nmap scan completion and extract results"""
+        # Extract nmap results from terminal output
+        import re
+        terminal_text = self.terminal_output.toPlainText()
+        found_ips = re.findall(r'Host (\d+\.\d+\.\d+\.\d+) is up \(nmap\)', terminal_text)
+        
+        if found_ips:
+            nmap_results = {ip: {'status': 'up', 'method': 'nmap'} for ip in found_ips}
+            self.store_scan_results(nmap_results)
+        
+        # Call normal scan finished
+        self.on_scan_finished()
+
     def run_rpc_scan(self):
         """Run RPC enumeration"""
         from app.tools import rpc_utils
@@ -2299,10 +2673,7 @@ class EnumerationPage(QWidget):
             self.last_scan_results.update(results)
             self.populate_port_table(results)
         else:
-            # Handle DNS results
-            self.structured_dns_results = results
-            
-            # Merge new results with existing results
+            # Handle DNS results - merge new results with existing results
             for domain, record_types in results.items():
                 if domain not in self.last_scan_results:
                     self.last_scan_results[domain] = {}
@@ -2314,15 +2685,18 @@ class EnumerationPage(QWidget):
                         if value not in self.last_scan_results[domain][record_type]:
                             self.last_scan_results[domain][record_type].append(value)
             
-            # Update tree view with structured results
-            self.populate_tree_view(results)
+            # Update structured results for tree view with all accumulated results
+            self.structured_dns_results = self.last_scan_results
+            
+            # Update tree view with all accumulated results (not just new results)
+            self.populate_tree_view(self.last_scan_results)
         
         self.export_button.setEnabled(True)
 
     def start_progress(self, total_items):
         self.progress_widget.start_progress(total_items, "Scanning...")
 
-    def update_progress(self, completed_items, results_found):
+    def update_progress_simple(self, completed_items, results_found):
         self.progress_widget.update_progress(completed_items, results_found)
 
     def on_scan_finished(self):
@@ -2625,7 +2999,7 @@ class EnumerationPage(QWidget):
         self.tree_view.resizeColumnToContents(0)
         self.tree_view.resizeColumnToContents(1)
     def set_results_view(self, is_text_view):
-        """Set results view to text or graph"""
+        """Set results view to text or table"""
         self.current_view_is_text = is_text_view
         
         # Update button states
@@ -2636,11 +3010,51 @@ class EnumerationPage(QWidget):
         if is_text_view:
             self.results_stack.setCurrentIndex(0)  # Text view
         else:
-            # Choose appropriate graph view based on current tool
+            # Show appropriate table based on scan type
             if self.current_submenu == "port_scan":
-                self.results_stack.setCurrentIndex(2)  # Port table
+                # Get current scan type from controls
+                control_panel = self.tool_controls.get('port', {})
+                controls = getattr(control_panel, 'controls', {})
+                scan_type = controls.get('scan_type_combo', {}).currentText() if hasattr(controls.get('scan_type_combo', {}), 'currentText') else ""
+                
+                if scan_type == "Targeted Scan":
+                    self.results_stack.setCurrentIndex(2)  # Port table for targeted scans
+                else:
+                    # Update IP results table for Ping/Nmap sweeps
+                    self.update_results_table()
+                    self.results_stack.setCurrentIndex(3)  # IP results table
             else:
-                self.results_stack.setCurrentIndex(1)  # DNS tree
+                # DNS and other scans use tree view
+                self.results_stack.setCurrentIndex(1)  # Tree view
+    
+    def parse_nmap_output(self, nmap_output, target):
+        """Parse nmap output to extract port information"""
+        import re
+        
+        open_ports = []
+        lines = nmap_output.split('\n')
+        
+        for line in lines:
+            # Match port lines like "80/tcp open http"
+            port_match = re.match(r'(\d+)/(tcp|udp)\s+(open|closed|filtered)\s*(.*)', line.strip())
+            if port_match:
+                port = port_match.group(1)
+                protocol = port_match.group(2)
+                state = port_match.group(3)
+                service = port_match.group(4).strip() if port_match.group(4) else 'unknown'
+                
+                if state == 'open':
+                    open_ports.append({
+                        'port': int(port),
+                        'protocol': protocol,
+                        'service': service,
+                        'state': state,
+                        'banner': ''
+                    })
+        
+        if open_ports:
+            return {target: {'open_ports': open_ports}}
+        return None
     
     def populate_port_table(self, port_results):
         """Populate port table with scan results"""
@@ -2662,14 +3076,14 @@ class EnumerationPage(QWidget):
                         ports_data.append({
                             'port': str(port_info.get('port', 'Unknown')),
                             'service': port_info.get('service', 'Unknown'),
-                            'banner': port_info.get('banner', '')
+                            'state': port_info.get('state', 'open')
                         })
                     else:
                         # Handle simple port number format
                         ports_data.append({
                             'port': str(port_info),
                             'service': 'Unknown',
-                            'banner': ''
+                            'state': 'open'
                         })
         
         # Populate table
@@ -2685,10 +3099,55 @@ class EnumerationPage(QWidget):
             service_item.setFlags(service_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
             self.port_table.setItem(row, 1, service_item)
             
-            # Banner column
-            banner_item = QTableWidgetItem(port_data['banner'])
-            banner_item.setFlags(banner_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            self.port_table.setItem(row, 2, banner_item)
+            # State column
+            state_item = QTableWidgetItem(port_data['state'])
+            state_item.setFlags(state_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.port_table.setItem(row, 2, state_item)
         
         # Resize columns to content
         self.port_table.resizeColumnsToContents()
+    
+    def update_results_table(self):
+        """Update results table with found IP addresses"""
+        from PyQt6.QtWidgets import QTableWidgetItem
+        from PyQt6.QtCore import Qt
+        import re
+        
+        # Clear existing data
+        self.results_table.setRowCount(0)
+        
+        # Extract IP addresses from terminal output
+        terminal_text = self.terminal_output.toPlainText()
+        ip_addresses = []
+        
+        # Look for "Host X.X.X.X is up" patterns
+        up_pattern = r'Host (\d+\.\d+\.\d+\.\d+) is up \((\w+)\)'
+        matches = re.findall(up_pattern, terminal_text)
+        
+        for ip, method in matches:
+            ip_addresses.append({
+                'ip': ip,
+                'status': 'Up',
+                'method': method.capitalize()
+            })
+        
+        # Populate table
+        self.results_table.setRowCount(len(ip_addresses))
+        for row, ip_data in enumerate(ip_addresses):
+            # IP Address column
+            ip_item = QTableWidgetItem(ip_data['ip'])
+            ip_item.setFlags(ip_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.results_table.setItem(row, 0, ip_item)
+            
+            # Status column
+            status_item = QTableWidgetItem(ip_data['status'])
+            status_item.setFlags(status_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.results_table.setItem(row, 1, status_item)
+            
+            # Method column
+            method_item = QTableWidgetItem(ip_data['method'])
+            method_item.setFlags(method_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.results_table.setItem(row, 2, method_item)
+        
+        # Resize columns to content
+        self.results_table.resizeColumnsToContents()

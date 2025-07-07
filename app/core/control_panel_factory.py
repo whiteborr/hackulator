@@ -69,6 +69,8 @@ class ControlPanelFactory:
         elif control_type == 'combobox':
             control = QComboBox(parent)
             control.addItems(config.get('items', []))
+            if 'default' in config:
+                control.setCurrentText(config['default'])
             
         elif control_type == 'checkbox':
             control = QCheckBox(config.get('text', ''), parent)
@@ -78,6 +80,14 @@ class ControlPanelFactory:
             control = QSpinBox(parent)
             control.setRange(config.get('min', 0), config.get('max', 100))
             control.setValue(config.get('default', 0))
+            
+        elif control_type == 'slider':
+            from PyQt6.QtWidgets import QSlider
+            control = QSlider(Qt.Orientation.Horizontal, parent)
+            control.setRange(config.get('min', 0), config.get('max', 100))
+            control.setValue(config.get('default', 50))
+            control.setTickPosition(QSlider.TickPosition.TicksBelow)
+            control.setTickInterval(50)
             
         else:
             control = QWidget(parent)  # Fallback

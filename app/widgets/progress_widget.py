@@ -86,15 +86,14 @@ class ProgressWidget(QWidget):
         self.status_label.setText(status)
         self.update_display()
     
-    def update_progress(self, completed_items, results_found=None, current_item=None):
+    def update_progress(self, completed_items, results_found=None, status_message=None):
         """Update progress values"""
         self.completed_items = completed_items
         if results_found is not None:
             self.results_found = results_found
         
-        if current_item:
-            self.current_item_label.setText(f"Current: {current_item}")
-            self.current_item_label.show()
+        if status_message:
+            self.status_label.setText(status_message)
         
         self.progress_bar.setValue(completed_items)
         self.update_display()

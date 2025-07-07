@@ -533,73 +533,25 @@ class MainWindow(QMainWindow):
         event.accept()
         
     def open_reports_dialog(self):
-        """Open advanced reports dialog for file-based report generation"""
+        """Open advanced reports dialog"""
         from app.widgets.advanced_reporting_widget import AdvancedReportingWidget
-        from PyQt6.QtWidgets import QDialog, QVBoxLayout, QFileDialog, QMessageBox
-        import json
-        import time
+        from PyQt6.QtWidgets import QDialog, QVBoxLayout
         
-        # First, let user select a scan results file
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Select Scan Results File",
-            "exports",
-            "JSON Files (*.json);;All Files (*)"
-        )
+        # Create and show reports dialog
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Advanced Reporting Engine")
+        dialog.setModal(True)
+        dialog.resize(1000, 750)
         
-        if not file_path:
-            return
+        layout = QVBoxLayout(dialog)
         
-        try:
-            # Load scan data from file
-            with open(file_path, 'r') as f:
-                file_data = json.load(f)
-            
-            # Extract scan data (handle different file formats)
-            if 'results' in file_data:
-                scan_data = file_data
-            elif 'metadata' in file_data and 'results' in file_data:
-                scan_data = {
-                    'target': file_data['metadata']['scan_info'].get('target', 'Unknown'),
-                    'scan_type': 'imported',
-                    'results': file_data['results'],
-                    'timestamp': file_data['metadata']['scan_info'].get('timestamp', time.strftime('%Y-%m-%d %H:%M:%S')),
-                    'duration': 'Unknown'
-                }
-            else:
-                # Assume it's raw results
-                scan_data = {
-                    'target': 'Imported Data',
-                    'scan_type': 'imported',
-                    'results': file_data,
-                    'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
-                    'duration': 'Unknown'
-                }
-            
-            # Create and show reports dialog
-            dialog = QDialog(self)
-            dialog.setWindowTitle("Advanced Reporting - From File")
-            dialog.setModal(True)
-            dialog.resize(800, 600)
-            
-            layout = QVBoxLayout(dialog)
-            
-            # Create reporting widget
-            reporting_widget = AdvancedReportingWidget(dialog)
-            reporting_widget.load_scan_data(scan_data)
-            
-            layout.addWidget(reporting_widget)
-            
-            self.status_bar.showMessage(f"Loaded scan data from: {file_path}")
-            dialog.exec()
-            
-        except Exception as e:
-            QMessageBox.critical(
-                self,
-                "Error Loading File",
-                f"Failed to load scan results file:\n{str(e)}"
-            )
-            self.status_bar.showMessage(f"Error loading file: {str(e)}")
+        # Create reporting widget
+        reporting_widget = AdvancedReportingWidget(dialog)
+        
+        layout.addWidget(reporting_widget)
+        
+        self.status_bar.showMessage("Advanced Reporting Engine opened")
+        dialog.exec()
     
     def open_sessions_dialog(self):
         """Open session management dialog"""
