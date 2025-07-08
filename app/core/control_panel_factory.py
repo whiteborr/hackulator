@@ -20,7 +20,7 @@ class ControlPanelFactory:
             # Add label
             if 'label' in row_config:
                 label = QLabel(row_config['label'])
-                label.setFixedWidth(110)
+                label.setFixedWidth(150)
                 row_layout.addWidget(label)
             
             # Add controls

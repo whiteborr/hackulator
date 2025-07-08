@@ -679,17 +679,17 @@ def scan_targeted(target: str, scan_type: str, ports: str = "80,443") -> Dict:
         nmap_path = _get_nmap_path()
         
         if scan_type == "SYN stealth scan":
-            cmd = [nmap_path, "-sS", "-n", "-Pn", "--min-rate", "1000", "--max-retries", "2", "--max-scan-delay", "100ms", "-T4", "-p", ports, validated_target]
+            cmd = [nmap_path, "-sS", "-n", "-Pn", "--min-rate", "1000", "--max-retries", "2", "--max-scan-delay", "100ms", "-p", ports, validated_target]
         elif scan_type == "TCP connect scan":
-            cmd = [nmap_path, "-sT", "-n", "-Pn", "--min-rate", "500", "--max-retries", "2", "-T3", "-p", ports, validated_target]
+            cmd = [nmap_path, "-sT", "-n", "-Pn", "--min-rate", "500", "--max-retries", "2", "-p", ports, validated_target]
         elif scan_type == "UDP scan":
-            cmd = [nmap_path, "-sU", "-n", "-Pn", "--reason", "--max-retries", "1", "--min-rate", "500", "--max-scan-delay", "200ms", "-T3", "-p", ports, validated_target]
+            cmd = [nmap_path, "-sU", "-n", "-Pn", "--reason", "--max-retries", "1", "--min-rate", "500", "--max-scan-delay", "200ms", "-p", ports, validated_target]
         elif scan_type == "UDP with TCP SYN scan":
-            cmd = [nmap_path, "-sU", "-sS", "-sV", "-n", "-Pn", "--min-rate", "750", "--max-retries", "2", "--version-intensity", "5", "-T4", "-p", ports, validated_target]
+            cmd = [nmap_path, "-sU", "-sS", "-sV", "-n", "-Pn", "--min-rate", "750", "--max-retries", "2", "--version-intensity", "5", "-p", ports, validated_target]
         elif scan_type == "OS detection":
-            cmd = [nmap_path, "-O", "--osscan-guess", "--max-os-tries", "2", "-Pn", "-T3", "-n", validated_target]
+            cmd = [nmap_path, "-O", "--osscan-guess", "--max-os-tries", "3", "--script", "smb-os-discovery", "-Pn", "-p", ports, validated_target]
         elif scan_type == "Service identification":
-            cmd = [nmap_path, "-sV", "-A", "-Pn", "-n", "--version-intensity", "5", "-T4", "-p", ports, validated_target]
+            cmd = [nmap_path, "-sV", "-A", "-Pn", "-n", "--version-intensity", "5", "-p", ports, validated_target]
         else:
             cmd = [nmap_path, "-sT", "-n", "-p", ports, validated_target]
         

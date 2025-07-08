@@ -34,26 +34,31 @@
         "label": "Scan Type:",
         "controls": [
           {"type": "combobox", "name": "scan_type_combo", "items": ["Ping Sweep", "Nmap Sweep", "Targeted Scan"], "width": 200, "default": "Ping Sweep"},
-          {"type": "combobox", "name": "timing_combo", "items": ["T0(slow)", "T1", "T2", "T3", "T4", "T5(fast)"], "width": 120, "default": "T4", "visible": false},
           {"type": "checkbox", "name": "enhanced_stealth_checkbox", "text": "Enhanced Stealth", "visible": false}
         ]
       },
       {
         "label": "Target Type:",
         "controls": [
-          {"type": "combobox", "name": "target_scan_combo", "items": ["SYN stealth scan", "TCP connect scan", "UDP scan", "UDP with TCP SYN scan", "OS detection", "Service identification"], "width": 200, "visible": false}
+          {"type": "combobox", "name": "target_scan_combo", "items": ["SYN scan", "TCP connect", "UDP scan", "UDP + TCP SYN", "OS detection", "Service detection"], "width": 200, "visible": false}
         ]
       },
       {
-        "label": "Timeout:",
+        "label": "Timeout(sec):",
         "controls": [
-          {"type": "spinbox", "name": "ping_timeout", "min": 1000, "max": 10000, "default": 2000, "width": 120, "visible": true}
+          {"type": "slider", "name": "ping_timeout", "min": 300, "max": 5000, "default": 2000, "width": 200, "visible": false}
         ]
       },
       {
         "label": "Parallelism:",
         "controls": [
           {"type": "slider", "name": "parallelism_slider", "min": 50, "max": 256, "default": 100, "width": 200, "visible": false}
+        ]
+      },
+      {
+        "label": "Timing:",
+        "controls": [
+          {"type": "slider", "name": "timing_slider", "min": 0, "max": 5, "default": 4, "width": 200, "visible": false}
         ]
       },
       {

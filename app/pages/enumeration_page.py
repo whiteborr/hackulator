@@ -1,4 +1,4 @@
-# --- FULL UPDATED enumeration_page.py ---
+# app/pages/enumeration_page.py
 import os
 import logging
 import time
@@ -198,7 +198,7 @@ class EnumerationPage(QWidget):
         # === First Row: Target Input ===
         target_row = QHBoxLayout()
         target_label = QLabel("Target:")
-        target_label.setFixedWidth(110)
+        target_label.setFixedWidth(150)
         target_row.addWidget(target_label)
         self.target_input = QLineEdit()
         self.target_input.setPlaceholderText("Enter target (IP, domain, or range)...")
@@ -248,6 +248,7 @@ class EnumerationPage(QWidget):
         # View selection buttons
         text_icon_path = os.path.join(self.main_window.project_root, "resources", "icons", "text.png")
         graph_icon_path = os.path.join(self.main_window.project_root, "resources", "icons", "graph.png")
+        table_icon_path = os.path.join(self.main_window.project_root, "resources", "icons", "table.png")
         
         self.text_view_btn = QToolButton()
         if os.path.exists(text_icon_path):
@@ -257,7 +258,7 @@ class EnumerationPage(QWidget):
         self.text_view_btn.setFixedWidth(40)
         self.text_view_btn.setCheckable(True)
         self.text_view_btn.setChecked(True)
-        self.text_view_btn.clicked.connect(lambda: self.set_results_view(True))
+        self.text_view_btn.clicked.connect(lambda: self.set_results_view("text"))
         action_row.addWidget(self.text_view_btn)
         
         self.graph_view_btn = QToolButton()
@@ -267,8 +268,18 @@ class EnumerationPage(QWidget):
             self.graph_view_btn.setText("Graph")
         self.graph_view_btn.setFixedWidth(40)
         self.graph_view_btn.setCheckable(True)
-        self.graph_view_btn.clicked.connect(lambda: self.set_results_view(False))
+        self.graph_view_btn.clicked.connect(lambda: self.set_results_view("graph"))
         action_row.addWidget(self.graph_view_btn)
+        
+        self.table_view_btn = QToolButton()
+        if os.path.exists(table_icon_path):
+            self.table_view_btn.setIcon(QIcon(table_icon_path))
+        else:
+            self.table_view_btn.setText("Table")
+        self.table_view_btn.setFixedWidth(40)
+        self.table_view_btn.setCheckable(True)
+        self.table_view_btn.clicked.connect(lambda: self.set_results_view("table"))
+        action_row.addWidget(self.table_view_btn)
 
         self.export_combo = QComboBox()
         self.export_combo.addItems(["JSON", "CSV", "XML", "Advanced Report", "Create Session"])
@@ -293,7 +304,7 @@ class EnumerationPage(QWidget):
         # Record Type Checkboxes - moved up
         record_row = QHBoxLayout()
         types_label = QLabel("Types:")
-        types_label.setFixedWidth(110)
+        types_label.setFixedWidth(150)
         record_row.addWidget(types_label)
         
         self._create_record_checkboxes(record_row)
@@ -303,7 +314,7 @@ class EnumerationPage(QWidget):
         # DNS Server - moved up
         dns_row = QHBoxLayout()
         dns_label = QLabel("DNS:")
-        dns_label.setFixedWidth(110)
+        dns_label.setFixedWidth(150)
         dns_row.addWidget(dns_label)
         self.dns_input = QLineEdit()
         self.dns_input.setPlaceholderText("DNS Server (optional)")
@@ -316,7 +327,7 @@ class EnumerationPage(QWidget):
         # Method & Wordlist/Bruteforce - moved up
         method_row = QHBoxLayout()
         method_label = QLabel("Method:")
-        method_label.setFixedWidth(110)
+        method_label.setFixedWidth(150)
         method_row.addWidget(method_label)
         self.method_combo = QComboBox()
         self.method_combo.addItems(["Wordlist", "Bruteforce"])
@@ -363,7 +374,7 @@ class EnumerationPage(QWidget):
         # Authentication
         auth_row = QHBoxLayout()
         auth_label = QLabel("Auth:")
-        auth_label.setFixedWidth(110)
+        auth_label.setFixedWidth(150)
         auth_row.addWidget(auth_label)
         self.auth_combo = QComboBox()
         self.auth_combo.addItems(["Anonymous", "Credentials"])
@@ -373,36 +384,44 @@ class EnumerationPage(QWidget):
         auth_row.addStretch()
         layout.addLayout(auth_row)
         
-        # Username
-        user_row = QHBoxLayout()
-        user_label = QLabel("Username:")
-        user_label.setFixedWidth(110)
+        # Username widget
+        self.user_widget = QWidget()
+        user_row = QHBoxLayout(self.user_widget)
+        user_row.setContentsMargins(0, 0, 0, 0)
+        user_label = QLabel("    Username:")
+        user_label.setFixedWidth(150)
         user_row.addWidget(user_label)
         self.rpc_username = QLineEdit()
         self.rpc_username.setPlaceholderText("Domain username")
-        self.rpc_username.setVisible(False)
         user_row.addWidget(self.rpc_username)
-        layout.addLayout(user_row)
+        layout.addWidget(self.user_widget)
         
-        # Password
-        pass_row = QHBoxLayout()
-        pass_label = QLabel("Password:")
-        pass_label.setFixedWidth(110)
+        # Password widget
+        self.pass_widget = QWidget()
+        pass_row = QHBoxLayout(self.pass_widget)
+        pass_row.setContentsMargins(0, 0, 0, 0)
+        pass_label = QLabel("    Password:")
+        pass_label.setFixedWidth(150)
         pass_row.addWidget(pass_label)
         self.rpc_password = QLineEdit()
         self.rpc_password.setPlaceholderText("Password")
         self.rpc_password.setEchoMode(QLineEdit.EchoMode.Password)
-        self.rpc_password.setVisible(False)
         pass_row.addWidget(self.rpc_password)
-        layout.addLayout(pass_row)
+        layout.addWidget(self.pass_widget)
+        
+        # Add stretch to push content to top
+        layout.addStretch()
+        
+        # Set initial state
+        self.toggle_rpc_auth("Anonymous")
         
         return rpc_widget
     
     def toggle_rpc_auth(self, auth_type):
         """Toggle RPC authentication fields"""
         show_creds = (auth_type == "Credentials")
-        self.rpc_username.setVisible(show_creds)
-        self.rpc_password.setVisible(show_creds)
+        self.user_widget.setVisible(show_creds)
+        self.pass_widget.setVisible(show_creds)
     
     def create_smb_controls(self):
         """Create SMB enumeration specific controls"""
@@ -412,7 +431,7 @@ class EnumerationPage(QWidget):
         # Scan Type
         scan_type_row = QHBoxLayout()
         scan_type_label = QLabel("Scan Type:")
-        scan_type_label.setFixedWidth(110)
+        scan_type_label.setFixedWidth(150)
         scan_type_row.addWidget(scan_type_label)
         self.smb_scan_type = QComboBox()
         self.smb_scan_type.addItems(["Basic Info", "Share Enumeration", "Vulnerability Scan"])
@@ -424,7 +443,7 @@ class EnumerationPage(QWidget):
         # Authentication
         auth_row = QHBoxLayout()
         auth_label = QLabel("Auth:")
-        auth_label.setFixedWidth(110)
+        auth_label.setFixedWidth(150)
         auth_row.addWidget(auth_label)
         self.smb_auth_combo = QComboBox()
         self.smb_auth_combo.addItems(["Anonymous", "Credentials"])
@@ -437,7 +456,7 @@ class EnumerationPage(QWidget):
         # Username
         user_row = QHBoxLayout()
         user_label = QLabel("Username:")
-        user_label.setFixedWidth(110)
+        user_label.setFixedWidth(150)
         user_row.addWidget(user_label)
         self.smb_username = QLineEdit()
         self.smb_username.setPlaceholderText("Domain\\username or username")
@@ -448,7 +467,7 @@ class EnumerationPage(QWidget):
         # Password
         pass_row = QHBoxLayout()
         pass_label = QLabel("Password:")
-        pass_label.setFixedWidth(110)
+        pass_label.setFixedWidth(150)
         pass_row.addWidget(pass_label)
         self.smb_password = QLineEdit()
         self.smb_password.setPlaceholderText("Password")
@@ -473,7 +492,7 @@ class EnumerationPage(QWidget):
         # Port
         port_row = QHBoxLayout()
         port_label = QLabel("Port:")
-        port_label.setFixedWidth(110)
+        port_label.setFixedWidth(150)
         port_row.addWidget(port_label)
         self.smtp_port = QLineEdit()
         self.smtp_port.setText("25")
@@ -485,7 +504,7 @@ class EnumerationPage(QWidget):
         # Domain
         domain_row = QHBoxLayout()
         domain_label = QLabel("Domain:")
-        domain_label.setFixedWidth(110)
+        domain_label.setFixedWidth(150)
         domain_row.addWidget(domain_label)
         self.smtp_domain = QLineEdit()
         self.smtp_domain.setPlaceholderText("Target domain for RCPT TO (optional)")
@@ -495,7 +514,7 @@ class EnumerationPage(QWidget):
         # HELO Name
         helo_row = QHBoxLayout()
         helo_label = QLabel("HELO Name:")
-        helo_label.setFixedWidth(110)
+        helo_label.setFixedWidth(150)
         helo_row.addWidget(helo_label)
         self.smtp_helo = QLineEdit()
         self.smtp_helo.setText("test.local")
@@ -506,7 +525,7 @@ class EnumerationPage(QWidget):
         # Wordlist
         wordlist_row = QHBoxLayout()
         wordlist_label = QLabel("Wordlist:")
-        wordlist_label.setFixedWidth(110)
+        wordlist_label.setFixedWidth(150)
         wordlist_row.addWidget(wordlist_label)
         self.smtp_wordlist = QComboBox()
         self.populate_smtp_wordlists()
@@ -532,7 +551,7 @@ class EnumerationPage(QWidget):
         # SNMP Version
         version_row = QHBoxLayout()
         version_label = QLabel("Version:")
-        version_label.setFixedWidth(110)
+        version_label.setFixedWidth(150)
         version_row.addWidget(version_label)
         self.snmp_version = QComboBox()
         self.snmp_version.addItems(["2c", "1", "3"])
@@ -544,7 +563,7 @@ class EnumerationPage(QWidget):
         # Scan Type
         scan_type_row = QHBoxLayout()
         scan_type_label = QLabel("Scan Type:")
-        scan_type_label.setFixedWidth(110)
+        scan_type_label.setFixedWidth(150)
         scan_type_row.addWidget(scan_type_label)
         self.snmp_scan_type = QComboBox()
         self.snmp_scan_type.addItems(["Basic Info", "Users", "Processes", "Software", "Network", "Full Enumeration"])
@@ -556,7 +575,7 @@ class EnumerationPage(QWidget):
         # Community Strings
         community_row = QHBoxLayout()
         community_label = QLabel("Communities:")
-        community_label.setFixedWidth(110)
+        community_label.setFixedWidth(150)
         community_row.addWidget(community_label)
         self.snmp_communities = QLineEdit()
         self.snmp_communities.setText("public,private,community")
@@ -567,7 +586,7 @@ class EnumerationPage(QWidget):
         # Quick community buttons
         quick_comm_row = QHBoxLayout()
         quick_comm_label = QLabel("Quick:")
-        quick_comm_label.setFixedWidth(110)
+        quick_comm_label.setFixedWidth(150)
         quick_comm_row.addWidget(quick_comm_label)
         
         self.default_comm_btn = QPushButton("Default")
@@ -591,7 +610,7 @@ class EnumerationPage(QWidget):
         # Scan Type
         scan_type_row = QHBoxLayout()
         scan_type_label = QLabel("Scan Type:")
-        scan_type_label.setFixedWidth(110)
+        scan_type_label.setFixedWidth(150)
         scan_type_row.addWidget(scan_type_label)
         self.http_scan_type = QComboBox()
         self.http_scan_type.addItems(["Basic Fingerprint", "Directory Enum", "Nmap Scripts", "Nikto Scan", "Full Scan"])
@@ -603,7 +622,7 @@ class EnumerationPage(QWidget):
         # Extensions
         ext_row = QHBoxLayout()
         ext_label = QLabel("Extensions:")
-        ext_label.setFixedWidth(110)
+        ext_label.setFixedWidth(150)
         ext_row.addWidget(ext_label)
         self.http_extensions = QLineEdit()
         self.http_extensions.setText(".php,.html,.asp,.aspx,.jsp")
@@ -614,7 +633,7 @@ class EnumerationPage(QWidget):
         # Wordlist
         wordlist_row = QHBoxLayout()
         wordlist_label = QLabel("Wordlist:")
-        wordlist_label.setFixedWidth(110)
+        wordlist_label.setFixedWidth(150)
         wordlist_row.addWidget(wordlist_label)
         self.http_wordlist = QComboBox()
         self.populate_http_wordlists()
@@ -624,7 +643,7 @@ class EnumerationPage(QWidget):
         # Quick extension buttons
         quick_ext_row = QHBoxLayout()
         quick_ext_label = QLabel("Quick:")
-        quick_ext_label.setFixedWidth(110)
+        quick_ext_label.setFixedWidth(150)
         quick_ext_row.addWidget(quick_ext_label)
         
         self.php_ext_btn = QPushButton("PHP")
@@ -661,7 +680,7 @@ class EnumerationPage(QWidget):
         # Scan Type
         scan_type_row = QHBoxLayout()
         scan_type_label = QLabel("Scan Type:")
-        scan_type_label.setFixedWidth(110)
+        scan_type_label.setFixedWidth(150)
         scan_type_row.addWidget(scan_type_label)
         self.api_scan_type = QComboBox()
         self.api_scan_type.addItems(["Basic Discovery", "Gobuster Enum", "HTTP Methods", "Auth Bypass", "Vulnerability Test", "Full Scan"])
@@ -673,7 +692,7 @@ class EnumerationPage(QWidget):
         # Wordlist
         wordlist_row = QHBoxLayout()
         wordlist_label = QLabel("Wordlist:")
-        wordlist_label.setFixedWidth(110)
+        wordlist_label.setFixedWidth(150)
         wordlist_row.addWidget(wordlist_label)
         self.api_wordlist = QComboBox()
         self.populate_api_wordlists()
@@ -683,7 +702,7 @@ class EnumerationPage(QWidget):
         # Common API patterns info
         info_row = QHBoxLayout()
         info_label = QLabel("Patterns:")
-        info_label.setFixedWidth(110)
+        info_label.setFixedWidth(150)
         info_row.addWidget(info_label)
         patterns_text = QLabel("/api, /api/v1, /rest, /graphql, /swagger")
         patterns_text.setStyleSheet("color: #888; font-size: 10pt;")
@@ -709,7 +728,7 @@ class EnumerationPage(QWidget):
         # Port and SSL
         port_row = QHBoxLayout()
         port_label = QLabel("Port:")
-        port_label.setFixedWidth(110)
+        port_label.setFixedWidth(150)
         port_row.addWidget(port_label)
         self.ldap_port = QLineEdit()
         self.ldap_port.setText("389")
@@ -725,7 +744,7 @@ class EnumerationPage(QWidget):
         # Scan Type
         scan_type_row = QHBoxLayout()
         scan_type_label = QLabel("Scan Type:")
-        scan_type_label.setFixedWidth(110)
+        scan_type_label.setFixedWidth(150)
         scan_type_row.addWidget(scan_type_label)
         self.ldap_scan_type = QComboBox()
         self.ldap_scan_type.addItems(["Basic Info", "Anonymous Enum", "Authenticated Enum", "Full Scan"])
@@ -738,7 +757,7 @@ class EnumerationPage(QWidget):
         # Base DN
         base_dn_row = QHBoxLayout()
         base_dn_label = QLabel("Base DN:")
-        base_dn_label.setFixedWidth(110)
+        base_dn_label.setFixedWidth(150)
         base_dn_row.addWidget(base_dn_label)
         self.ldap_base_dn = QLineEdit()
         self.ldap_base_dn.setPlaceholderText("DC=domain,DC=com (auto-detected if empty)")
@@ -753,7 +772,7 @@ class EnumerationPage(QWidget):
         # Username
         user_row = QHBoxLayout()
         user_label = QLabel("Username:")
-        user_label.setFixedWidth(110)
+        user_label.setFixedWidth(150)
         user_row.addWidget(user_label)
         self.ldap_username = QLineEdit()
         self.ldap_username.setPlaceholderText("Domain\\username or username@domain.com")
@@ -764,7 +783,7 @@ class EnumerationPage(QWidget):
         # Password
         pass_row = QHBoxLayout()
         pass_label = QLabel("Password:")
-        pass_label.setFixedWidth(110)
+        pass_label.setFixedWidth(150)
         pass_row.addWidget(pass_label)
         self.ldap_password = QLineEdit()
         self.ldap_password.setPlaceholderText("Password")
@@ -796,7 +815,7 @@ class EnumerationPage(QWidget):
         # Database Type
         db_type_row = QHBoxLayout()
         db_type_label = QLabel("DB Type:")
-        db_type_label.setFixedWidth(110)
+        db_type_label.setFixedWidth(150)
         db_type_row.addWidget(db_type_label)
         self.db_type_combo = QComboBox()
         self.db_type_combo.addItems(["MSSQL", "Oracle"])
@@ -809,7 +828,7 @@ class EnumerationPage(QWidget):
         # Port
         port_row = QHBoxLayout()
         port_label = QLabel("Port:")
-        port_label.setFixedWidth(110)
+        port_label.setFixedWidth(150)
         port_row.addWidget(port_label)
         self.db_port = QLineEdit()
         self.db_port.setText("1433")
@@ -821,7 +840,7 @@ class EnumerationPage(QWidget):
         # Scan Type
         scan_type_row = QHBoxLayout()
         scan_type_label = QLabel("Scan Type:")
-        scan_type_label.setFixedWidth(110)
+        scan_type_label.setFixedWidth(150)
         scan_type_row.addWidget(scan_type_label)
         self.db_scan_type = QComboBox()
         self.db_scan_type.addItems(["Basic Info", "Scripts", "Custom Query", "Full Scan"])
@@ -834,7 +853,7 @@ class EnumerationPage(QWidget):
         # Oracle SID (for Oracle only)
         sid_row = QHBoxLayout()
         sid_label = QLabel("Oracle SID:")
-        sid_label.setFixedWidth(110)
+        sid_label.setFixedWidth(150)
         sid_row.addWidget(sid_label)
         self.oracle_sid = QLineEdit()
         self.oracle_sid.setText("DB11g")
@@ -846,7 +865,7 @@ class EnumerationPage(QWidget):
         # Custom Query
         query_row = QHBoxLayout()
         query_label = QLabel("Query:")
-        query_label.setFixedWidth(110)
+        query_label.setFixedWidth(150)
         query_row.addWidget(query_label)
         self.db_query = QLineEdit()
         self.db_query.setPlaceholderText("SELECT name FROM sys.databases")
@@ -857,7 +876,7 @@ class EnumerationPage(QWidget):
         # Quick query buttons
         quick_query_row = QHBoxLayout()
         quick_query_label = QLabel("Quick:")
-        quick_query_label.setFixedWidth(110)
+        quick_query_label.setFixedWidth(150)
         quick_query_row.addWidget(quick_query_label)
         
         self.list_dbs_btn = QPushButton("List DBs")
@@ -886,7 +905,7 @@ class EnumerationPage(QWidget):
         # Username
         user_row = QHBoxLayout()
         user_label = QLabel("Username:")
-        user_label.setFixedWidth(110)
+        user_label.setFixedWidth(150)
         user_row.addWidget(user_label)
         self.db_username = QLineEdit()
         self.db_username.setPlaceholderText("sa")
@@ -896,7 +915,7 @@ class EnumerationPage(QWidget):
         # Password
         pass_row = QHBoxLayout()
         pass_label = QLabel("Password:")
-        pass_label.setFixedWidth(110)
+        pass_label.setFixedWidth(150)
         pass_row.addWidget(pass_label)
         self.db_password = QLineEdit()
         self.db_password.setPlaceholderText("Password")
@@ -933,7 +952,7 @@ class EnumerationPage(QWidget):
         # Port
         port_row = QHBoxLayout()
         port_label = QLabel("Port:")
-        port_label.setFixedWidth(110)
+        port_label.setFixedWidth(150)
         port_row.addWidget(port_label)
         self.ike_port = QLineEdit()
         self.ike_port.setText("500")
@@ -945,7 +964,7 @@ class EnumerationPage(QWidget):
         # Scan Type
         scan_type_row = QHBoxLayout()
         scan_type_label = QLabel("Scan Type:")
-        scan_type_label.setFixedWidth(110)
+        scan_type_label.setFixedWidth(150)
         scan_type_row.addWidget(scan_type_label)
         self.ike_scan_type = QComboBox()
         self.ike_scan_type.addItems(["Basic Info", "Detailed Scan", "Transform Enum", "Full Scan"])
@@ -957,7 +976,7 @@ class EnumerationPage(QWidget):
         # Aggressive Mode
         mode_row = QHBoxLayout()
         mode_label = QLabel("Mode:")
-        mode_label.setFixedWidth(110)
+        mode_label.setFixedWidth(150)
         mode_row.addWidget(mode_label)
         self.ike_aggressive_mode = QCheckBox("Aggressive Mode (-M)")
         self.ike_aggressive_mode.setChecked(True)
@@ -968,7 +987,7 @@ class EnumerationPage(QWidget):
         # Tool info
         info_row = QHBoxLayout()
         info_label = QLabel("Tool:")
-        info_label.setFixedWidth(110)
+        info_label.setFixedWidth(150)
         info_row.addWidget(info_label)
         tool_info = QLabel("Requires ike-scan tool")
         tool_info.setStyleSheet("color: #888; font-size: 10pt;")
@@ -994,7 +1013,7 @@ class EnumerationPage(QWidget):
         # Detection Type
         detection_type_row = QHBoxLayout()
         detection_type_label = QLabel("Detection:")
-        detection_type_label.setFixedWidth(110)
+        detection_type_label.setFixedWidth(150)
         detection_type_row.addWidget(detection_type_label)
         self.av_detection_type = QComboBox()
         self.av_detection_type.addItems(["WAF Detection", "Firewall Detection", "Evasion Test", "AV Payload Gen", "Full Detection"])
@@ -1007,7 +1026,7 @@ class EnumerationPage(QWidget):
         # Port (for WAF detection)
         port_row = QHBoxLayout()
         port_label = QLabel("Port:")
-        port_label.setFixedWidth(110)
+        port_label.setFixedWidth(150)
         port_row.addWidget(port_label)
         self.av_port = QLineEdit()
         self.av_port.setText("80")
@@ -1019,7 +1038,7 @@ class EnumerationPage(QWidget):
         # Payload Type (for AV testing)
         payload_row = QHBoxLayout()
         payload_label = QLabel("Payload:")
-        payload_label.setFixedWidth(110)
+        payload_label.setFixedWidth(150)
         payload_row.addWidget(payload_label)
         self.av_payload_type = QComboBox()
         self.av_payload_type.addItems(["msfvenom", "shellter"])
@@ -1120,15 +1139,43 @@ class EnumerationPage(QWidget):
         self.terminal_output = QTextEdit()
         self.terminal_output.setReadOnly(True)
         self.terminal_output.setPlaceholderText("Tool output will appear here...")
+        # Set Neuropol font for terminal output
+        from PyQt6.QtGui import QFont, QFontDatabase
+        
+        # Load Neuropol font from project resources
+        neuropol_path = os.path.join(self.main_window.project_root, "resources", "fonts", "neuropol.otf")
+        font_id = QFontDatabase.addApplicationFont(neuropol_path)
+        
+        if font_id != -1:
+            loaded_fonts = QFontDatabase.applicationFontFamilies(font_id)
+            if loaded_fonts:
+                font_family = loaded_fonts[0]  # Should be "Neuropol X"
+                font = QFont(font_family, 10)
+            else:
+                font = QFont("Neuropol X", 10)
+        else:
+            font = QFont("Neuropol X", 10)
+        
+        self.terminal_output.setFont(font)
         self.results_stack.addWidget(self.terminal_output)
+        
+        # Tree view for DNS results
+        from PyQt6.QtWidgets import QTreeWidget, QTreeWidgetItem
+        self.dns_tree = QTreeWidget()
+        self.dns_tree.setHeaderLabels(["Domain/Record", "Type", "Value"])
+        self.dns_tree.setSortingEnabled(True)
+        self.dns_tree.setAlternatingRowColors(True)
+        self.dns_tree.setFont(font)
+        self.results_stack.addWidget(self.dns_tree)
         
         # Table view for DNS results
         from PyQt6.QtWidgets import QTableWidget
         self.dns_table = QTableWidget()
-        self.dns_table.setColumnCount(3)
-        self.dns_table.setHorizontalHeaderLabels(["Domain/Record", "Type", "Value"])
+        self.dns_table.setColumnCount(6)
+        self.dns_table.setHorizontalHeaderLabels(["Domain/Record", "Type", "Value", "Priority", "Weight", "Port", "Host"])
         self.dns_table.setSortingEnabled(True)
         self.dns_table.setAlternatingRowColors(True)
+        self.dns_table.setFont(font)
         self.results_stack.addWidget(self.dns_table)
         
         # Table view for port scan results
@@ -1138,6 +1185,7 @@ class EnumerationPage(QWidget):
         self.port_table.setHorizontalHeaderLabels(["Port", "Service", "State"])
         self.port_table.setSortingEnabled(True)
         self.port_table.setAlternatingRowColors(True)
+        self.port_table.setFont(font)
         self.results_stack.addWidget(self.port_table)
         
         # Results table for IP addresses found in scans
@@ -1146,11 +1194,12 @@ class EnumerationPage(QWidget):
         self.results_table.setHorizontalHeaderLabels(["IP Address", "Status", "Method"])
         self.results_table.setSortingEnabled(True)
         self.results_table.setAlternatingRowColors(True)
+        self.results_table.setFont(font)
         self.results_stack.addWidget(self.results_table)
         
         # Set initial view to text
         self.results_stack.setCurrentIndex(0)
-        self.current_view_is_text = True
+        self.current_view = "text"
 
         output_layout.addWidget(self.results_stack)
         return output_frame
@@ -1211,6 +1260,12 @@ class EnumerationPage(QWidget):
         self.update_tool_buttons()
         self.highlight_selected_tool(tool_id)
         self.status_updated.emit(f"Selected: {tool_id.replace('_', ' ').title()}")
+        
+        # Show/hide graph view button based on tool
+        if tool_id == "port_scan":
+            self.graph_view_btn.setVisible(False)
+        else:
+            self.graph_view_btn.setVisible(True)
         
         # Restore tool state for selected tool
         self.restore_tool_state(tool_id)
@@ -1659,7 +1714,12 @@ class EnumerationPage(QWidget):
     def append_terminal_output(self, text):
         """Append text to terminal output"""
         if hasattr(self, 'terminal_output'):
-            self.terminal_output.append(text)
+            # Wrap all content with Neuropol font styling
+            if not text.startswith('<div style="font-family: Neuropol'):
+                text = f'<div style="font-family: Neuropol;">{text}</div>'
+            self.terminal_output.insertHtml(text)
+            scrollbar = self.terminal_output.verticalScrollBar()
+            scrollbar.setValue(scrollbar.maximum())
     
     def populate_wordlists(self):
         """Populate DNS wordlist dropdown"""
@@ -1814,8 +1874,8 @@ class EnumerationPage(QWidget):
                     if 'ping_timeout' in controls:
                         controls['ping_timeout'].setVisible(True)
                     # Hide nmap options
-                    if 'timing_combo' in controls:
-                        controls['timing_combo'].setVisible(False)
+                    if 'timing_slider' in controls:
+                        controls['timing_slider'].setVisible(False)
                     if 'enhanced_stealth_checkbox' in controls:
                         controls['enhanced_stealth_checkbox'].setVisible(False)
                     if 'parallelism_slider' in controls:
@@ -1833,8 +1893,8 @@ class EnumerationPage(QWidget):
                     if 'ping_timeout' in controls:
                         controls['ping_timeout'].setVisible(False)
                     # Show nmap options
-                    if 'timing_combo' in controls:
-                        controls['timing_combo'].setVisible(True)
+                    if 'timing_slider' in controls:
+                        controls['timing_slider'].setVisible(True)
                     if 'enhanced_stealth_checkbox' in controls:
                         controls['enhanced_stealth_checkbox'].setVisible(True)
                     if 'parallelism_slider' in controls:
@@ -1851,8 +1911,8 @@ class EnumerationPage(QWidget):
                     # Hide ping and nmap sweep options
                     if 'ping_timeout' in controls:
                         controls['ping_timeout'].setVisible(False)
-                    if 'timing_combo' in controls:
-                        controls['timing_combo'].setVisible(False)
+                    if 'timing_slider' in controls:
+                        controls['timing_slider'].setVisible(False)
                     if 'enhanced_stealth_checkbox' in controls:
                         controls['enhanced_stealth_checkbox'].setVisible(False)
                     if 'parallelism_slider' in controls:
@@ -1873,9 +1933,11 @@ class EnumerationPage(QWidget):
                         child.setVisible(scan_type == 'Targeted Scan')
                     elif child.text() == 'Target Type:':
                         child.setVisible(scan_type == 'Targeted Scan')
-                    elif child.text() == 'Timeout:':
+                    elif child.text() == 'Timeout(sec):':
                         child.setVisible(scan_type == 'Ping Sweep')
                     elif child.text() == 'Parallelism:':
+                        child.setVisible(scan_type == 'Nmap Sweep')
+                    elif child.text() == 'Timing:':
                         child.setVisible(scan_type == 'Nmap Sweep')
     
 
@@ -2219,7 +2281,8 @@ class EnumerationPage(QWidget):
                 from PyQt6.QtCore import QThreadPool
                 
                 # Get nmap options
-                timing = controls['timing_combo'].currentText() if 'timing_combo' in controls else 'T3'
+                timing_value = controls['timing_slider'].value() if 'timing_slider' in controls else 4
+                timing = f'T{timing_value}'
                 stealth_mode = controls['enhanced_stealth_checkbox'].isChecked() if 'enhanced_stealth_checkbox' in controls else False
                 parallelism = controls['parallelism_slider'].value() if 'parallelism_slider' in controls else 100
                 
@@ -2235,94 +2298,33 @@ class EnumerationPage(QWidget):
             
             elif scan_type == "Targeted Scan":
                 # Get target scan type
-                target_scan_type = controls.get('target_scan_combo', {}).currentText() if hasattr(controls.get('target_scan_combo', {}), 'currentText') else "TCP connect scan"
+                target_scan_type = controls.get('target_scan_combo', {}).currentText() if hasattr(controls.get('target_scan_combo', {}), 'currentText') else "TCP connect"
                 
-                # Handle UDP scans separately
-                if "UDP" in target_scan_type:
-                    # Clear previous results
-                    self.last_scan_results = {}
-                    
-                    # Parse ports for UDP scan
-                    if ports_text:
-                        udp_ports_list = []
-                        for part in ports_text.split(','):
-                            part = part.strip()
-                            if '-' in part:
-                                start, end = map(int, part.split('-'))
-                                udp_ports_list.extend(range(start, end + 1))
-                            else:
-                                udp_ports_list.append(int(part))
-                    else:
-                        udp_ports_list = None
-                    
-                    result = scan_udp(target, udp_ports_list)
-                    
-                    if result['success']:
-                        self.append_terminal_output(f"<p style='color: #87CEEB;'>Starting UDP scan on {target}...</p><br>")
-                        
-                        # Parse UDP results for table view
-                        udp_ports = []
-                        for line in result['output'].split('\n'):
-                            if line.strip():
-                                if '/udp' in line:
-                                    self.append_terminal_output(f"<p style='color: #00FF41;'>[+] {line}</p><br>")
-                                    # Extract port info for table
-                                    import re
-                                    port_match = re.search(r'(\d+)/udp\s+\S+\s+(\S+)', line)
-                                    if port_match:
-                                        udp_ports.append({
-                                            'port': int(port_match.group(1)),
-                                            'service': port_match.group(2),
-                                            'state': 'open'
-                                        })
-                                    else:
-                                        # Try simpler pattern
-                                        simple_match = re.search(r'(\d+)/udp', line)
-                                        if simple_match:
-                                            udp_ports.append({
-                                                'port': int(simple_match.group(1)),
-                                                'service': 'unknown',
-                                                'state': 'open'
-                                            })
-                                else:
-                                    self.append_terminal_output(f"<p style='color: #DCDCDC;'>{line}</p><br>")
-                        
-                        # Store results for table view
-                        if udp_ports:
-                            udp_results = {target: {'open_ports': udp_ports}}
-                            self.store_scan_results(udp_results)
-                    else:
-                        self.append_terminal_output(f"<p style='color: #FF4500;'>UDP scan failed: {result.get('error', 'Unknown error')}</p>")
-                    
-                    self.on_scan_finished()
-                    return
+                # Map UI scan types to nmap_scanner scan types and use scan_targeted for all
+                scan_type_mapping = {
+                    "SYN scan": "SYN stealth scan",
+                    "TCP connect": "TCP connect scan", 
+                    "UDP scan": "UDP scan",
+                    "UDP + TCP SYN": "UDP with TCP SYN scan",
+                    "OS detection": "OS detection",
+                    "Service detection": "Service identification"
+                }
                 
-                # Use PortScanWorker for TCP scans
-                from app.tools.port_scanner import PortScanWorker
-                from PyQt6.QtCore import QThreadPool
+                mapped_scan_type = scan_type_mapping.get(target_scan_type, "TCP connect scan")
+                result = scan_targeted(target, mapped_scan_type, ports_text or "22,80,443")
                 
-                # Parse ports
-                if ports_text:
-                    ports = []
-                    for part in ports_text.split(','):
-                        part = part.strip()
-                        if '-' in part:
-                            start, end = map(int, part.split('-'))
-                            ports.extend(range(start, end + 1))
-                        else:
-                            ports.append(int(part))
+                if result['success']:
+                    self.append_terminal_output(f"<p style='color: #87CEEB; font-family: Neuropol;'>Starting {target_scan_type} on {target}...</p><br>")
+                    self.append_terminal_output(f"<pre style='color: #DCDCDC; font-family: Neuropol;'>{result['output']}</pre>")
+                    
+                    # Parse nmap output for table view
+                    parsed_results = self.parse_nmap_output(result['output'], target)
+                    if parsed_results:
+                        self.store_scan_results(parsed_results)
                 else:
-                    ports = [80, 443]
+                    self.append_terminal_output(f"<p style='color: #FF4500; font-family: Neuropol;'>{target_scan_type} failed: {result.get('error', 'Unknown error')}</p>")
                 
-                self.current_worker = PortScanWorker(target, ports, "tcp", timeout=3)
-                self.current_worker.signals.output.connect(self.append_terminal_output)
-                self.current_worker.signals.status.connect(self.update_status_bar_text)
-                self.current_worker.signals.progress_start.connect(self.start_progress)
-                self.current_worker.signals.progress_update.connect(lambda completed, found: self.update_progress(completed, found, f"Port scanning: {target}"))
-                self.current_worker.signals.finished.connect(self.on_scan_finished)
-                self.current_worker.signals.results_ready.connect(self.store_scan_results)
-                
-                QThreadPool.globalInstance().start(self.current_worker)
+                self.on_scan_finished()
                 return
             
             else:
@@ -2698,6 +2700,11 @@ class EnumerationPage(QWidget):
             # Handle port scan results
             self.last_scan_results.update(results)
             self.populate_port_table(results)
+        elif self.current_submenu == "rpc_enum":
+            # Handle RPC results with organized sections
+            self.last_scan_results.update(results)
+            self.populate_rpc_tree(results)
+            self.populate_rpc_table(results)
         else:
             # Handle DNS results - merge new results with existing results
             for domain, record_types in results.items():
@@ -2714,8 +2721,9 @@ class EnumerationPage(QWidget):
             # Update structured results for tree view with all accumulated results
             self.structured_dns_results = self.last_scan_results
             
-            # Update DNS table with all accumulated results
+            # Update DNS views with all accumulated results
             self.populate_dns_table(self.last_scan_results)
+            self.populate_dns_tree(self.last_scan_results)
         
         self.export_button.setEnabled(True)
 
@@ -2921,9 +2929,10 @@ class EnumerationPage(QWidget):
             # Restore results view
             self.results_stack.setCurrentIndex(state.get('results_view_index', 0))
             
-            # Update DNS table if switching to DNS tool with results
+            # Update DNS views if switching to DNS tool with results
             if tool_id == 'dns_enum' and state.get('scan_results'):
                 self.populate_dns_table(state.get('scan_results'))
+                self.populate_dns_tree(state.get('scan_results'))
         else:
             # Initialize new tool state
             self.terminal_output.clear()
@@ -3108,41 +3117,132 @@ class EnumerationPage(QWidget):
             type_item.setFlags(type_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
             self.dns_table.setItem(row, 1, type_item)
             
-            # Value column
-            value_item = QTableWidgetItem(record['value'])
-            value_item.setFlags(value_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            self.dns_table.setItem(row, 2, value_item)
+            # Parse SRV records for additional columns
+            if record['type'] == 'SRV':
+                # Parse SRV format: "0 100 88 dc01.lab.local"
+                parts = record['value'].split(' ', 3)
+                if len(parts) >= 4:
+                    priority, weight, port, host = parts[0], parts[1], parts[2], ' '.join(parts[3:])
+                    
+                    # Value column (only host for SRV records)
+                    value_item = QTableWidgetItem(host)
+                    value_item.setFlags(value_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                    self.dns_table.setItem(row, 2, value_item)
+                    
+                    # Priority column
+                    priority_item = QTableWidgetItem(priority)
+                    priority_item.setFlags(priority_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                    self.dns_table.setItem(row, 3, priority_item)
+                    
+                    # Weight column
+                    weight_item = QTableWidgetItem(weight)
+                    weight_item.setFlags(weight_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                    self.dns_table.setItem(row, 4, weight_item)
+                    
+                    # Port column
+                    port_item = QTableWidgetItem(port)
+                    port_item.setFlags(port_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                    self.dns_table.setItem(row, 5, port_item)
+                    
+                    # Host column
+                    host_item = QTableWidgetItem(host)
+                    host_item.setFlags(host_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                    self.dns_table.setItem(row, 6, host_item)
+                else:
+                    # Fallback for malformed SRV records
+                    value_item = QTableWidgetItem(record['value'])
+                    value_item.setFlags(value_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                    self.dns_table.setItem(row, 2, value_item)
+            else:
+                # Non-SRV records - only populate Value column
+                value_item = QTableWidgetItem(record['value'])
+                value_item.setFlags(value_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                self.dns_table.setItem(row, 2, value_item)
         
         # Resize columns to content
         self.dns_table.resizeColumnsToContents()
-    def set_results_view(self, is_text_view):
-        """Set results view to text or table"""
-        self.current_view_is_text = is_text_view
+    
+    def populate_dns_tree(self, structured_results):
+        """Populate DNS tree with structured results"""
+        from PyQt6.QtWidgets import QTreeWidgetItem
+        from PyQt6.QtCore import Qt
+        
+        # Clear existing data
+        self.dns_tree.clear()
+        
+        if not structured_results:
+            return
+        
+        # Create tree structure grouped by domain
+        for domain, record_types in structured_results.items():
+            # Create domain root item
+            domain_item = QTreeWidgetItem(self.dns_tree)
+            domain_item.setText(0, domain)
+            domain_item.setText(1, "Domain")
+            domain_item.setText(2, "")
+            
+            # Add record types as children
+            for record_type, values in record_types.items():
+                # Create record type item
+                type_item = QTreeWidgetItem(domain_item)
+                type_item.setText(0, record_type)
+                type_item.setText(1, "Record Type")
+                type_item.setText(2, f"{len(values)} records")
+                
+                # Add individual records as children
+                for value in values:
+                    record_item = QTreeWidgetItem(type_item)
+                    record_item.setText(0, "")
+                    record_item.setText(1, record_type)
+                    record_item.setText(2, str(value))
+        
+        # Expand all items
+        self.dns_tree.expandAll()
+        
+        # Resize columns to content
+        self.dns_tree.resizeColumnToContents(0)
+        self.dns_tree.resizeColumnToContents(1)
+        self.dns_tree.resizeColumnToContents(2)
+    def set_results_view(self, view_type):
+        """Set results view to text, graph (tree), or table"""
+        self.current_view = view_type
         
         # Update button states
-        self.text_view_btn.setChecked(is_text_view)
-        self.graph_view_btn.setChecked(not is_text_view)
+        self.text_view_btn.setChecked(view_type == "text")
+        self.graph_view_btn.setChecked(view_type == "graph")
+        self.table_view_btn.setChecked(view_type == "table")
         
         # Switch view
-        if is_text_view:
+        if view_type == "text":
             self.results_stack.setCurrentIndex(0)  # Text view
-        else:
+        elif view_type == "graph":
+            # Show tree view for DNS, appropriate view for other scans
+            if self.current_submenu == "dns_enum":
+                self.results_stack.setCurrentIndex(1)  # DNS tree view
+                self.populate_dns_tree(self.last_scan_results)
+            elif self.current_submenu == "rpc_enum":
+                self.results_stack.setCurrentIndex(1)  # RPC tree view
+                self.populate_rpc_tree(self.last_scan_results)
+            else:
+                self.results_stack.setCurrentIndex(1)  # Default tree view
+        elif view_type == "table":
             # Show appropriate table based on scan type
             if self.current_submenu == "port_scan":
-                # Get current scan type from controls
                 control_panel = self.tool_controls.get('port', {})
                 controls = getattr(control_panel, 'controls', {})
                 scan_type = controls.get('scan_type_combo', {}).currentText() if hasattr(controls.get('scan_type_combo', {}), 'currentText') else ""
                 
                 if scan_type == "Targeted Scan":
-                    self.results_stack.setCurrentIndex(2)  # Port table for targeted scans
+                    self.results_stack.setCurrentIndex(3)  # Port table for targeted scans
                 else:
-                    # Update IP results table for Ping/Nmap sweeps
                     self.update_results_table()
-                    self.results_stack.setCurrentIndex(3)  # IP results table
+                    self.results_stack.setCurrentIndex(4)  # IP results table
+            elif self.current_submenu == "rpc_enum":
+                self.results_stack.setCurrentIndex(2)  # RPC table view
+                self.populate_rpc_table(self.last_scan_results)
             else:
                 # DNS and other scans use table view
-                self.results_stack.setCurrentIndex(1)  # DNS table view
+                self.results_stack.setCurrentIndex(2)  # DNS table view
     
     def parse_nmap_output(self, nmap_output, target):
         """Parse nmap output to extract port information"""
@@ -3268,3 +3368,113 @@ class EnumerationPage(QWidget):
         
         # Resize columns to content
         self.results_table.resizeColumnsToContents()
+    
+    def populate_rpc_tree(self, rpc_results):
+        """Populate RPC tree with organized sections"""
+        from PyQt6.QtWidgets import QTreeWidgetItem
+        
+        # Clear existing data
+        self.dns_tree.clear()
+        
+        if not rpc_results:
+            return
+        
+        # Define section mapping
+        sections = {
+            "RPC Services": ["rpc_services", "services", "rpc_info"],
+            "Network Shares": ["shares", "network_shares", "smb_shares"],
+            "System Information": ["system_info", "os_info", "computer_info"],
+            "Open Ports": ["open_ports", "ports", "port_scan"]
+        }
+        
+        for section_name, keys in sections.items():
+            section_item = QTreeWidgetItem(self.dns_tree)
+            section_item.setText(0, section_name)
+            section_item.setText(1, "Section")
+            section_item.setText(2, "")
+            
+            section_has_data = False
+            for target, data in rpc_results.items():
+                if isinstance(data, dict):
+                    for key in keys:
+                        if key in data and data[key]:
+                            section_has_data = True
+                            key_item = QTreeWidgetItem(section_item)
+                            key_item.setText(0, key.replace('_', ' ').title())
+                            key_item.setText(1, "Category")
+                            
+                            if isinstance(data[key], list):
+                                key_item.setText(2, f"{len(data[key])} items")
+                                for item in data[key]:
+                                    item_node = QTreeWidgetItem(key_item)
+                                    item_node.setText(0, "")
+                                    item_node.setText(1, "Item")
+                                    item_node.setText(2, str(item))
+                            else:
+                                key_item.setText(2, str(data[key]))
+            
+            if not section_has_data:
+                section_item.setText(2, "No data")
+        
+        # Expand all items
+        self.dns_tree.expandAll()
+    
+    def populate_rpc_table(self, rpc_results):
+        """Populate RPC table with organized sections"""
+        from PyQt6.QtWidgets import QTableWidgetItem
+        from PyQt6.QtCore import Qt
+        
+        # Clear existing data
+        self.dns_table.setRowCount(0)
+        
+        if not rpc_results:
+            return
+        
+        # Collect all RPC data
+        all_data = []
+        sections = {
+            "RPC Services": ["rpc_services", "services", "rpc_info"],
+            "Network Shares": ["shares", "network_shares", "smb_shares"],
+            "System Information": ["system_info", "os_info", "computer_info"],
+            "Open Ports": ["open_ports", "ports", "port_scan"]
+        }
+        
+        for section_name, keys in sections.items():
+            for target, data in rpc_results.items():
+                if isinstance(data, dict):
+                    for key in keys:
+                        if key in data and data[key]:
+                            if isinstance(data[key], list):
+                                for item in data[key]:
+                                    all_data.append({
+                                        'section': section_name,
+                                        'category': key.replace('_', ' ').title(),
+                                        'value': str(item)
+                                    })
+                            else:
+                                all_data.append({
+                                    'section': section_name,
+                                    'category': key.replace('_', ' ').title(),
+                                    'value': str(data[key])
+                                })
+        
+        # Populate table
+        self.dns_table.setRowCount(len(all_data))
+        for row, item in enumerate(all_data):
+            # Section column
+            section_item = QTableWidgetItem(item['section'])
+            section_item.setFlags(section_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.dns_table.setItem(row, 0, section_item)
+            
+            # Category column
+            category_item = QTableWidgetItem(item['category'])
+            category_item.setFlags(category_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.dns_table.setItem(row, 1, category_item)
+            
+            # Value column
+            value_item = QTableWidgetItem(item['value'])
+            value_item.setFlags(value_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.dns_table.setItem(row, 2, value_item)
+        
+        # Resize columns to content
+        self.dns_table.resizeColumnsToContents()
