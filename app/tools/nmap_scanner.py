@@ -552,11 +552,19 @@ def scan_os_detection(target: str) -> Dict:
             "error": str(e)
         }
 
-def scan_udp(target: str, top_n: int = 100) -> Dict:
+def scan_udp(target: str, ports_list=None) -> Dict:
     """UDP port scan"""
     try:
-        top_udp_ports = [53, 67, 68, 69, 123, 135, 137, 138, 139, 161, 162, 445, 500, 514, 520, 631, 1434, 1900, 4500, 5353]
-        ports_to_scan = top_udp_ports[:min(top_n, len(top_udp_ports))]
+        if ports_list is None:
+            # Default top UDP ports
+            top_udp_ports = [53, 67, 68, 69, 123, 135, 137, 138, 139, 161, 162, 445, 500, 514, 520, 631, 1434, 1900, 4500, 5353]
+            ports_to_scan = top_udp_ports[:100]
+        elif isinstance(ports_list, list):
+            ports_to_scan = ports_list
+        else:
+            # If it's a number, use top N ports
+            top_udp_ports = [53, 67, 68, 69, 123, 135, 137, 138, 139, 161, 162, 445, 500, 514, 520, 631, 1434, 1900, 4500, 5353]
+            ports_to_scan = top_udp_ports[:min(ports_list, len(top_udp_ports))]
         
         open_ports = []
         output_lines = [f"Starting Nmap UDP scan for {target}"]
@@ -564,15 +572,26 @@ def scan_udp(target: str, top_n: int = 100) -> Dict:
         def scan_udp_port(port):
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                sock.settimeout(2)
-                sock.sendto(b'\x00', (target, port))
+                sock.settimeout(1)
+                
+                # Send appropriate probe based on port
+                if port == 53:  # DNS
+                    probe = b'\x12\x34\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00\x07example\x03com\x00\x00\x01\x00\x01'
+                elif port == 161:  # SNMP
+                    probe = b'\x30\x26\x02\x01\x01\x04\x06public\xa0\x19\x02\x04\x00\x00\x00\x00\x02\x01\x00\x02\x01\x00\x30\x0b\x30\x09\x06\x05\x2b\x06\x01\x02\x01\x05\x00'
+                elif port == 123:  # NTP
+                    probe = b'\x1b' + b'\x00' * 47
+                else:
+                    probe = b'\x00'
+                
+                sock.sendto(probe, (target, port))
                 try:
-                    sock.recvfrom(1024)
+                    data, addr = sock.recvfrom(1024)
                     sock.close()
-                    return port
+                    return port  # Got response, port is open
                 except socket.timeout:
                     sock.close()
-                    return port  # No response often means port is open for UDP
+                    return None  # No response, likely closed/filtered
                 except Exception:
                     sock.close()
                     return None
@@ -586,14 +605,14 @@ def scan_udp(target: str, top_n: int = 100) -> Dict:
                 if result:
                     service = _get_service_name(result, 'udp')
                     open_ports.append({'port': result, 'service': service})
-                    output_lines.append(f"{result}/udp open {service}")
+                    output_lines.append(f"{result}/udp open|filtered {service}")
         
         output_lines.append(f"UDP scan completed. {len(open_ports)} open ports")
         
         return {
             "scan_type": "udp_scan",
             "target": target,
-            "top_ports": top_n,
+            "ports_scanned": len(ports_to_scan),
             "success": True,
             "output": '\n'.join(output_lines),
             "error": ""
@@ -602,7 +621,7 @@ def scan_udp(target: str, top_n: int = 100) -> Dict:
         return {
             "scan_type": "udp_scan",
             "target": target,
-            "top_ports": top_n,
+            "ports_scanned": 0,
             "success": False,
             "output": "",
             "error": str(e)

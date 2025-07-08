@@ -404,3 +404,89 @@ class PTRWorker(QRunnable):
             self.signals.output.emit(f"<p style='color: red;'>[ERROR] PTR query failed: {str(e)}</p>")
         finally:
             self.signals.finished.emit()
+
+class SRVOnlyWorker(QRunnable):
+    """Dedicated SRV record scanner that only checks wordlist entries"""
+    
+    def __init__(self, target, dns_server=None):
+        super().__init__()
+        self.signals = WorkerSignals()
+        self.target = target
+        self.dns_server = dns_server
+        self.is_running = True
+        self.resolver = self._setup_resolver()
+    
+    def _setup_resolver(self):
+        resolver = dns.resolver.Resolver()
+        if self.dns_server:
+            resolver.nameservers = [self.dns_server]
+        resolver.timeout = 3
+        resolver.lifetime = 10
+        return resolver
+    
+    def run(self):
+        try:
+            self.signals.status.emit(f"Running SRV enumeration on {self.target}...")
+            self.signals.output.emit(f"<p style='color: #00BFFF;'>Enumerating SRV records.... Please wait....</p><br>")
+            
+            # Load SRV wordlist
+            srv_wordlist_path = os.path.join(os.path.dirname(__file__), '..', '..', 'resources', 'wordlists', 'srv_wordlist.txt')
+            
+            try:
+                with open(srv_wordlist_path, 'r') as f:
+                    services = [line.strip() for line in f if line.strip()]
+            except FileNotFoundError:
+                services = ['_http', '_https', '_ftp', '_ssh', '_smtp', '_pop3', '_imap', '_ldap', '_kerberos']
+            
+            protocols = ['_tcp', '_udp']
+            total_queries = len(services) * len(protocols)
+            self.signals.progress_start.emit(total_queries)
+            
+            completed = 0
+            results_found = 0
+            all_results = {}
+            
+            for srv in services:
+                if not self.is_running:
+                    break
+                    
+                for protocol in protocols:
+                    if not self.is_running:
+                        break
+                        
+                    fqdn = f"{srv}.{protocol}.{self.target}"
+                    try:
+                        answers = self.resolver.resolve(fqdn, 'SRV')
+                        values = [f"{r.priority} {r.weight} {r.port} {r.target.to_text().rstrip('.')}" for r in answers]
+                        
+                        if values:
+                            if self.target not in all_results:
+                                all_results[self.target] = {}
+                            if 'SRV' not in all_results[self.target]:
+                                all_results[self.target]['SRV'] = []
+                            
+                            all_results[self.target]['SRV'].extend(values)
+                            results_found += 1
+                            
+                            self.signals.output.emit(f"<p style='color: #00FF41;'>[+] Found (SRV): {fqdn}</p>")
+                            for value in values:
+                                self.signals.output.emit(f"<p style='color: #DCDCDC; padding-left: 20px;'>&nbsp;&nbsp;&nbsp;-&gt; {value}</p>")
+                            self.signals.output.emit("<br>")
+                    
+                    except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.Timeout):
+                        pass
+                    except Exception:
+                        pass
+                    
+                    completed += 1
+                    self.signals.progress_update.emit(completed, results_found, fqdn)
+            
+            if all_results:
+                self.signals.results_ready.emit(all_results)
+            
+            self.signals.status.emit("SRV enumeration completed")
+            
+        except Exception as e:
+            self.signals.output.emit(f"<p style='color: #FF4500;'>[ERROR] SRV enumeration failed: {str(e)}</p>")
+        finally:
+            self.signals.finished.emit()

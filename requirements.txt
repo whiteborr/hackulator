@@ -1,4 +1,21 @@
+# Hackulator Requirements
+# Core GUI Framework
+PyQt6>=6.4.0
+
+# Network and DNS
+dnspython>=2.3.0
 requests>=2.25.0
+
+# System Monitoring
+psutil>=5.9.0
+
+# Security and Encryption
 cryptography>=3.4.0
+
+# Database Connectivity
 pymssql>=2.2.0
 mysql-connector-python>=8.0.0
+
+# Optional: PDF Generation
+# Uncomment the line below if you need PDF report generation
+reportlab>=4.0.0

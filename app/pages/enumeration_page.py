@@ -55,8 +55,9 @@ class EnumerationPage(QWidget):
         self.current_submenu = "dns_enum"
         self.setObjectName("EnumerationPage")
         
-        # Terminal history for each tool
+        # Terminal history and state for each tool
         self.terminal_history = {}
+        self.tool_states = {}  # Store scan state, progress, results for each tool
 
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(10, 10, 10, 10)
@@ -352,98 +353,7 @@ class EnumerationPage(QWidget):
                 self.wordlist_combo.setCurrentIndex(i)
                 break
     
-    def create_port_controls(self):
-        """Create port scanning specific controls"""
-        port_widget = QWidget()
-        layout = QVBoxLayout(port_widget)
-        
-        # Scan Type
-        scan_type_row = QHBoxLayout()
-        scan_type_label = QLabel("Scan Type:")
-        scan_type_label.setFixedWidth(110)
-        scan_type_row.addWidget(scan_type_label)
-        self.scan_type_combo = QComboBox()
-        self.scan_type_combo.addItems([
-            "Network Sweep", "TCP Connect", "SYN Stealth", "Nmap TCP Connect", 
-            "UDP Scan", "UDP + SYN", "OS Detection", "Service Detection"
-        ])
-        self.scan_type_combo.setFixedWidth(200)
-        self.scan_type_combo.currentTextChanged.connect(self.on_port_scan_type_changed)
-        scan_type_row.addWidget(self.scan_type_combo)
-        scan_type_row.addStretch()
-        layout.addLayout(scan_type_row)
-        
-        # Port Range
-        self.port_row = QHBoxLayout()
-        self.port_label = QLabel("Ports:")
-        self.port_label.setFixedWidth(110)
-        self.port_row.addWidget(self.port_label)
-        self.port_input = QLineEdit()
-        self.port_input.setPlaceholderText("80,443,1-1000 (required for port scan)")
-        
-        # Update target placeholder for port scanning
-        if hasattr(self, 'target_input'):
-            self.target_input.setPlaceholderText("Enter target (IP, domain, IP range: 192.168.1.1-254 or 192.168.1.0/24)")
-        self.port_input.returnPressed.connect(self.toggle_scan)
-        self.port_row.addWidget(self.port_input)
-        layout.addLayout(self.port_row)
-        
-        # Quick port selections
-        self.quick_ports_row = QHBoxLayout()
-        self.quick_ports_label = QLabel("Quick:")
-        self.quick_ports_label.setFixedWidth(110)
-        self.quick_ports_row.addWidget(self.quick_ports_label)
-        
-        self.common_ports_btn = QPushButton("Common")
-        self.common_ports_btn.clicked.connect(self.set_common_ports)
-        self.quick_ports_row.addWidget(self.common_ports_btn)
-        
-        self.top100_btn = QPushButton("Top 100")
-        self.top100_btn.clicked.connect(lambda: self.port_input.setText("1-100"))
-        self.quick_ports_row.addWidget(self.top100_btn)
-        
-        self.top1000_btn = QPushButton("Top 1000")
-        self.top1000_btn.clicked.connect(lambda: self.port_input.setText("1-1000"))
-        self.quick_ports_row.addWidget(self.top1000_btn)
-        
-        self.quick_ports_row.addStretch()
-        layout.addLayout(self.quick_ports_row)
-        
-        # Run Aggressive checkbox
-        self.aggressive_row = QHBoxLayout()
-        aggressive_label = QLabel("Options:")
-        aggressive_label.setFixedWidth(110)
-        self.aggressive_row.addWidget(aggressive_label)
-        self.run_aggressive_checkbox = QCheckBox("Run Aggressive")
-        self.aggressive_row.addWidget(self.run_aggressive_checkbox)
-        self.aggressive_row.addStretch()
-        layout.addLayout(self.aggressive_row)
-        
-        # Enhanced Stealth checkbox
-        self.stealth_row = QHBoxLayout()
-        stealth_label = QLabel("Stealth:")
-        stealth_label.setFixedWidth(110)
-        self.stealth_row.addWidget(stealth_label)
-        self.enhanced_stealth_checkbox = QCheckBox("Enhanced Stealth")
-        self.enhanced_stealth_checkbox.stateChanged.connect(self.on_stealth_mode_changed)
-        self.stealth_row.addWidget(self.enhanced_stealth_checkbox)
-        self.stealth_row.addStretch()
-        layout.addLayout(self.stealth_row)
-        
-        # Stealth options (hidden by default)
-        self.decoy_row = QHBoxLayout()
-        self.decoy_label = QLabel("Decoy IPs:")
-        self.decoy_label.setFixedWidth(110)
-        self.decoy_row.addWidget(self.decoy_label)
-        self.decoy_ips_input = QLineEdit()
-        self.decoy_ips_input.setPlaceholderText("192.168.1.100,192.168.1.101")
-        self.decoy_row.addWidget(self.decoy_ips_input)
-        layout.addLayout(self.decoy_row)
-        
-        # Set initial visibility (Network Sweep selected by default)
-        self.on_port_scan_type_changed("Network Sweep")
-        
-        return port_widget
+
     
     def create_rpc_controls(self):
         """Create RPC enumeration specific controls"""
@@ -1212,13 +1122,14 @@ class EnumerationPage(QWidget):
         self.terminal_output.setPlaceholderText("Tool output will appear here...")
         self.results_stack.addWidget(self.terminal_output)
         
-        # Tree view for structured DNS results
-        self.tree_view = QTreeView()
-        self.tree_model = QStandardItemModel()
-        self.tree_model.setHorizontalHeaderLabels(["Domain/Record", "Value"])
-        self.tree_view.setModel(self.tree_model)
-        self.tree_view.setAlternatingRowColors(True)
-        self.results_stack.addWidget(self.tree_view)
+        # Table view for DNS results
+        from PyQt6.QtWidgets import QTableWidget
+        self.dns_table = QTableWidget()
+        self.dns_table.setColumnCount(3)
+        self.dns_table.setHorizontalHeaderLabels(["Domain/Record", "Type", "Value"])
+        self.dns_table.setSortingEnabled(True)
+        self.dns_table.setAlternatingRowColors(True)
+        self.results_stack.addWidget(self.dns_table)
         
         # Table view for port scan results
         from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem
@@ -1292,18 +1203,17 @@ class EnumerationPage(QWidget):
         return button
 
     def activate_tool_submenu(self, tool_id):
-        # Save current terminal content
+        # Save current tool state
         if hasattr(self, 'terminal_output') and self.current_submenu:
-            self.terminal_history[self.current_submenu] = self.terminal_output.toHtml()
+            self.save_current_tool_state()
         
         self.current_submenu = tool_id
         self.update_tool_buttons()
         self.highlight_selected_tool(tool_id)
         self.status_updated.emit(f"Selected: {tool_id.replace('_', ' ').title()}")
         
-        # Restore terminal history for selected tool
-        if hasattr(self, 'terminal_output'):
-            self.terminal_output.setHtml(self.terminal_history.get(tool_id, ""))
+        # Restore tool state for selected tool
+        self.restore_tool_state(tool_id)
         
         # Map tool IDs to control names
         tool_map = {
@@ -1524,6 +1434,7 @@ class EnumerationPage(QWidget):
         self.is_scanning = False
         self.run_button.setText("Run")
         self.run_button.setStyleSheet("")
+        self.progress_widget.setVisible(False)
         self.status_updated.emit("Scan cancelled")
     
     def run_host_wordlist_scan(self):
@@ -1572,6 +1483,9 @@ class EnumerationPage(QWidget):
         record_order = ['A', 'CNAME', 'MX', 'TXT', 'NS', 'SRV']
         record_type_checkboxes = getattr(self, 'record_type_checkboxes', {})
         
+        # Check if SRV is selected (handled separately)
+        srv_selected = False
+        
         for rtype in record_order:
             if rtype in record_type_checkboxes:
                 cb = record_type_checkboxes[rtype]
@@ -1582,11 +1496,12 @@ class EnumerationPage(QWidget):
                         selected_types.append(rtype)
                     elif rtype == 'SRV':
                         # SRV always runs separately
+                        srv_selected = True
                         continue
                     else:
                         direct_query_types.append(rtype)
         
-        if not selected_types and not direct_query_types:
+        if not selected_types and not direct_query_types and not srv_selected:
             # If no types selected but PTR is available, that's fine for IP targets
             ptr_checkbox = getattr(self, 'ptr_checkbox', None)
             if not (ptr_checkbox and ptr_checkbox.isEnabled() and ptr_checkbox.isChecked()):
@@ -1618,29 +1533,42 @@ class EnumerationPage(QWidget):
         self.export_button.setEnabled(False)
         
         # Show enumeration message at the beginning
-        if selected_types or direct_query_types:
+        if selected_types or direct_query_types or srv_selected:
             self.append_terminal_output(f"<p style='color: #00BFFF;'>Enumerating.... Please wait....</p><br>")
+        
+        # If only SRV is selected, run SRV scan directly
+        if srv_selected and not selected_types and not direct_query_types:
+            from app.tools.recon import SRVOnlyWorker
+            self.current_worker = SRVOnlyWorker(target, dns_server)
+            self.current_worker.signals.output.connect(self.append_terminal_output)
+            self.current_worker.signals.status.connect(self.update_status_bar_text)
+            self.current_worker.signals.finished.connect(self.on_scan_finished)
+            self.current_worker.signals.results_ready.connect(self.store_scan_results)
+            self.current_worker.signals.progress_start.connect(self.start_progress)
+            self.current_worker.signals.progress_update.connect(self.update_progress)
+            QThreadPool.globalInstance().start(self.current_worker)
+            return
             
         # Check if SRV scan will be needed after main scan
-        srv_checkbox = getattr(self, 'record_type_checkboxes', {}).get('SRV')
-        needs_srv_scan = (srv_checkbox and srv_checkbox.isChecked()) or is_all_selected
+        needs_srv_scan = srv_selected
         
-        # Start the actual enumeration
-        self.current_worker = dns_utils.enumerate_hostnames(
-            target=target,
-            wordlist_path=wordlist_path,
-            record_types=selected_types + direct_query_types,
-            use_bruteforce=(method == "Bruteforce"),
-            char_sets=char_sets,
-            max_length=max_length,
-            dns_server=dns_server,
-            output_callback=self.append_terminal_output,
-            status_callback=self.update_status_bar_text,
-            finished_callback=self._on_dns_scan_finished if needs_srv_scan else self.on_scan_finished,
-            results_callback=self.store_scan_results,
-            progress_callback=self.update_progress,
-            progress_start_callback=self.start_progress
-        )
+        # Start the actual enumeration for other types
+        if selected_types or direct_query_types:
+            self.current_worker = dns_utils.enumerate_hostnames(
+                target=target,
+                wordlist_path=wordlist_path,
+                record_types=selected_types + direct_query_types,
+                use_bruteforce=(method == "Bruteforce"),
+                char_sets=char_sets,
+                max_length=max_length,
+                dns_server=dns_server,
+                output_callback=self.append_terminal_output,
+                status_callback=self.update_status_bar_text,
+                finished_callback=self._on_dns_scan_finished if needs_srv_scan else self.on_scan_finished,
+                results_callback=self.store_scan_results,
+                progress_callback=self.update_progress,
+                progress_start_callback=self.start_progress
+            )
     
     def run_ldap_scan(self):
         """Execute LDAP enumeration scan"""
@@ -2108,7 +2036,10 @@ class EnumerationPage(QWidget):
             return
 
         # Get scan parameters from control panel
-        control_panel = self.tool_controls['port']
+        control_panel = self.tool_controls.get('port')
+        if not control_panel:
+            self.show_error("Port scanning controls not available")
+            return
         controls = control_panel.controls
         scan_type = controls['scan_type_combo'].currentText()
         os_detect = controls.get('os_detection_checkbox', {}).isChecked() if hasattr(controls.get('os_detection_checkbox', {}), 'isChecked') else False
@@ -2171,6 +2102,24 @@ class EnumerationPage(QWidget):
         from app.tools.nmap_scanner import (scan_network_sweep, scan_syn, scan_tcp_connect, 
                                            scan_service_detection, scan_os_detection, 
                                            scan_udp, scan_aggressive, scan_targeted)
+        
+        # Handle UDP scan first before other scan types
+        if "UDP" in scan_type:
+            result = scan_udp(target, 100)
+            
+            if result['success']:
+                self.append_terminal_output(f"<p style='color: #87CEEB;'>Starting UDP scan on {target}...</p><br>")
+                for line in result['output'].split('\n'):
+                    if line.strip():
+                        if '/udp' in line:
+                            self.append_terminal_output(f"<p style='color: #00FF41;'>[+] {line}</p><br>")
+                        else:
+                            self.append_terminal_output(f"<p style='color: #DCDCDC;'>{line}</p><br>")
+            else:
+                self.append_terminal_output(f"<p style='color: #FF4500;'>UDP scan failed: {result.get('error', 'Unknown error')}</p>")
+            
+            self.on_scan_finished()
+            return
         
         try:
             if scan_type == "Ping Sweep":
@@ -2285,32 +2234,95 @@ class EnumerationPage(QWidget):
                 return
             
             elif scan_type == "Targeted Scan":
-                # Handle targeted scan types
+                # Get target scan type
                 target_scan_type = controls.get('target_scan_combo', {}).currentText() if hasattr(controls.get('target_scan_combo', {}), 'currentText') else "TCP connect scan"
                 
-                result = scan_targeted(target, target_scan_type, ports_text or "80,443")
-                
-                if result['success']:
-                    # Format output similar to other scans
-                    self.append_terminal_output(f"<p style='color: #87CEEB;'>Starting {target_scan_type} on {target}...</p><br>")
-                    # Process nmap output line by line with proper formatting
-                    for line in result['output'].split('\n'):
-                        if line.strip():
-                            self.append_terminal_output(f"<p style='color: #DCDCDC;'>{line}</p><br>")
-                    self.append_terminal_output(f"<p style='color: #00FF41;'>{target_scan_type} completed successfully</p><br>")
+                # Handle UDP scans separately
+                if "UDP" in target_scan_type:
+                    # Clear previous results
+                    self.last_scan_results = {}
                     
-                    # Parse and store results for table view and export
-                    parsed_results = self.parse_nmap_output(result['output'], target)
-                    if parsed_results:
-                        self.store_scan_results(parsed_results)
-                else:
-                    error_msg = result.get('error', 'Unknown error')
-                    output_msg = result.get('output', '')
-                    self.append_terminal_output(f"<p style='color: #FF4500;'>Error: {error_msg}</p>")
-                    if output_msg:
-                        self.append_terminal_output(f"<p style='color: #FFAA00;'>Debug: {output_msg}</p>")
+                    # Parse ports for UDP scan
+                    if ports_text:
+                        udp_ports_list = []
+                        for part in ports_text.split(','):
+                            part = part.strip()
+                            if '-' in part:
+                                start, end = map(int, part.split('-'))
+                                udp_ports_list.extend(range(start, end + 1))
+                            else:
+                                udp_ports_list.append(int(part))
+                    else:
+                        udp_ports_list = None
+                    
+                    result = scan_udp(target, udp_ports_list)
+                    
+                    if result['success']:
+                        self.append_terminal_output(f"<p style='color: #87CEEB;'>Starting UDP scan on {target}...</p><br>")
+                        
+                        # Parse UDP results for table view
+                        udp_ports = []
+                        for line in result['output'].split('\n'):
+                            if line.strip():
+                                if '/udp' in line:
+                                    self.append_terminal_output(f"<p style='color: #00FF41;'>[+] {line}</p><br>")
+                                    # Extract port info for table
+                                    import re
+                                    port_match = re.search(r'(\d+)/udp\s+\S+\s+(\S+)', line)
+                                    if port_match:
+                                        udp_ports.append({
+                                            'port': int(port_match.group(1)),
+                                            'service': port_match.group(2),
+                                            'state': 'open'
+                                        })
+                                    else:
+                                        # Try simpler pattern
+                                        simple_match = re.search(r'(\d+)/udp', line)
+                                        if simple_match:
+                                            udp_ports.append({
+                                                'port': int(simple_match.group(1)),
+                                                'service': 'unknown',
+                                                'state': 'open'
+                                            })
+                                else:
+                                    self.append_terminal_output(f"<p style='color: #DCDCDC;'>{line}</p><br>")
+                        
+                        # Store results for table view
+                        if udp_ports:
+                            udp_results = {target: {'open_ports': udp_ports}}
+                            self.store_scan_results(udp_results)
+                    else:
+                        self.append_terminal_output(f"<p style='color: #FF4500;'>UDP scan failed: {result.get('error', 'Unknown error')}</p>")
+                    
+                    self.on_scan_finished()
+                    return
                 
-                self.on_scan_finished()
+                # Use PortScanWorker for TCP scans
+                from app.tools.port_scanner import PortScanWorker
+                from PyQt6.QtCore import QThreadPool
+                
+                # Parse ports
+                if ports_text:
+                    ports = []
+                    for part in ports_text.split(','):
+                        part = part.strip()
+                        if '-' in part:
+                            start, end = map(int, part.split('-'))
+                            ports.extend(range(start, end + 1))
+                        else:
+                            ports.append(int(part))
+                else:
+                    ports = [80, 443]
+                
+                self.current_worker = PortScanWorker(target, ports, "tcp", timeout=3)
+                self.current_worker.signals.output.connect(self.append_terminal_output)
+                self.current_worker.signals.status.connect(self.update_status_bar_text)
+                self.current_worker.signals.progress_start.connect(self.start_progress)
+                self.current_worker.signals.progress_update.connect(lambda completed, found: self.update_progress(completed, found, f"Port scanning: {target}"))
+                self.current_worker.signals.finished.connect(self.on_scan_finished)
+                self.current_worker.signals.results_ready.connect(self.store_scan_results)
+                
+                QThreadPool.globalInstance().start(self.current_worker)
                 return
             
             else:
@@ -2325,6 +2337,20 @@ class EnumerationPage(QWidget):
                     result = scan_os_detection(target)
                 elif "UDP Scan" in scan_type:
                     result = scan_udp(target, 100)
+                    
+                    if result['success']:
+                        self.append_terminal_output(f"<p style='color: #87CEEB;'>Starting UDP scan on {target}...</p><br>")
+                        for line in result['output'].split('\n'):
+                            if line.strip():
+                                if '/udp' in line:
+                                    self.append_terminal_output(f"<p style='color: #00FF41;'>[+] {line}</p><br>")
+                                else:
+                                    self.append_terminal_output(f"<p style='color: #DCDCDC;'>{line}</p><br>")
+                    else:
+                        self.append_terminal_output(f"<p style='color: #FF4500;'>UDP scan failed: {result.get('error', 'Unknown error')}</p>")
+                    
+                    self.on_scan_finished()
+                    return
                 elif "Aggressive" in scan_type:
                     result = scan_aggressive(target)
                 else:
@@ -2688,8 +2714,8 @@ class EnumerationPage(QWidget):
             # Update structured results for tree view with all accumulated results
             self.structured_dns_results = self.last_scan_results
             
-            # Update tree view with all accumulated results (not just new results)
-            self.populate_tree_view(self.last_scan_results)
+            # Update DNS table with all accumulated results
+            self.populate_dns_table(self.last_scan_results)
         
         self.export_button.setEnabled(True)
 
@@ -2768,14 +2794,17 @@ class EnumerationPage(QWidget):
         
         try:
             # Delegate the actual file writing to the exporter module
-            success, filename, message = exporter.export_results(
+            success, filepath, message = exporter.export_results(
                 self.last_scan_results,
                 target,
                 export_format.lower()
             )
             
             if success:
-                self.append_terminal_output(f"<p style='color: #00FF41;'>[EXPORT] Results exported to {filename}</p><br>")
+                self.append_terminal_output(f"<p style='color: #00FF41;'>[EXPORT] Results exported to {filepath}</p><br>")
+                
+                # Add to Advanced Reporting history
+                self.add_to_reporting_history(filepath, target, export_format)
             else:
                 self.append_terminal_output(f"<p style='color: #FF4500;'>[EXPORT ERROR] {message}</p><br>")
                 
@@ -2820,6 +2849,98 @@ class EnumerationPage(QWidget):
         
         layout.addWidget(reporting_widget)
         dialog.exec()
+    
+    def add_to_reporting_history(self, filepath, target, export_format):
+        """Add exported scan to Advanced Reporting history"""
+        try:
+            from app.core.scan_database import scan_db
+            import time
+            
+            # Save scan to database for history tracking
+            scan_types = {
+                'dns_enum': 'dns_enum',
+                'port_scan': 'port_scan',
+                'rpc_enum': 'rpc_enum',
+                'smb_enum': 'smb_enum',
+                'smtp_enum': 'smtp_enum',
+                'snmp_enum': 'snmp_enum',
+                'http_enum': 'http_enum',
+                'api_enum': 'api_enum'
+            }
+            scan_type = scan_types.get(self.current_submenu, 'unknown')
+            
+            # Save to database
+            scan_db.save_scan(
+                target=target,
+                scan_type=scan_type,
+                results=self.last_scan_results,
+                duration=0
+            )
+            
+        except Exception as e:
+            # Don't fail export if history fails
+            print(f"Warning: Could not add to reporting history: {e}")
+    
+    def save_current_tool_state(self):
+        """Save current tool's state (terminal, progress, results, scan status)"""
+        if not self.current_submenu:
+            return
+            
+        self.tool_states[self.current_submenu] = {
+            'terminal_content': self.terminal_output.toHtml(),
+            'is_scanning': self.is_scanning,
+            'scan_results': getattr(self, 'last_scan_results', {}),
+            'progress_visible': self.progress_widget.isVisible(),
+            'progress_value': 0,  # Simplified for now
+            'progress_text': '',  # Simplified for now
+            'export_enabled': self.export_button.isEnabled(),
+            'run_button_text': self.run_button.text(),
+            'run_button_style': self.run_button.styleSheet(),
+            'results_view_index': self.results_stack.currentIndex()
+        }
+    
+    def restore_tool_state(self, tool_id):
+        """Restore tool's state (terminal, progress, results, scan status)"""
+        if tool_id in self.tool_states:
+            state = self.tool_states[tool_id]
+            
+            # Restore terminal content
+            self.terminal_output.setHtml(state.get('terminal_content', ''))
+            
+            # Restore scan state
+            self.is_scanning = state.get('is_scanning', False)
+            self.last_scan_results = state.get('scan_results', {})
+            
+            # Restore UI state
+            self.progress_widget.setVisible(state.get('progress_visible', False))
+            # Progress state restoration simplified for now
+            self.export_button.setEnabled(state.get('export_enabled', False))
+            self.run_button.setText(state.get('run_button_text', 'Run'))
+            self.run_button.setStyleSheet(state.get('run_button_style', ''))
+            
+            # Restore results view
+            self.results_stack.setCurrentIndex(state.get('results_view_index', 0))
+            
+            # Update DNS table if switching to DNS tool with results
+            if tool_id == 'dns_enum' and state.get('scan_results'):
+                self.populate_dns_table(state.get('scan_results'))
+        else:
+            # Initialize new tool state
+            self.terminal_output.clear()
+            self.is_scanning = False
+            self.last_scan_results = {}
+            self.progress_widget.setVisible(False)
+            self.export_button.setEnabled(False)
+            self.run_button.setText('Run')
+            self.run_button.setStyleSheet('')
+            
+            # Reset progress bar animation
+            if hasattr(self, 'progress_widget'):
+                from PyQt6.QtWidgets import QProgressBar
+                progress_bars = self.progress_widget.findChildren(QProgressBar)
+                for pb in progress_bars:
+                    pb.setValue(0)
+                    pb.setRange(0, 100)
     
     def open_session_management(self):
         """Open session management dialog"""
@@ -2952,52 +3073,48 @@ class EnumerationPage(QWidget):
             self.view_toggle_btn.setText("Graph View")
             self.current_view_is_text = True
     
-    def populate_tree_view(self, structured_results):
-        """Populate QTreeView with structured DNS results"""
-        # Clear existing model
-        self.tree_model.clear()
-        self.tree_model.setHorizontalHeaderLabels(["Domain/Record", "Value"])
+    def populate_dns_table(self, structured_results):
+        """Populate DNS table with structured results"""
+        from PyQt6.QtWidgets import QTableWidgetItem
+        from PyQt6.QtCore import Qt
+        
+        # Clear existing data
+        self.dns_table.setRowCount(0)
         
         if not structured_results:
             return
         
-        # Create root item for the target domain
-        target_domain = self.target_input.text().strip() or "DNS Results"
-        root_item = QStandardItem(target_domain)
-        root_item.setEditable(False)
-        self.tree_model.appendRow([root_item, QStandardItem("")])
-        
-        # Add each domain and its records
+        # Collect all records
+        all_records = []
         for domain, record_types in structured_results.items():
-            # Create domain item
-            domain_item = QStandardItem(domain)
-            domain_item.setEditable(False)
-            domain_count_item = QStandardItem(f"{len(record_types)} record types")
-            domain_count_item.setEditable(False)
-            
-            # Add record types under domain
             for record_type, values in record_types.items():
-                record_item = QStandardItem(f"{record_type} Records")
-                record_item.setEditable(False)
-                record_count_item = QStandardItem(f"{len(values)} entries")
-                record_count_item.setEditable(False)
-                
-                # Add individual values
                 for value in values:
-                    value_item = QStandardItem(value)
-                    value_item.setEditable(False)
-                    record_item.appendRow([value_item, QStandardItem("")])
-                
-                domain_item.appendRow([record_item, record_count_item])
-            
-            root_item.appendRow([domain_item, domain_count_item])
+                    all_records.append({
+                        'domain': domain,
+                        'type': record_type,
+                        'value': value
+                    })
         
-        # Expand the tree to show structure
-        self.tree_view.expandAll()
+        # Populate table
+        self.dns_table.setRowCount(len(all_records))
+        for row, record in enumerate(all_records):
+            # Domain/Record column
+            domain_item = QTableWidgetItem(record['domain'])
+            domain_item.setFlags(domain_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.dns_table.setItem(row, 0, domain_item)
+            
+            # Type column
+            type_item = QTableWidgetItem(record['type'])
+            type_item.setFlags(type_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.dns_table.setItem(row, 1, type_item)
+            
+            # Value column
+            value_item = QTableWidgetItem(record['value'])
+            value_item.setFlags(value_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.dns_table.setItem(row, 2, value_item)
         
         # Resize columns to content
-        self.tree_view.resizeColumnToContents(0)
-        self.tree_view.resizeColumnToContents(1)
+        self.dns_table.resizeColumnsToContents()
     def set_results_view(self, is_text_view):
         """Set results view to text or table"""
         self.current_view_is_text = is_text_view
@@ -3024,8 +3141,8 @@ class EnumerationPage(QWidget):
                     self.update_results_table()
                     self.results_stack.setCurrentIndex(3)  # IP results table
             else:
-                # DNS and other scans use tree view
-                self.results_stack.setCurrentIndex(1)  # Tree view
+                # DNS and other scans use table view
+                self.results_stack.setCurrentIndex(1)  # DNS table view
     
     def parse_nmap_output(self, nmap_output, target):
         """Parse nmap output to extract port information"""
