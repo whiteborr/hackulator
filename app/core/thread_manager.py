@@ -1,6 +1,7 @@
 """Enhanced thread management for concurrent operations"""
 import threading
 import time
+import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, List, Optional, Callable, Any
 from PyQt6.QtCore import QObject, pyqtSignal, QMutex, QMutexLocker
@@ -15,7 +16,7 @@ class ThreadManager(QObject):
     
     def __init__(self, max_workers=None):
         super().__init__()
-        self.max_workers = max_workers or min(32, (threading.cpu_count() or 1) + 4)
+        self.max_workers = max_workers or min(32, (os.cpu_count() or 1) + 4)
         self.executor = ThreadPoolExecutor(max_workers=self.max_workers)
         self.active_threads = {}
         self.thread_counter = 0

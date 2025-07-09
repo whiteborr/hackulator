@@ -210,6 +210,16 @@ class NetworkSweepWorker(QRunnable):
                 # Emit progress every 5 hosts or on the last one
                 if (i + 1) % 5 == 0 or i == total_targets - 1:
                     self.signals.progress_update.emit(i + 1, len(alive_hosts))
+                    
+                    # Update scan registry progress
+                    try:
+                        from app.core.scan_registry import scan_registry
+                        for scan_id, scan_info in scan_registry.get_all_scans().items():
+                            if scan_info.target == self.target and scan_info.scan_type == "Port Scan":
+                                scan_registry.update_scan_progress(scan_id, i + 1)
+                                break
+                    except:
+                        pass
             
             # If ping didn't find hosts, try nmap as fallback
             if not alive_hosts:
@@ -265,6 +275,16 @@ class NetworkSweepWorker(QRunnable):
                                 else:
                                     status_msg = f"Nmap scanning: {self.target}"
                                 self.signals.progress_update.emit(min(progress_count, 90), len(alive_hosts))
+                                
+                                # Update scan registry progress
+                                try:
+                                    from app.core.scan_registry import scan_registry
+                                    for scan_id, scan_info in scan_registry.get_all_scans().items():
+                                        if scan_info.target == self.target and scan_info.scan_type == "Port Scan":
+                                            scan_registry.update_scan_progress(scan_id, min(progress_count, 90))
+                                            break
+                                except:
+                                    pass
 
                 # Parse nmap results
                 for i, line in enumerate(output_buffer):

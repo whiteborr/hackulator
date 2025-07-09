@@ -225,6 +225,9 @@ class EnumerationPage(QWidget):
                 
                 # Connect tool-specific button actions
                 self.connect_tool_buttons(tool_name, control_panel)
+                
+                # Connect Enter key for all input fields in this control panel
+                self.connect_enter_key_to_inputs(control_panel)
         
         # Create remaining controls using existing methods (to be migrated)
         remaining_tools = ['rpc', 'http', 'api', 'ldap', 'db', 'ike', 'av_firewall']
@@ -404,6 +407,7 @@ class EnumerationPage(QWidget):
         self.rpc_username = QLineEdit()
         self.rpc_username.setPlaceholderText("Domain username")
         self.rpc_username.setMinimumHeight(25)
+        self.rpc_username.returnPressed.connect(self.toggle_scan)
         user_row.addWidget(self.rpc_username)
         layout.addWidget(self.user_widget)
         
@@ -418,6 +422,7 @@ class EnumerationPage(QWidget):
         self.rpc_password.setPlaceholderText("Password")
         self.rpc_password.setEchoMode(QLineEdit.EchoMode.Password)
         self.rpc_password.setMinimumHeight(25)
+        self.rpc_password.returnPressed.connect(self.toggle_scan)
         pass_row.addWidget(self.rpc_password)
         layout.addWidget(self.pass_widget)
         
@@ -425,12 +430,13 @@ class EnumerationPage(QWidget):
         self.hash_widget = QWidget()
         hash_row = QHBoxLayout(self.hash_widget)
         hash_row.setContentsMargins(0, 0, 0, 0)
-        hash_label = QLabel("    NTLM Hash:")
+        hash_label = QLabel("NTLM Hash:")
         hash_label.setFixedWidth(150)
         hash_row.addWidget(hash_label)
         self.rpc_ntlm_hash = QLineEdit()
         self.rpc_ntlm_hash.setPlaceholderText("NTLM hash (alternative to password)")
         self.rpc_ntlm_hash.setMinimumHeight(25)
+        self.rpc_ntlm_hash.returnPressed.connect(self.toggle_scan)
         hash_row.addWidget(self.rpc_ntlm_hash)
         layout.addWidget(self.hash_widget)
         
@@ -468,61 +474,103 @@ class EnumerationPage(QWidget):
         smb_widget = QWidget()
         layout = QVBoxLayout(smb_widget)
         
-        # Scan Type
-        scan_type_row = QHBoxLayout()
+        # Scan Type and Authentication on same row
+        scan_auth_row = QHBoxLayout()
         scan_type_label = QLabel("Scan Type:")
-        scan_type_label.setFixedWidth(150)
-        scan_type_row.addWidget(scan_type_label)
+        scan_type_label.setFixedWidth(80)
+        scan_auth_row.addWidget(scan_type_label)
         self.smb_scan_type = QComboBox()
         self.smb_scan_type.addItems(["Basic Info", "Share Enumeration", "Vulnerability Scan"])
-        self.smb_scan_type.setFixedWidth(150)
-        scan_type_row.addWidget(self.smb_scan_type)
-        scan_type_row.addStretch()
-        layout.addLayout(scan_type_row)
+        self.smb_scan_type.setFixedWidth(140)
+        scan_auth_row.addWidget(self.smb_scan_type)
         
-        # Authentication
-        auth_row = QHBoxLayout()
+        scan_auth_row.addSpacing(15)  # Add space between fields
+        
         auth_label = QLabel("Auth:")
-        auth_label.setFixedWidth(150)
-        auth_row.addWidget(auth_label)
+        auth_label.setFixedWidth(40)
+        scan_auth_row.addWidget(auth_label)
         self.smb_auth_combo = QComboBox()
         self.smb_auth_combo.addItems(["Anonymous", "Credentials"])
-        self.smb_auth_combo.setFixedWidth(150)
+        self.smb_auth_combo.setFixedWidth(120)
         self.smb_auth_combo.currentTextChanged.connect(self.toggle_smb_auth)
-        auth_row.addWidget(self.smb_auth_combo)
-        auth_row.addStretch()
-        layout.addLayout(auth_row)
+        scan_auth_row.addWidget(self.smb_auth_combo)
+        scan_auth_row.addStretch()
+        layout.addLayout(scan_auth_row)
         
-        # Username
-        user_row = QHBoxLayout()
+        # Username widget
+        self.smb_user_widget = QWidget()
+        user_row = QHBoxLayout(self.smb_user_widget)
+        user_row.setContentsMargins(0, 0, 0, 0)
         user_label = QLabel("Username:")
         user_label.setFixedWidth(150)
         user_row.addWidget(user_label)
         self.smb_username = QLineEdit()
         self.smb_username.setPlaceholderText("Domain\\username or username")
-        self.smb_username.setVisible(False)
+        self.smb_username.returnPressed.connect(self.toggle_scan)
         user_row.addWidget(self.smb_username)
-        layout.addLayout(user_row)
+        layout.addWidget(self.smb_user_widget)
         
-        # Password
-        pass_row = QHBoxLayout()
+        # Password widget
+        self.smb_pass_widget = QWidget()
+        pass_row = QHBoxLayout(self.smb_pass_widget)
+        pass_row.setContentsMargins(0, 0, 0, 0)
         pass_label = QLabel("Password:")
         pass_label.setFixedWidth(150)
         pass_row.addWidget(pass_label)
         self.smb_password = QLineEdit()
         self.smb_password.setPlaceholderText("Password")
         self.smb_password.setEchoMode(QLineEdit.EchoMode.Password)
-        self.smb_password.setVisible(False)
+        self.smb_password.returnPressed.connect(self.toggle_scan)
         pass_row.addWidget(self.smb_password)
-        layout.addLayout(pass_row)
+        layout.addWidget(self.smb_pass_widget)
+        
+        # Set initial state
+        self.toggle_smb_auth("Anonymous")
         
         return smb_widget
     
     def toggle_smb_auth(self, auth_type):
         """Toggle SMB authentication fields"""
         show_creds = (auth_type == "Credentials")
-        self.smb_username.setVisible(show_creds)
-        self.smb_password.setVisible(show_creds)
+        self.smb_user_widget.setVisible(show_creds)
+        self.smb_pass_widget.setVisible(show_creds)
+    
+    def toggle_smb_auth_factory(self, controls, auth_type):
+        """Toggle SMB authentication fields for factory-created controls"""
+        show_creds = (auth_type == "Credentials")
+        show_wordlist = (auth_type == "Wordlist")
+        show_bruteforce = (auth_type == "BruteForce")
+        
+        # Control individual controls
+        if 'smb_username' in controls:
+            controls['smb_username'].setVisible(show_creds)
+        if 'smb_password' in controls:
+            controls['smb_password'].setVisible(show_creds)
+        if 'smb_wordlist' in controls:
+            controls['smb_wordlist'].setVisible(show_wordlist)
+        if 'smb_charset_09' in controls:
+            controls['smb_charset_09'].setVisible(show_bruteforce)
+        if 'smb_charset_az' in controls:
+            controls['smb_charset_az'].setVisible(show_bruteforce)
+        if 'smb_charset_AZ' in controls:
+            controls['smb_charset_AZ'].setVisible(show_bruteforce)
+        if 'smb_charset_special' in controls:
+            controls['smb_charset_special'].setVisible(show_bruteforce)
+        
+        # Find the SMB control panel
+        smb_panel = self.tool_controls.get('smb')
+        if smb_panel and hasattr(smb_panel, 'row_widgets'):
+            # Hide/show username and password rows
+            if 'Username:' in smb_panel.row_widgets:
+                smb_panel.row_widgets['Username:'].setVisible(show_creds)
+            if 'Password:' in smb_panel.row_widgets:
+                smb_panel.row_widgets['Password:'].setVisible(show_creds)
+            # Hide/show wordlist row
+            if 'Wordlist:' in smb_panel.row_widgets:
+                smb_panel.row_widgets['Wordlist:'].setVisible(show_wordlist)
+            # Hide/show charset row
+            if 'Charset:' in smb_panel.row_widgets:
+                smb_panel.row_widgets['Charset:'].setVisible(show_bruteforce)
     
     def create_smtp_controls(self):
         """Create SMTP enumeration specific controls"""
@@ -582,6 +630,24 @@ class EnumerationPage(QWidget):
             for filename in os.listdir(wordlist_dir):
                 if filename.endswith(".txt"):
                     self.smtp_wordlist.addItem(filename, os.path.join(wordlist_dir, filename))
+    
+    def populate_smb_wordlist(self, wordlist_combo):
+        """Populate SMB wordlist dropdown with shares-top100.txt as default"""
+        if not wordlist_combo:
+            return
+        
+        wordlist_dir = os.path.join(self.main_window.project_root, "resources", "wordlists")
+        if os.path.exists(wordlist_dir):
+            for filename in os.listdir(wordlist_dir):
+                if filename.endswith(".txt"):
+                    wordlist_combo.addItem(filename, os.path.join(wordlist_dir, filename))
+        
+        # Set shares-top100.txt as default
+        shares_wordlist_path = os.path.join(wordlist_dir, "shares-top100.txt")
+        for i in range(wordlist_combo.count()):
+            if wordlist_combo.itemData(i) == shares_wordlist_path:
+                wordlist_combo.setCurrentIndex(i)
+                break
     
     def create_snmp_controls(self):
         """Create SNMP enumeration specific controls"""
@@ -1354,6 +1420,13 @@ class EnumerationPage(QWidget):
             if index >= 0:
                 self.controls_stack.setCurrentIndex(index)
     
+    def connect_enter_key_to_inputs(self, control_panel):
+        """Connect Enter key press to toggle_scan for all input fields in control panel"""
+        if hasattr(control_panel, 'controls'):
+            for control_name, control_widget in control_panel.controls.items():
+                if hasattr(control_widget, 'returnPressed'):
+                    control_widget.returnPressed.connect(self.toggle_scan)
+    
     def connect_tool_buttons(self, tool_name, control_panel):
         """Connect tool-specific button actions"""
         controls = control_panel.controls
@@ -1392,6 +1465,16 @@ class EnumerationPage(QWidget):
                 controls['extended_btn'].clicked.connect(
                     lambda: controls['snmp_communities'].setText("public,private,community,manager,admin,administrator,root,guest,read,write,test,cisco,default,snmp")
                 )
+        
+        elif tool_name == 'smb':
+            if 'smb_auth_combo' in controls:
+                controls['smb_auth_combo'].currentTextChanged.connect(
+                    lambda auth_type: self.toggle_smb_auth_factory(controls, auth_type)
+                )
+                # Populate wordlist dropdown
+                self.populate_smb_wordlist(controls.get('smb_wordlist'))
+                # Set initial state
+                self.toggle_smb_auth_factory(controls, "Anonymous")
     
     def highlight_selected_tool(self, selected_id):
         for i, button in enumerate(self.main_tool_buttons):
@@ -1622,6 +1705,8 @@ class EnumerationPage(QWidget):
         self.terminal_output.clear()
         self.progress_widget.setVisible(True)
         self.status_updated.emit(f"Starting DNS enumeration on {target}...")
+        
+        # DNS enumeration starting
         
         # Clear previous scan results
         self.last_scan_results = {}
@@ -2136,6 +2221,8 @@ class EnumerationPage(QWidget):
         if not target:
             self.show_error("Please enter a target")
             return
+        
+        # Port scan starting
 
         # Get scan parameters from control panel
         control_panel = self.tool_controls.get('port')
@@ -2163,6 +2250,8 @@ class EnumerationPage(QWidget):
         self.terminal_output.clear()
         self.progress_widget.setVisible(True)
         self.status_updated.emit(f"Starting {scan_type} on {target}...")
+        
+        # Port scan details
 
         self.last_scan_results = {}
         self.export_button.setEnabled(False)
@@ -2473,17 +2562,43 @@ class EnumerationPage(QWidget):
             self.show_error("Please enter a target")
             return
         
-        scan_type_map = {
-            "Basic Info": "basic",
-            "Share Enumeration": "shares", 
-            "Vulnerability Scan": "vulns"
-        }
-        smb_scan_type = getattr(self, 'smb_scan_type', None)
-        scan_type = scan_type_map[smb_scan_type.currentText()] if smb_scan_type else "basic"
+        # Get scan type from factory-created controls or legacy controls
+        scan_type = "basic"
+        username = ""
+        password = ""
         
-        smb_auth_combo = getattr(self, 'smb_auth_combo', None)
-        username = self.smb_username.text().strip() if smb_auth_combo and smb_auth_combo.currentText() == "Credentials" else ""
-        password = self.smb_password.text().strip() if smb_auth_combo and smb_auth_combo.currentText() == "Credentials" else ""
+        # Try factory-created SMB controls first
+        if 'smb' in self.tool_controls:
+            control_panel = self.tool_controls['smb']
+            if hasattr(control_panel, 'controls'):
+                controls = control_panel.controls
+                
+                # Get scan type
+                scan_type_map = {
+                    "Basic Info": "basic",
+                    "Share Enumeration": "shares", 
+                    "Vulnerability Scan": "vulns"
+                }
+                if 'smb_scan_type' in controls:
+                    scan_type = scan_type_map.get(controls['smb_scan_type'].currentText(), "basic")
+                
+                # Get credentials
+                if 'smb_auth_combo' in controls and controls['smb_auth_combo'].currentText() == "Credentials":
+                    username = controls.get('smb_username', {}).text().strip() if 'smb_username' in controls else ""
+                    password = controls.get('smb_password', {}).text().strip() if 'smb_password' in controls else ""
+        else:
+            # Fallback to legacy controls
+            scan_type_map = {
+                "Basic Info": "basic",
+                "Share Enumeration": "shares", 
+                "Vulnerability Scan": "vulns"
+            }
+            smb_scan_type = getattr(self, 'smb_scan_type', None)
+            scan_type = scan_type_map[smb_scan_type.currentText()] if smb_scan_type else "basic"
+            
+            smb_auth_combo = getattr(self, 'smb_auth_combo', None)
+            username = self.smb_username.text().strip() if smb_auth_combo and smb_auth_combo.currentText() == "Credentials" else ""
+            password = self.smb_password.text().strip() if smb_auth_combo and smb_auth_combo.currentText() == "Credentials" else ""
         
         self.is_scanning = True
         self.run_button.setText("Cancel")
@@ -2745,6 +2860,9 @@ class EnumerationPage(QWidget):
             self.last_scan_results.update(results)
             self.populate_rpc_tree(results)
             self.populate_rpc_table(results)
+        elif self.current_submenu == "smb_enum":
+            # Handle SMB results - just store them, no special table population needed
+            self.last_scan_results.update(results)
         else:
             # Handle DNS results - merge new results with existing results
             for domain, record_types in results.items():
@@ -2780,6 +2898,8 @@ class EnumerationPage(QWidget):
         self.run_button.setText("Run")
         self.run_button.setStyleSheet("")
         self.current_worker = None
+        
+        # Scan completed successfully
     
     def _on_dns_scan_finished(self):
         """Handle DNS scan completion - run SRV scan if SRV is selected"""

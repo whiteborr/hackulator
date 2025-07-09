@@ -13,9 +13,12 @@ class ControlPanelFactory:
         layout.setSpacing(5)
         
         controls = {}
+        row_widgets = {}
         
-        for row_config in config.get('rows', []):
-            row_layout = QHBoxLayout()
+        for i, row_config in enumerate(config.get('rows', [])):
+            row_widget = QWidget()
+            row_layout = QHBoxLayout(row_widget)
+            row_layout.setContentsMargins(0, 0, 0, 0)
             
             # Add label
             if 'label' in row_config:
@@ -27,13 +30,14 @@ class ControlPanelFactory:
             for control_config in row_config.get('controls', []):
                 control = ControlPanelFactory._create_control(control_config, parent)
                 controls[control_config['name']] = control
-                row_layout.addWidget(control)
                 
                 # Handle control-specific properties
                 if control_config.get('stretch'):
                     row_layout.addWidget(control, 1)
-                elif 'width' in control_config:
-                    control.setFixedWidth(control_config['width'])
+                else:
+                    row_layout.addWidget(control)
+                    if 'width' in control_config:
+                        control.setFixedWidth(control_config['width'])
             
             # Add buttons if specified
             for button_config in row_config.get('buttons', []):
@@ -45,10 +49,15 @@ class ControlPanelFactory:
             if row_config.get('add_stretch', True):
                 row_layout.addStretch()
             
-            layout.addLayout(row_layout)
+            # Store row widget reference
+            if 'label' in row_config:
+                row_widgets[row_config['label']] = row_widget
+            
+            layout.addWidget(row_widget)
         
         layout.addStretch()
         widget.controls = controls  # Store reference to controls
+        widget.row_widgets = row_widgets  # Store reference to row widgets
         return widget
     
     @staticmethod
@@ -88,6 +97,9 @@ class ControlPanelFactory:
             control.setValue(config.get('default', 50))
             control.setTickPosition(QSlider.TickPosition.TicksBelow)
             control.setTickInterval(50)
+            
+        elif control_type == 'label':
+            control = QLabel(config.get('text', ''), parent)
             
         else:
             control = QWidget(parent)  # Fallback

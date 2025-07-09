@@ -79,25 +79,36 @@
       {
         "label": "Scan Type:",
         "controls": [
-          {"type": "combobox", "name": "smb_scan_type", "items": ["Basic Info", "Share Enumeration", "Vulnerability Scan"], "width": 150}
-        ]
-      },
-      {
-        "label": "Auth:",
-        "controls": [
-          {"type": "combobox", "name": "smb_auth_combo", "items": ["Anonymous", "Credentials"], "width": 150}
+          {"type": "combobox", "name": "smb_scan_type", "items": ["Basic Info", "Share Enumeration", "Vulnerability Scan"], "width": 270},
+          {"type": "label", "name": "auth_label", "text": "Auth:", "width": 75},
+          {"type": "combobox", "name": "smb_auth_combo", "items": ["Anonymous", "Credentials"], "width": 190}
         ]
       },
       {
         "label": "Username:",
         "controls": [
-          {"type": "lineedit", "name": "smb_username", "placeholder": "Domain\\username or username", "visible": false, "stretch": true}
+          {"type": "lineedit", "name": "smb_username", "placeholder": "Domain\\username or username", "stretch": true}
         ]
       },
       {
         "label": "Password:",
         "controls": [
-          {"type": "lineedit", "name": "smb_password", "placeholder": "Password", "password": true, "visible": false, "stretch": true}
+          {"type": "lineedit", "name": "smb_password", "placeholder": "Password", "password": true, "stretch": true}
+        ]
+      },
+      {
+        "label": "Wordlist:",
+        "controls": [
+          {"type": "combobox", "name": "smb_wordlist", "items": [], "stretch": true, "visible": false}
+        ]
+      },
+      {
+        "label": "Charset:",
+        "controls": [
+          {"type": "checkbox", "name": "smb_charset_09", "text": "0-9", "visible": false},
+          {"type": "checkbox", "name": "smb_charset_az", "text": "a-z", "visible": false},
+          {"type": "checkbox", "name": "smb_charset_AZ", "text": "A-Z", "visible": false},
+          {"type": "checkbox", "name": "smb_charset_special", "text": "$ - _", "visible": false}
         ]
       }
     ]

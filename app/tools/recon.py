@@ -262,6 +262,8 @@ class HostWordlistWorker(QRunnable):
                     completed_count += 1
                     current_sub = future_to_sub[future]
                     self.signals.progress_update.emit(completed_count, len(all_results), current_sub)
+                    
+                    # Progress tracking handled by signals
             
             if self.is_running:
                 final_count = getattr(self, 'final_result_count', len(all_results))

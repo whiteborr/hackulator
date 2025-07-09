@@ -18,6 +18,7 @@ from app.pages.osint_page import OSINTPage
 from app.pages.findings_page import FindingsPage
 from app.pages.owasp_api_page import OWASPAPIPage
 from app.pages.scripts_page import ScriptsPage
+from app.pages.running_scans_page import RunningScansPage
 from app.core.system_tray import SystemTrayManager
 
 class MainWindow(QMainWindow):
@@ -76,6 +77,7 @@ class MainWindow(QMainWindow):
         self.findings_page = FindingsPage(self)
         self.owasp_api_page = OWASPAPIPage(self)
         self.scripts_page = ScriptsPage(self)
+        self.running_scans_page = RunningScansPage(self)
         
         # Apply font to all widgets after creation
         if hasattr(self, 'neuropol_family') and self.neuropol_family:
@@ -97,6 +99,7 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.findings_page)
         self.stack.addWidget(self.owasp_api_page)
         self.stack.addWidget(self.scripts_page)
+        self.stack.addWidget(self.running_scans_page)
         
         # Connect navigation signals
         self.home_page.navigate_signal.connect(self.navigate_to)
@@ -110,10 +113,12 @@ class MainWindow(QMainWindow):
         self.findings_page.navigate_signal.connect(self.navigate_to)
         self.owasp_api_page.navigate_signal.connect(self.navigate_to)
         self.scripts_page.navigate_signal.connect(self.navigate_to)
+        self.running_scans_page.navigate_signal.connect(self.navigate_to)
         
         # Connect status signals
         self.home_page.status_updated.connect(self.update_status_bar)
         self.enum_page.status_updated.connect(self.update_status_bar)
+        self.running_scans_page.status_updated.connect(self.update_status_bar)
         
         # Apply global styling
         self.apply_global_styling()
@@ -203,6 +208,13 @@ class MainWindow(QMainWindow):
             theme_menu.addAction(action)
         
         view_menu.addSeparator()
+        
+        # Running Scans action
+        running_scans_action = QAction('&Running Scans...', self)
+        running_scans_action.setShortcut(QKeySequence('Ctrl+Shift+R'))
+        running_scans_action.setStatusTip('Monitor and control active scans')
+        running_scans_action.triggered.connect(self.show_running_scans)
+        view_menu.addAction(running_scans_action)
         
         # Sessions action
         sessions_action = QAction('&Sessions', self)
@@ -365,6 +377,9 @@ class MainWindow(QMainWindow):
         elif page_name == "scripts":
             self.stack.animate_to_widget(self.scripts_page)
             self.status_bar.showMessage("Scripts & Tools")
+        elif page_name == "running_scans":
+            self.stack.animate_to_widget(self.running_scans_page)
+            self.status_bar.showMessage("Running Scans Monitor - Control active enumeration scans")
         else:
             print(f"Navigation request to unknown page: {page_name}")
             self.status_bar.showMessage(f"Unknown page: {page_name}")
@@ -578,6 +593,10 @@ class MainWindow(QMainWindow):
             self.status_bar.showMessage("Enhanced help panel opened - F1 to close")
         else:
             self.status_bar.showMessage("Enhanced help panel not available")
+    
+    def show_running_scans(self):
+        """Show the Running Scans page"""
+        self.navigate_to("running_scans")
     
     def on_theme_changed(self, theme_name):
         """Handle theme change event"""
