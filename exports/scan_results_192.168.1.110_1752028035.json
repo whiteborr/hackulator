@@ -1,0 +1,28 @@
+{
+  "host": "192.168.1.110",
+  "os": "Host Name:                     DC01\nOS Name:                       Microsoft Windows Server 2022 Standard Evaluation\nOS Version:                    10.0.20348 N/A Build 20348\nOS Manufacturer:               Microsoft Corporation\nOS Configuration:              Primary Domain Controller\nOS Build Type:                 Multiprocessor Free\nRegistered Owner:              Windows User\nRegistered Organization:\nProduct ID:                    00454-40000-00001-AA554",
+  "shares": [
+    "NETLOGON    Disk           Logon server share",
+    "SYSVOL      Disk           Logon server share"
+  ],
+  "ports": [
+    135,
+    445,
+    139
+  ],
+  "rpc_interfaces": [
+    "RPC Endpoint Mapper (port 135) - Active",
+    "SMB/CIFS (port 445) - spoolss, samr, lsarpc interfaces likely",
+    "NetBIOS Session (port 139) - Legacy RPC interfaces",
+    "Print Spooler Service - spoolss interface available",
+    "Remote Registry Service - winreg interface available"
+  ],
+  "domain_users": [],
+  "domain_groups": [],
+  "lsa_info": {},
+  "vulnerabilities": [],
+  "rid_users": [],
+  "workstation_info": {},
+  "secrets": {},
+  "relay_info": {}
+}

@@ -74,12 +74,29 @@ class ScanExporter:
         
         with open(filepath, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
-            writer.writerow(["Domain", "Type", "Value"])
             
-            for domain, record_types in results.items():
-                for record_type, values in record_types.items():
-                    for value in values:
-                        writer.writerow([domain, record_type, value])
+            # Handle flat structure (like RPC results)
+            if isinstance(results, dict) and any(not isinstance(v, dict) for v in results.values()):
+                writer.writerow(["Field", "Value"])
+                for key, value in results.items():
+                    if isinstance(value, list):
+                        for item in value:
+                            writer.writerow([key, str(item)])
+                    else:
+                        writer.writerow([key, str(value)])
+            else:
+                # Handle nested structure (like DNS results)
+                writer.writerow(["Domain", "Type", "Value"])
+                for domain, record_types in results.items():
+                    if isinstance(record_types, dict):
+                        for record_type, values in record_types.items():
+                            if isinstance(values, list):
+                                for value in values:
+                                    writer.writerow([domain, record_type, value])
+                            else:
+                                writer.writerow([domain, record_type, values])
+                    else:
+                        writer.writerow([domain, "info", str(record_types)])
         
         return filepath
     
@@ -89,17 +106,43 @@ class ScanExporter:
         
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write('<?xml version="1.0" encoding="UTF-8"?>\n<scan_results>\n')
-            for domain, record_types in results.items():
-                f.write(f'  <domain name="{domain}">\n')
-                for record_type, values in record_types.items():
-                    f.write(f'    <{record_type.lower()}_records>\n')
-                    for value in values:
-                        f.write(f'      <record>{value}</record>\n')
-                    f.write(f'    </{record_type.lower()}_records>\n')
-                f.write('  </domain>\n')
+            
+            # Handle flat structure (like RPC results)
+            if isinstance(results, dict) and any(not isinstance(v, dict) for v in results.values()):
+                for key, value in results.items():
+                    safe_key = key.replace(' ', '_').replace(':', '').lower()
+                    f.write(f'  <{safe_key}>\n')
+                    if isinstance(value, list):
+                        for item in value:
+                            f.write(f'    <item>{self._escape_xml(str(item))}</item>\n')
+                    else:
+                        f.write(f'    {self._escape_xml(str(value))}\n')
+                    f.write(f'  </{safe_key}>\n')
+            else:
+                # Handle nested structure (like DNS results)
+                for domain, record_types in results.items():
+                    f.write(f'  <domain name="{self._escape_xml(domain)}">\n')
+                    if isinstance(record_types, dict):
+                        for record_type, values in record_types.items():
+                            safe_type = record_type.lower().replace(' ', '_')
+                            f.write(f'    <{safe_type}_records>\n')
+                            if isinstance(values, list):
+                                for value in values:
+                                    f.write(f'      <record>{self._escape_xml(str(value))}</record>\n')
+                            else:
+                                f.write(f'      <record>{self._escape_xml(str(values))}</record>\n')
+                            f.write(f'    </{safe_type}_records>\n')
+                    else:
+                        f.write(f'    <info>{self._escape_xml(str(record_types))}</info>\n')
+                    f.write('  </domain>\n')
+            
             f.write('</scan_results>\n')
         
         return filepath
+    
+    def _escape_xml(self, text):
+        """Escape XML special characters"""
+        return str(text).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace("'", '&apos;')
 
 # Global exporter instance
 exporter = ScanExporter()

@@ -371,28 +371,39 @@ class EnumerationPage(QWidget):
         rpc_widget = QWidget()
         layout = QVBoxLayout(rpc_widget)
         
-        # Authentication
-        auth_row = QHBoxLayout()
+        # Scan Type and Authentication on same row
+        scan_auth_row = QHBoxLayout()
+        scan_type_label = QLabel("Scan Type:")
+        scan_type_label.setFixedWidth(145)
+        scan_auth_row.addWidget(scan_type_label)
+        self.rpc_scan_type = QComboBox()
+        self.rpc_scan_type.addItems(["Basic Info", "Full Enumeration", "Vulnerability Scan", "Complete Assessment"])
+        self.rpc_scan_type.setFixedWidth(270)
+        scan_auth_row.addWidget(self.rpc_scan_type)
+        
+        scan_auth_row.addSpacing(20)  # Add space between fields
+        
         auth_label = QLabel("Auth:")
-        auth_label.setFixedWidth(150)
-        auth_row.addWidget(auth_label)
+        auth_label.setFixedWidth(75)
+        scan_auth_row.addWidget(auth_label)
         self.auth_combo = QComboBox()
-        self.auth_combo.addItems(["Anonymous", "Credentials"])
-        self.auth_combo.setFixedWidth(150)
+        self.auth_combo.addItems(["Anonymous", "Credentials", "Pass-the-Hash"])
+        self.auth_combo.setFixedWidth(190)
         self.auth_combo.currentTextChanged.connect(self.toggle_rpc_auth)
-        auth_row.addWidget(self.auth_combo)
-        auth_row.addStretch()
-        layout.addLayout(auth_row)
+        scan_auth_row.addWidget(self.auth_combo)
+        scan_auth_row.addStretch()
+        layout.addLayout(scan_auth_row)
         
         # Username widget
         self.user_widget = QWidget()
         user_row = QHBoxLayout(self.user_widget)
         user_row.setContentsMargins(0, 0, 0, 0)
-        user_label = QLabel("    Username:")
+        user_label = QLabel("Username:")
         user_label.setFixedWidth(150)
         user_row.addWidget(user_label)
         self.rpc_username = QLineEdit()
         self.rpc_username.setPlaceholderText("Domain username")
+        self.rpc_username.setMinimumHeight(25)
         user_row.addWidget(self.rpc_username)
         layout.addWidget(self.user_widget)
         
@@ -400,14 +411,34 @@ class EnumerationPage(QWidget):
         self.pass_widget = QWidget()
         pass_row = QHBoxLayout(self.pass_widget)
         pass_row.setContentsMargins(0, 0, 0, 0)
-        pass_label = QLabel("    Password:")
+        pass_label = QLabel("Password:")
         pass_label.setFixedWidth(150)
         pass_row.addWidget(pass_label)
         self.rpc_password = QLineEdit()
         self.rpc_password.setPlaceholderText("Password")
         self.rpc_password.setEchoMode(QLineEdit.EchoMode.Password)
+        self.rpc_password.setMinimumHeight(25)
         pass_row.addWidget(self.rpc_password)
         layout.addWidget(self.pass_widget)
+        
+        # NTLM Hash widget
+        self.hash_widget = QWidget()
+        hash_row = QHBoxLayout(self.hash_widget)
+        hash_row.setContentsMargins(0, 0, 0, 0)
+        hash_label = QLabel("    NTLM Hash:")
+        hash_label.setFixedWidth(150)
+        hash_row.addWidget(hash_label)
+        self.rpc_ntlm_hash = QLineEdit()
+        self.rpc_ntlm_hash.setPlaceholderText("NTLM hash (alternative to password)")
+        self.rpc_ntlm_hash.setMinimumHeight(25)
+        hash_row.addWidget(self.rpc_ntlm_hash)
+        layout.addWidget(self.hash_widget)
+        
+        # Warning banner for Windows 11 issues
+        warning_label = QLabel("⚠️ Note: Windows 11 may have RemoteRegistry disabled and UAC token filtering enabled")
+        warning_label.setStyleSheet("color: #FFAA00; font-size: 9pt; font-style: italic; margin-top: 10px;")
+        warning_label.setWordWrap(True)
+        layout.addWidget(warning_label)
         
         # Add stretch to push content to top
         layout.addStretch()
@@ -419,9 +450,18 @@ class EnumerationPage(QWidget):
     
     def toggle_rpc_auth(self, auth_type):
         """Toggle RPC authentication fields"""
-        show_creds = (auth_type == "Credentials")
-        self.user_widget.setVisible(show_creds)
-        self.pass_widget.setVisible(show_creds)
+        if auth_type == "Anonymous":
+            self.user_widget.setVisible(False)
+            self.pass_widget.setVisible(False)
+            self.hash_widget.setVisible(False)
+        elif auth_type == "Credentials":
+            self.user_widget.setVisible(True)
+            self.pass_widget.setVisible(True)
+            self.hash_widget.setVisible(False)
+        elif auth_type == "Pass-the-Hash":
+            self.user_widget.setVisible(True)
+            self.pass_widget.setVisible(False)
+            self.hash_widget.setVisible(True)
     
     def create_smb_controls(self):
         """Create SMB enumeration specific controls"""
@@ -2314,15 +2354,15 @@ class EnumerationPage(QWidget):
                 result = scan_targeted(target, mapped_scan_type, ports_text or "22,80,443")
                 
                 if result['success']:
-                    self.append_terminal_output(f"<p style='color: #87CEEB; font-family: Neuropol;'>Starting {target_scan_type} on {target}...</p><br>")
-                    self.append_terminal_output(f"<pre style='color: #DCDCDC; font-family: Neuropol;'>{result['output']}</pre>")
+                    self.append_terminal_output(f"<p style='color: #87CEEB; font-family: Neuropol X;'>Starting {target_scan_type} on {target}...</p><br>")
+                    self.append_terminal_output(f"<pre style='color: #DCDCDC; font-family: Neuropol X;'>{result['output']}</pre>")
                     
                     # Parse nmap output for table view
                     parsed_results = self.parse_nmap_output(result['output'], target)
                     if parsed_results:
                         self.store_scan_results(parsed_results)
                 else:
-                    self.append_terminal_output(f"<p style='color: #FF4500; font-family: Neuropol;'>{target_scan_type} failed: {result.get('error', 'Unknown error')}</p>")
+                    self.append_terminal_output(f"<p style='color: #FF4500; font-family: Neuropol X;'>{target_scan_type} failed: {result.get('error', 'Unknown error')}</p>")
                 
                 self.on_scan_finished()
                 return
@@ -2809,14 +2849,23 @@ class EnumerationPage(QWidget):
             )
             
             if success:
+                # Scroll to bottom and add export message
+                scrollbar = self.terminal_output.verticalScrollBar()
+                scrollbar.setValue(scrollbar.maximum())
                 self.append_terminal_output(f"<p style='color: #00FF41;'>[EXPORT] Results exported to {filepath}</p><br>")
                 
                 # Add to Advanced Reporting history
                 self.add_to_reporting_history(filepath, target, export_format)
             else:
+                # Scroll to bottom and add error message
+                scrollbar = self.terminal_output.verticalScrollBar()
+                scrollbar.setValue(scrollbar.maximum())
                 self.append_terminal_output(f"<p style='color: #FF4500;'>[EXPORT ERROR] {message}</p><br>")
                 
         except Exception as e:
+            # Scroll to bottom and add error message
+            scrollbar = self.terminal_output.verticalScrollBar()
+            scrollbar.setValue(scrollbar.maximum())
             self.append_terminal_output(f"<p style='color: #FF4500;'>[EXPORT ERROR] Export failed: {str(e)}</p><br>")
     
     def open_advanced_reporting(self):
@@ -3221,6 +3270,7 @@ class EnumerationPage(QWidget):
                 self.results_stack.setCurrentIndex(1)  # DNS tree view
                 self.populate_dns_tree(self.last_scan_results)
             elif self.current_submenu == "rpc_enum":
+                self.dns_tree.setHeaderLabels(["Category", "Type", "Value"])
                 self.results_stack.setCurrentIndex(1)  # RPC tree view
                 self.populate_rpc_tree(self.last_scan_results)
             else:
@@ -3238,6 +3288,8 @@ class EnumerationPage(QWidget):
                     self.update_results_table()
                     self.results_stack.setCurrentIndex(4)  # IP results table
             elif self.current_submenu == "rpc_enum":
+                self.dns_table.setColumnCount(3)
+                self.dns_table.setHorizontalHeaderLabels(["Category", "Type", "Value"])
                 self.results_stack.setCurrentIndex(2)  # RPC table view
                 self.populate_rpc_table(self.last_scan_results)
             else:
@@ -3379,42 +3431,93 @@ class EnumerationPage(QWidget):
         if not rpc_results:
             return
         
-        # Define section mapping
-        sections = {
-            "RPC Services": ["rpc_services", "services", "rpc_info"],
-            "Network Shares": ["shares", "network_shares", "smb_shares"],
-            "System Information": ["system_info", "os_info", "computer_info"],
-            "Open Ports": ["open_ports", "ports", "port_scan"]
-        }
-        
-        for section_name, keys in sections.items():
-            section_item = QTreeWidgetItem(self.dns_tree)
-            section_item.setText(0, section_name)
-            section_item.setText(1, "Section")
-            section_item.setText(2, "")
+        # Handle flat RPC structure
+        if "host" in rpc_results:
+            # Host Information
+            host_item = QTreeWidgetItem(self.dns_tree)
+            host_item.setText(0, "Host Information")
+            host_item.setText(1, "Category")
+            host_item.setText(2, rpc_results.get("host", "Unknown"))
             
-            section_has_data = False
-            for target, data in rpc_results.items():
-                if isinstance(data, dict):
-                    for key in keys:
-                        if key in data and data[key]:
-                            section_has_data = True
-                            key_item = QTreeWidgetItem(section_item)
-                            key_item.setText(0, key.replace('_', ' ').title())
-                            key_item.setText(1, "Category")
-                            
-                            if isinstance(data[key], list):
-                                key_item.setText(2, f"{len(data[key])} items")
-                                for item in data[key]:
-                                    item_node = QTreeWidgetItem(key_item)
-                                    item_node.setText(0, "")
-                                    item_node.setText(1, "Item")
-                                    item_node.setText(2, str(item))
-                            else:
-                                key_item.setText(2, str(data[key]))
+            # System Information
+            if rpc_results.get("os"):
+                os_item = QTreeWidgetItem(self.dns_tree)
+                os_item.setText(0, "System Information")
+                os_item.setText(1, "Category")
+                os_item.setText(2, "OS Details")
+                
+                os_lines = rpc_results["os"].split('\n')
+                for line in os_lines[:5]:  # Show first 5 lines
+                    if line.strip():
+                        line_item = QTreeWidgetItem(os_item)
+                        line_item.setText(0, "")
+                        line_item.setText(1, "Type")
+                        line_item.setText(2, line.strip())
             
-            if not section_has_data:
-                section_item.setText(2, "No data")
+            # Network Shares
+            if rpc_results.get("shares"):
+                shares_item = QTreeWidgetItem(self.dns_tree)
+                shares_item.setText(0, "Network Shares")
+                shares_item.setText(1, "Category")
+                shares_item.setText(2, f"{len(rpc_results['shares'])} shares")
+                
+                for share in rpc_results["shares"]:
+                    share_item = QTreeWidgetItem(shares_item)
+                    share_item.setText(0, "")
+                    share_item.setText(1, "Type")
+                    share_item.setText(2, str(share))
+            
+            # Open Ports
+            if rpc_results.get("ports"):
+                ports_item = QTreeWidgetItem(self.dns_tree)
+                ports_item.setText(0, "Open Ports")
+                ports_item.setText(1, "Category")
+                ports_item.setText(2, f"{len(rpc_results['ports'])} ports")
+                
+                for port in rpc_results["ports"]:
+                    port_item = QTreeWidgetItem(ports_item)
+                    port_item.setText(0, "")
+                    port_item.setText(1, "Type")
+                    port_item.setText(2, str(port))
+            
+            # RPC Interfaces
+            if rpc_results.get("rpc_interfaces"):
+                interfaces_item = QTreeWidgetItem(self.dns_tree)
+                interfaces_item.setText(0, "RPC Interfaces")
+                interfaces_item.setText(1, "Category")
+                interfaces_item.setText(2, f"{len(rpc_results['rpc_interfaces'])} interfaces")
+                
+                for interface in rpc_results["rpc_interfaces"]:
+                    interface_item = QTreeWidgetItem(interfaces_item)
+                    interface_item.setText(0, "")
+                    interface_item.setText(1, "Type")
+                    interface_item.setText(2, str(interface))
+            
+            # Domain Users (if any)
+            if rpc_results.get("domain_users"):
+                users_item = QTreeWidgetItem(self.dns_tree)
+                users_item.setText(0, "Domain Users")
+                users_item.setText(1, "Category")
+                users_item.setText(2, f"{len(rpc_results['domain_users'])} users")
+                
+                for user in rpc_results["domain_users"]:
+                    user_item = QTreeWidgetItem(users_item)
+                    user_item.setText(0, "")
+                    user_item.setText(1, "Type")
+                    user_item.setText(2, str(user))
+            
+            # Domain Groups (if any)
+            if rpc_results.get("domain_groups"):
+                groups_item = QTreeWidgetItem(self.dns_tree)
+                groups_item.setText(0, "Domain Groups")
+                groups_item.setText(1, "Category")
+                groups_item.setText(2, f"{len(rpc_results['domain_groups'])} groups")
+                
+                for group in rpc_results["domain_groups"]:
+                    group_item = QTreeWidgetItem(groups_item)
+                    group_item.setText(0, "")
+                    group_item.setText(1, "Type")
+                    group_item.setText(2, str(group))
         
         # Expand all items
         self.dns_tree.expandAll()
@@ -3430,46 +3533,87 @@ class EnumerationPage(QWidget):
         if not rpc_results:
             return
         
-        # Collect all RPC data
+        # Collect all RPC data in proper format
         all_data = []
-        sections = {
-            "RPC Services": ["rpc_services", "services", "rpc_info"],
-            "Network Shares": ["shares", "network_shares", "smb_shares"],
-            "System Information": ["system_info", "os_info", "computer_info"],
-            "Open Ports": ["open_ports", "ports", "port_scan"]
-        }
         
-        for section_name, keys in sections.items():
-            for target, data in rpc_results.items():
-                if isinstance(data, dict):
-                    for key in keys:
-                        if key in data and data[key]:
-                            if isinstance(data[key], list):
-                                for item in data[key]:
-                                    all_data.append({
-                                        'section': section_name,
-                                        'category': key.replace('_', ' ').title(),
-                                        'value': str(item)
-                                    })
-                            else:
-                                all_data.append({
-                                    'section': section_name,
-                                    'category': key.replace('_', ' ').title(),
-                                    'value': str(data[key])
-                                })
+        # Handle flat RPC structure
+        if "host" in rpc_results:
+            # Host Information
+            all_data.append({
+                'category': 'Host Information',
+                'type': 'Target',
+                'value': rpc_results.get('host', 'Unknown')
+            })
+            
+            # System Information
+            if rpc_results.get('os'):
+                os_lines = rpc_results['os'].split('\n')
+                for line in os_lines[:5]:  # Show first 5 lines
+                    if line.strip() and ':' in line:
+                        parts = line.split(':', 1)
+                        all_data.append({
+                            'category': 'System Information',
+                            'type': parts[0].strip(),
+                            'value': parts[1].strip()
+                        })
+            
+            # Network Shares
+            if rpc_results.get('shares'):
+                for share in rpc_results['shares']:
+                    all_data.append({
+                        'category': 'Network Shares',
+                        'type': 'Share',
+                        'value': str(share)
+                    })
+            
+            # Open Ports
+            if rpc_results.get('ports'):
+                for port in rpc_results['ports']:
+                    all_data.append({
+                        'category': 'Open Ports',
+                        'type': 'Port',
+                        'value': str(port)
+                    })
+            
+            # RPC Interfaces
+            if rpc_results.get('rpc_interfaces'):
+                for interface in rpc_results['rpc_interfaces']:
+                    all_data.append({
+                        'category': 'RPC Interfaces',
+                        'type': 'Interface',
+                        'value': str(interface)
+                    })
+            
+            # Domain Users
+            if rpc_results.get('domain_users'):
+                for user in rpc_results['domain_users']:
+                    all_data.append({
+                        'category': 'Domain Users',
+                        'type': 'User',
+                        'value': str(user)
+                    })
+            
+            # Domain Groups
+            if rpc_results.get('domain_groups'):
+                for group in rpc_results['domain_groups']:
+                    all_data.append({
+                        'category': 'Domain Groups',
+                        'type': 'Group',
+                        'value': str(group)
+                    })
         
         # Populate table
         self.dns_table.setRowCount(len(all_data))
         for row, item in enumerate(all_data):
-            # Section column
-            section_item = QTableWidgetItem(item['section'])
-            section_item.setFlags(section_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            self.dns_table.setItem(row, 0, section_item)
-            
             # Category column
             category_item = QTableWidgetItem(item['category'])
             category_item.setFlags(category_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            self.dns_table.setItem(row, 1, category_item)
+            self.dns_table.setItem(row, 0, category_item)
+            
+            # Type column
+            type_item = QTableWidgetItem(item['type'])
+            type_item.setFlags(type_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.dns_table.setItem(row, 1, type_item)
             
             # Value column
             value_item = QTableWidgetItem(item['value'])

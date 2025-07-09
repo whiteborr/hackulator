@@ -2,9 +2,9 @@
 from PyQt6.QtCore import QThreadPool
 from .rpc_scanner import RPCEnumWorker
 
-def run_rpc_enumeration(target, username="", password="", output_callback=None, status_callback=None, finished_callback=None, results_callback=None):
+def run_rpc_enumeration(target, username="", password="", ntlm_hash="", output_callback=None, status_callback=None, finished_callback=None, results_callback=None):
     """Run RPC enumeration on target"""
-    worker = RPCEnumWorker(target, username, password)
+    worker = RPCEnumWorker(target, username, password, ntlm_hash)
     
     # Connect signals
     if output_callback:

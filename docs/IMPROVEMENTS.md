@@ -1,162 +1,197 @@
-# Hackulator Improvements Roadmap
+# 🛠️ RPC Enumeration Tool - IMPROVEMENTS.md
 
-## Completed Features ✅
+This document tracks enhancements made and planned for the RPC Enumeration module in the tool. It outlines feature improvements, security-oriented upgrades, and coverage expansion relevant to red teaming, threat emulation, and vulnerability analysis.
 
-### Core Enumeration Suite
-- [x] **Complete enumeration toolkit** - 8 different tools implemented
-- [x] **DNS Enumeration** - Subdomain discovery with wildcard detection
-- [x] **Port Scanning** - TCP scans, network sweeps, service detection
-- [x] **SMB Enumeration** - NetBIOS queries, OS detection, range scanning
-- [x] **SMTP Enumeration** - User enumeration via VRFY/EXPN/RCPT TO
-- [x] **SNMP Enumeration** - Community testing, SNMP walks, device discovery
-- [x] **HTTP/S Fingerprinting** - Server identification, SSL analysis, directory scanning
-- [x] **API Enumeration** - Endpoint discovery, method testing, auth bypass
-- [x] **Database Enumeration** - Port scanning, service detection, connection testing
+---
 
-### Security & Validation
-- [x] Input validation and sanitization
-- [x] Comprehensive error handling
-- [x] Secure command execution
-- [x] User-friendly error messages
+## ✅ Implemented Improvements
 
-### Export & Reporting
-- [x] JSON export functionality
-- [x] CSV export functionality
-- [x] XML export functionality
-- [x] Real-time progress tracking
-- [x] Comprehensive logging system
+### 1. Structured Output for UI Integration
+- Introduced a consistent JSON structure for scan results:
+  ```json
+  {
+    "host": "192.168.1.10",
+    "os": "Windows 11 Pro",
+    "shares": ["C$", "inetpub"],
+    "ports": [135, 139, 445],
+    "rpc_interfaces": [
+      "uuid: 1234-5678 svcctl",
+      "uuid: 5678-90ab eventlog",
+      ...
+    ]
+  }
+  ```
+- Enables seamless UI data binding for tables and visual graphs.
+- Ensures output can be logged, exported, and reused in post-processing.
 
-### UI/UX Features
-- [x] Modern PyQt6 interface
-- [x] Multi-tool navigation system
-- [x] Real-time terminal output
-- [x] Progress bars and statistics
-- [x] Keyboard shortcuts
-- [x] Theme management
+### 2. System Info Retrieval Improvements
+- Primary method: Native Windows command `systeminfo` with optional credentials:
+  ```bash
+  systeminfo /s <target> /u <user> /p <password>
+  ```
+- Fallback: Registry-based OS info enumeration using:
+  ```bash
+  reg query \\<target>\HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion /v ProductName
+  ```
+- Accounts for restricted UAC policies and disabled RemoteRegistry service.
+- Annotates failures in the UI with actionable suggestions (e.g., enabling services, adjusting UAC).
 
-## High Priority (Next Phase)
+### 3. Network Share Enumeration
+- Executes the following logic:
+  - Authenticated: `net use` to initiate IPC$ session
+  - Listing: `net view \\target` to enumerate available shares
+- Parses typical shares like `ADMIN$`, `C$`, and custom shares.
+- Filters and formats output with annotations for accessibility or error states (e.g., access denied).
 
-### 1. Performance Optimizations
-- [x] Connection pooling for HTTP tools
-- [x] Result caching system
-- [x] Memory usage optimization
-- [x] Scan pause/resume functionality
+### 4. RPC Endpoint Mapping
+- Added optional call to `rpcdump.py` to discover:
+  - Active RPC endpoints
+  - Interface UUIDs
+  - Associated named pipes and bindings
+- Top 10 most relevant interfaces shown in output (e.g., `svcctl`, `eventlog`, `spoolss`)
+- Highlights potentially vulnerable interfaces
+- Automatically detects and logs absence of `rpcdump.py` without crashing
 
-### 2. Enhanced Reporting
-- [x] PDF report generation
-- [x] Executive summary reports
-- [x] Vulnerability correlation
-- [x] Scan result comparison
+### 5. Open RPC Port Scanner
+- Performs direct TCP connectivity checks to commonly used RPC-related ports:
+  - `135` – RPC Endpoint Mapper
+  - `139` – NetBIOS Session Service
+  - `445` – SMB
+  - `1024–1026` – Dynamic RPC ports (legacy range)
+- Results are recorded as a structured list and reported with appropriate visual cues
 
-### 3. Advanced Features
-- [x] Proxy support for all tools
-- [x] Rate limiting configuration
-- [x] Custom scan templates
-- [x] Scan scheduling
+### 6. RPC Endpoint Mapping
+- Added optional call to `rpcdump.py` to discover:
+  - Active RPC endpoints
+  - Interface UUIDs
+  - Associated named pipes and bindings
+- Top 10 most relevant interfaces shown in output (e.g., `svcctl`, `eventlog`, `spoolss`)
+- Highlights potentially vulnerable interfaces
+- Automatically detects and logs absence of `rpcdump.py` without crashing
+- Integrated into structured output format with `rpc_interfaces` field
 
-## Medium Priority
+### 7. Authentication Modes
+- Implemented NTLM hash-based authentication (pass-the-hash)
+- Added NTLM hash field to UI controls
+- Support for hash authentication in rpcdump and rpcclient calls
+- Credential validation with feedback on success/failure
+- UI toggle between password and hash authentication
 
-### 4. Tool Enhancements
-- [x] Multi-target scanning
-- [x] Dark/light theme toggle
-- [x] Keyboard shortcuts
-- [x] Drag and drop file support
-- [x] Advanced directory enumeration
-- [x] Certificate transparency integration
-- [x] OSINT data gathering
-- [x] Vulnerability scanning integration
+### 8. Advanced Enumeration Modules - SAMR Interface
+- `samr` interface enumeration via rpcclient:
+  - Enumerate domain users (`enumdomusers`)
+  - Enumerate domain groups (`enumdomgroups`)
+  - Parse user/group names and RIDs
+- Integrated into structured output with `domain_users` and `domain_groups` fields
+- Limited results display (top 10 users, top 8 groups) for UI performance
+- Requires authenticated access (username + password/hash)
 
-### 5. Data Management
-- [x] Scan history database
-- [x] **Session management** - ✅ IMPLEMENTED
-- [x] Custom wordlist manager
-- [x] Result filtering and search
+### 9. Advanced Enumeration Modules - LSARPC Interface
+- `lsarpc` interface enumeration via rpcclient:
+  - Domain SID extraction (`lsaquery`)
+  - Trust relationships enumeration (`lsaenumsid`)
+  - Policy information retrieval
+- Integrated into structured output with `lsa_info` field
+- Displays domain SID and trust domain relationships
+- Requires authenticated access for full functionality
 
-### 6. User Interface
-- [x] Real-time notifications
-- [x] System tray integration
-- [x] Context menus
-- [x] Advanced UI themes
+### 10. Vulnerability Path Probing
+- Interface exposure tests for known RPC-based exploits:
+  - `spoolss` — PrintNightmare (CVE-2021-1675) detection
+  - `efsr/lsarpc` — PetitPotam (CVE-2021-36942) NTLM relay path
+  - `svcctl` — Service control interface abuse detection
+- Severity classification (High/Medium/Low)
+- Vulnerability descriptions and interface identification
+- Integrated into structured output with `vulnerabilities` field
 
-## Low Priority
+### 11. RID Cycling Logic
+- Sequential RID enumeration for user discovery:
+  - Tests common RIDs (500, 501, 502, 512, 513, etc.)
+  - High-privileged RID identification (500, 512, 516, 518, 519)
+  - Standard user RID enumeration (1000+)
+- SID-to-name resolution via `lookupsids` command
+- Privilege level classification (High/Standard)
+- Integrated into structured output with `rid_users` field
+- Limited to 15 results for performance
 
-### 6. Code Quality & Testing
-- [x] Unit test implementation
-- [x] Integration tests
-- [x] Code documentation
-- [x] Plugin architecture
+### 12. WKSSVC Interface Enumeration
+- `wkssvc` interface enumeration via rpcclient:
+  - Computer name and domain information
+  - OS version and workstation details
+  - Logged-in users enumeration
+  - Network share count and accessibility
+- Integrated into structured output with `workstation_info` field
+- Fallback to share enumeration when direct WKSSVC fails
 
-### 7. Advanced Integrations
-- [x] API integration capabilities
-- [x] Threat intelligence feeds
-- [x] Machine learning for pattern detection
-- [x] Distributed scanning support
+### 13. UI Enhancements
+- Added scan type selection (Basic Info, Full Enumeration, Vulnerability Scan, Complete Assessment)
+- Warning banners for Windows 11 compatibility issues:
+  - RemoteRegistry service disabled notifications
+  - UAC token filtering alerts
+- Improved control layout with scan type categorization
+- Enhanced visual feedback for different enumeration levels
 
-## Current Status Summary
+### 14. Secrets / Hash Extraction (Privileged Only)
+- Integrated with Impacket's `secretsdump.py` for credential extraction:
+  - SAM database hash extraction
+  - LSA secrets and DPAPI keys
+  - Cached credentials retrieval
+- Protected behind privilege confirmation prompt
+- Secure handling - hashes not displayed in UI
+- Integrated into structured output with `secrets` field
+- Requires elevated access and explicit user consent
 
-**✅ COMPLETED**: All core enumeration functionality is now operational
-- 8 complete enumeration tools
-- Modern GUI interface
-- Export capabilities
-- Multi-threaded operations
-- Comprehensive error handling
+### 15. RPC Relay & MITM Mapping
+- Detection of NTLM-authenticating RPC interfaces:
+  - PrinterBug/SpoolSample relay potential (spoolss)
+  - PetitPotam relay vectors (lsarpc/efsr)
+  - Service control interface abuse (svcctl)
+- SMB signing enforcement detection:
+  - Identifies relay-vulnerable configurations
+  - Warns when signing not enforced
+- Risk assessment and relay potential scoring
+- Integrated into structured output with `relay_info` field
+- Comprehensive MITM attack surface analysis
 
-**🔄 IN PROGRESS**: Performance and reporting enhancements
+---
 
-**📋 PLANNED**: Advanced features and integrations
+## 🔜 Future Enhancements (Planned)
 
-## Success Metrics Achieved
+### 🔐 Kerberos Authentication
+- Kerberos support via TGT/TGS or `.ccache` ticket usage (if environment supports)
+- Ticket-based authentication for domain environments
+- Golden/Silver ticket detection and analysis
 
-- ✅ Complete enumeration suite implemented
-- ✅ Zero unhandled exceptions in core functionality
-- ✅ Export functionality working (JSON, CSV, XML)
-- ✅ Comprehensive logging system
-- ✅ Input validation coverage
-- ✅ Modern GUI interface
-- ✅ Multi-threaded operations
+### 📦 Advanced Secrets Extraction
+- Integrate with Impacket’s `secretsdump.py` to pull sensitive data:
+  - Cached credentials (LSA secrets)
+  - SAM hashes
+  - NTDS.dit on Domain Controllers
+- Protect behind a privileged-use confirmation prompt
+- Add logging and optional offline hash storage
 
-## Notes
+### 🛡️ Vulnerability Path Probing
+- Interface exposure tests for known RPC-based exploits:
+  - `spoolss` — PrintNightmare (CVE-2021-1675)
+  - `efsr` — PetitPotam NTLM relay path
+  - `svcctl` — Abusable service creation
+- Show warnings if vulnerable interfaces are bound on exposed ports
+- Future: auto-detection of patches/hardening via registry or function call probing
 
-- Core enumeration functionality is complete and operational
-- All 8 enumeration tools are integrated into the GUI
-- System tray integration allows minimizing to system tray with quick access menu
-- Advanced UI themes provide multiple color schemes (Dark, Light, Cyberpunk, Matrix, Ocean)
-- Unit test implementation provides automated testing for core functionality
-- Integration tests validate component interactions and complete workflows
-- Code documentation provides comprehensive API reference and development guides
-- Plugin architecture enables extensible functionality with custom tools and scripts
-- API integration capabilities provide external service connectivity (Shodan, VirusTotal, custom APIs)
-- Threat intelligence feeds enable IOC checking against malware and phishing databases
-- Machine learning pattern detection provides automated analysis and anomaly detection
-- Distributed scanning support enables multi-node scanning for improved performance and scale
-- All major roadmap features have been successfully implemented
-- **Session Management** fully integrated with export dropdown access
-- Maintain backward compatibility in future updates
+### 📊 UI Enhancements
+- Add expandable sections or tabs for:
+  - RPC interfaces list
+  - Per-share permission detail
+  - Credential result states (e.g., Auth OK, Auth Denied)
+- Show warning banners for typical Windows 11 issues:
+  - RemoteRegistry disabled
+  - UAC token filtering blocking remote systeminfo
 
-## Latest Completed Features ✅
+### 🌐 RPC Relay & MITM Mapping
+- Integrate detection of NTLM-authenticating RPC interfaces
+- Output if services are susceptible to:
+  - Responder relay
+  - mitm6/NTLMv1 relay
+- Future: simulate challenge flow to assess relayability
 
-### 8. Advanced Reporting Engine
-- [x] **Comprehensive Report Generation** - Multi-format reporting (PDF, HTML, JSON)
-- [x] **Executive Summary Reports** - High-level risk assessment for management
-- [x] **Technical Detailed Reports** - In-depth technical analysis and findings
-- [x] **Compliance Assessment Reports** - Framework compliance checking
-- [x] **Vulnerability Assessment Reports** - Security-focused analysis
-- [x] **Risk Assessment Engine** - Automated risk scoring and categorization
-- [x] **Recommendations Engine** - Actionable security recommendations
-- [x] **Attack Surface Analysis** - Comprehensive attack vector identification
-- [x] **Report Templates** - Customizable report templates and formats
-- [x] **Report History Management** - Track and manage generated reports
-- [x] **GUI Integration** - Seamless integration with enumeration tools
-- [x] **Pattern Detection** - Intelligent analysis of scan results
-- [x] **Compliance Checking** - OWASP, NIST, ISO27001 framework alignment
 
-## New Feature Ideas
-
-Here are some ideas for new features that could take your toolkit to the next level:
-
-- Session Management: Allow users to save and load their work, including targets, scan results, and notes.
-- Project Management: Let users create and manage projects, each with its own scope, targets, and findings.
-- Plugin Architecture: Create a plugin system that allows users to add their own custom tools and scripts.
-- Integration with Other Tools: Integrate "Hackulator" with other popular penetration testing tools like Metasploit, Burp Suite, and Nmap.
-- Vulnerability Database: Integrate a local or remote vulnerability database (like a local copy of Exploit-DB) to provide more information about discovered vulnerabilities.
-- Automated Scanning: Add the ability to create and run automated scan profiles that can perform a series of tests against a target.
