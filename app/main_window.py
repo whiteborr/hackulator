@@ -131,6 +131,10 @@ class MainWindow(QMainWindow):
         self.enhanced_help_panel = EnhancedHelpPanel(self)
         self.enhanced_help_panel.hide()
         
+        # Initialize license manager
+        from app.core.license_manager import license_manager
+        license_manager.check_license_expiry()
+        
         # Apply initial theme
         self.theme_manager.apply_theme()
         
@@ -175,6 +179,14 @@ class MainWindow(QMainWindow):
         export_action.setStatusTip('Export scan results')
         export_action.triggered.connect(self.export_current_results)
         file_menu.addAction(export_action)
+        
+        file_menu.addSeparator()
+        
+        # License action
+        license_action = QAction('&License Manager', self)
+        license_action.setStatusTip('Manage professional license')
+        license_action.triggered.connect(self.open_license_manager)
+        file_menu.addAction(license_action)
         
         file_menu.addSeparator()
         
@@ -245,6 +257,71 @@ class MainWindow(QMainWindow):
         clear_action.setStatusTip('Clear terminal output')
         clear_action.triggered.connect(self.clear_current_output)
         view_menu.addAction(clear_action)
+        
+        view_menu.addSeparator()
+        
+        # Professional Features submenu
+        pro_menu = view_menu.addMenu('&Professional Features')
+        
+        # Stealth Mode action
+        stealth_action = QAction('&Stealth Mode', self)
+        stealth_action.setStatusTip('Configure stealth and evasion settings')
+        stealth_action.triggered.connect(self.open_stealth_config)
+        pro_menu.addAction(stealth_action)
+        
+        # Hacking Mode action
+        hacking_action = QAction('&Hacking Mode', self)
+        hacking_action.setStatusTip('Access exploit frameworks and payloads')
+        hacking_action.triggered.connect(self.open_hacking_mode)
+        pro_menu.addAction(hacking_action)
+        
+        # ProxyChains action
+        proxy_action = QAction('&ProxyChains', self)
+        proxy_action.setStatusTip('Configure proxy chaining')
+        proxy_action.triggered.connect(self.open_proxychains_config)
+        pro_menu.addAction(proxy_action)
+        
+        pro_menu.addSeparator()
+        
+        # Web Scanner action
+        web_scanner_action = QAction('&Web Scanner', self)
+        web_scanner_action.setStatusTip('Web application security scanner')
+        web_scanner_action.triggered.connect(self.open_web_scanner)
+        pro_menu.addAction(web_scanner_action)
+        
+        # AD Enumeration action
+        ad_enum_action = QAction('&AD Enumeration', self)
+        ad_enum_action.setStatusTip('Active Directory enumeration and attacks')
+        ad_enum_action.triggered.connect(self.open_ad_enumeration)
+        pro_menu.addAction(ad_enum_action)
+        
+        pro_menu.addSeparator()
+        
+        # Enhanced Reporting action
+        reporting_action = QAction('&Enhanced Reporting', self)
+        reporting_action.setStatusTip('Executive dashboards and compliance reports')
+        reporting_action.triggered.connect(self.open_enhanced_reporting)
+        pro_menu.addAction(reporting_action)
+        
+        # Wireless Security action
+        wireless_action = QAction('&Wireless Security', self)
+        wireless_action.setStatusTip('WiFi and Bluetooth security testing')
+        wireless_action.triggered.connect(self.open_wireless_security)
+        pro_menu.addAction(wireless_action)
+        
+        pro_menu.addSeparator()
+        
+        # Social Engineering action
+        se_action = QAction('&Social Engineering', self)
+        se_action.setStatusTip('Phishing campaigns and credential harvesting')
+        se_action.triggered.connect(self.open_social_engineering)
+        pro_menu.addAction(se_action)
+        
+        # Anti-Forensics action
+        forensics_action = QAction('&Anti-Forensics', self)
+        forensics_action.setStatusTip('Log clearing and evasion techniques')
+        forensics_action.triggered.connect(self.open_anti_forensics)
+        pro_menu.addAction(forensics_action)
         
         # Help menu
         help_menu = menubar.addMenu('&Help')
@@ -597,6 +674,248 @@ class MainWindow(QMainWindow):
     def show_running_scans(self):
         """Show the Running Scans page"""
         self.navigate_to("running_scans")
+    
+    def open_license_manager(self):
+        """Open license management dialog"""
+        from app.widgets.license_widget import LicenseWidget
+        from PyQt6.QtWidgets import QDialog, QVBoxLayout
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("License Manager")
+        dialog.setModal(True)
+        dialog.resize(800, 600)
+        
+        layout = QVBoxLayout(dialog)
+        license_widget = LicenseWidget(dialog)
+        layout.addWidget(license_widget)
+        
+        self.status_bar.showMessage("License Manager opened")
+        dialog.exec()
+        
+    def open_stealth_config(self):
+        """Open stealth mode configuration"""
+        from app.widgets.stealth_widget import StealthWidget
+        from PyQt6.QtWidgets import QDialog, QVBoxLayout
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Stealth Mode Configuration")
+        dialog.setModal(True)
+        dialog.resize(600, 500)
+        
+        layout = QVBoxLayout(dialog)
+        stealth_widget = StealthWidget(dialog)
+        layout.addWidget(stealth_widget)
+        
+        self.status_bar.showMessage("Stealth Mode configuration opened")
+        dialog.exec()
+        
+    def open_hacking_mode(self):
+        """Open hacking mode interface"""
+        from app.core.license_manager import license_manager
+        from PyQt6.QtWidgets import QMessageBox
+        
+        if not license_manager.is_feature_enabled('hacking_mode'):
+            QMessageBox.warning(self, "Professional Feature", 
+                              "Hacking Mode requires Professional or Enterprise license.\n\n"
+                              "Visit License Manager to upgrade.")
+            return
+            
+        from app.widgets.hacking_mode_widget import HackingModeWidget
+        from PyQt6.QtWidgets import QDialog, QVBoxLayout
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Hacking Mode - Exploit Framework")
+        dialog.setModal(True)
+        dialog.resize(900, 700)
+        
+        layout = QVBoxLayout(dialog)
+        hacking_widget = HackingModeWidget(dialog)
+        layout.addWidget(hacking_widget)
+        
+        self.status_bar.showMessage("Hacking Mode interface opened")
+        dialog.exec()
+        
+    def open_proxychains_config(self):
+        """Open proxychains configuration"""
+        from app.core.license_manager import license_manager
+        from PyQt6.QtWidgets import QMessageBox
+        
+        if not license_manager.is_feature_enabled('proxychains'):
+            QMessageBox.warning(self, "Professional Feature", 
+                              "ProxyChains requires Professional or Enterprise license.\n\n"
+                              "Visit License Manager to upgrade.")
+            return
+            
+        from app.widgets.proxychains_widget import ProxyChainsWidget
+        from PyQt6.QtWidgets import QDialog, QVBoxLayout
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("ProxyChains Configuration")
+        dialog.setModal(True)
+        dialog.resize(800, 600)
+        
+        layout = QVBoxLayout(dialog)
+        proxychains_widget = ProxyChainsWidget(dialog)
+        layout.addWidget(proxychains_widget)
+        
+        self.status_bar.showMessage("ProxyChains configuration opened")
+        dialog.exec()
+        
+    def open_web_scanner(self):
+        """Open web application security scanner"""
+        from app.core.license_manager import license_manager
+        from PyQt6.QtWidgets import QMessageBox
+        
+        if not license_manager.is_feature_enabled('web_scanner'):
+            QMessageBox.warning(self, "Professional Feature", 
+                              "Web Scanner requires Professional or Enterprise license.\n\n"
+                              "Visit License Manager to upgrade.")
+            return
+            
+        from app.widgets.web_scanner_widget import WebScannerWidget
+        from PyQt6.QtWidgets import QDialog, QVBoxLayout
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Web Application Security Scanner")
+        dialog.setModal(True)
+        dialog.resize(1000, 700)
+        
+        layout = QVBoxLayout(dialog)
+        web_scanner_widget = WebScannerWidget(dialog)
+        layout.addWidget(web_scanner_widget)
+        
+        self.status_bar.showMessage("Web Scanner opened")
+        dialog.exec()
+        
+    def open_ad_enumeration(self):
+        """Open Active Directory enumeration"""
+        from app.core.license_manager import license_manager
+        from PyQt6.QtWidgets import QMessageBox
+        
+        if not license_manager.is_feature_enabled('ad_enumeration'):
+            QMessageBox.warning(self, "Enterprise Feature", 
+                              "AD Enumeration requires Enterprise license.\n\n"
+                              "Visit License Manager to upgrade.")
+            return
+            
+        from app.widgets.ad_enumeration_widget import ADEnumerationWidget
+        from PyQt6.QtWidgets import QDialog, QVBoxLayout
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Active Directory Enumeration & Attacks")
+        dialog.setModal(True)
+        dialog.resize(1100, 800)
+        
+        layout = QVBoxLayout(dialog)
+        ad_enum_widget = ADEnumerationWidget(dialog)
+        layout.addWidget(ad_enum_widget)
+        
+        self.status_bar.showMessage("AD Enumeration opened")
+        dialog.exec()
+        
+    def open_enhanced_reporting(self):
+        """Open enhanced reporting engine"""
+        from app.core.license_manager import license_manager
+        from PyQt6.QtWidgets import QMessageBox
+        
+        if not license_manager.is_feature_enabled('enhanced_reporting'):
+            QMessageBox.warning(self, "Enterprise Feature", 
+                              "Enhanced Reporting requires Enterprise license.\n\n"
+                              "Visit License Manager to upgrade.")
+            return
+            
+        from app.widgets.enhanced_reporting_widget import EnhancedReportingWidget
+        from PyQt6.QtWidgets import QDialog, QVBoxLayout
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Enhanced Reporting Engine")
+        dialog.setModal(True)
+        dialog.resize(1200, 800)
+        
+        layout = QVBoxLayout(dialog)
+        reporting_widget = EnhancedReportingWidget(dialog)
+        layout.addWidget(reporting_widget)
+        
+        self.status_bar.showMessage("Enhanced Reporting opened")
+        dialog.exec()
+        
+    def open_wireless_security(self):
+        """Open wireless security testing"""
+        from app.core.license_manager import license_manager
+        from PyQt6.QtWidgets import QMessageBox
+        
+        if not license_manager.is_feature_enabled('wireless_security'):
+            QMessageBox.warning(self, "Enterprise Feature", 
+                              "Wireless Security requires Enterprise license.\n\n"
+                              "Visit License Manager to upgrade.")
+            return
+            
+        from app.widgets.wireless_security_widget import WirelessSecurityWidget
+        from PyQt6.QtWidgets import QDialog, QVBoxLayout
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Wireless Security Testing Framework")
+        dialog.setModal(True)
+        dialog.resize(1100, 700)
+        
+        layout = QVBoxLayout(dialog)
+        wireless_widget = WirelessSecurityWidget(dialog)
+        layout.addWidget(wireless_widget)
+        
+        self.status_bar.showMessage("Wireless Security opened")
+        dialog.exec()
+        
+    def open_social_engineering(self):
+        """Open social engineering toolkit"""
+        from app.core.license_manager import license_manager
+        from PyQt6.QtWidgets import QMessageBox
+        
+        if not license_manager.is_feature_enabled('social_engineering'):
+            QMessageBox.warning(self, "Enterprise Feature", 
+                              "Social Engineering requires Enterprise license.\n\n"
+                              "Visit License Manager to upgrade.")
+            return
+            
+        from app.widgets.social_engineering_widget import SocialEngineeringWidget
+        from PyQt6.QtWidgets import QDialog, QVBoxLayout
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Social Engineering Toolkit")
+        dialog.setModal(True)
+        dialog.resize(1200, 800)
+        
+        layout = QVBoxLayout(dialog)
+        se_widget = SocialEngineeringWidget(dialog)
+        layout.addWidget(se_widget)
+        
+        self.status_bar.showMessage("Social Engineering opened")
+        dialog.exec()
+        
+    def open_anti_forensics(self):
+        """Open anti-forensics toolkit"""
+        from app.core.license_manager import license_manager
+        from PyQt6.QtWidgets import QMessageBox
+        
+        if not license_manager.is_feature_enabled('anti_forensics'):
+            QMessageBox.warning(self, "Enterprise Feature", 
+                              "Anti-Forensics requires Enterprise license.\n\n"
+                              "Visit License Manager to upgrade.")
+            return
+            
+        from app.widgets.anti_forensics_widget import AntiForensicsWidget
+        from PyQt6.QtWidgets import QDialog, QVBoxLayout
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Anti-Forensics & Evasion Techniques")
+        dialog.setModal(True)
+        dialog.resize(1100, 700)
+        
+        layout = QVBoxLayout(dialog)
+        forensics_widget = AntiForensicsWidget(dialog)
+        layout.addWidget(forensics_widget)
+        
+        self.status_bar.showMessage("Anti-Forensics opened")
+        dialog.exec()
     
     def on_theme_changed(self, theme_name):
         """Handle theme change event"""
