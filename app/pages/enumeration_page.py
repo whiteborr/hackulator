@@ -231,7 +231,7 @@ class EnumerationPage(QWidget):
                 self.connect_enter_key_to_inputs(control_panel)
         
         # Create remaining controls using existing methods (to be migrated)
-        remaining_tools = ['rpc', 'http', 'api', 'ldap', 'db', 'ike', 'av_firewall']
+        remaining_tools = ['rpc']
         for tool in remaining_tools:
             method_name = f'create_{tool}_controls'
             if hasattr(self, method_name):
@@ -386,6 +386,7 @@ class EnumerationPage(QWidget):
         """Create RPC enumeration specific controls"""
         rpc_widget = QWidget()
         layout = QVBoxLayout(rpc_widget)
+        layout.setSpacing(5)
         
         # Scan Type and Authentication on same row
         scan_auth_row = QHBoxLayout()
@@ -412,55 +413,66 @@ class EnumerationPage(QWidget):
         
         # Username widget
         self.user_widget = QWidget()
+        self.user_widget.setFixedHeight(25)
         user_row = QHBoxLayout(self.user_widget)
         user_row.setContentsMargins(0, 0, 0, 0)
         user_label = QLabel("Username:")
         user_label.setFixedWidth(150)
+        user_label.setFixedHeight(25)
         user_row.addWidget(user_label)
         self.rpc_username = QLineEdit()
         self.rpc_username.setPlaceholderText("Domain username")
-        self.rpc_username.setMinimumHeight(25)
+        self.rpc_username.setFixedHeight(25)
+
         self.rpc_username.returnPressed.connect(self.toggle_scan)
         user_row.addWidget(self.rpc_username)
         layout.addWidget(self.user_widget)
         
         # Password widget
         self.pass_widget = QWidget()
+        self.pass_widget.setFixedHeight(25)
         pass_row = QHBoxLayout(self.pass_widget)
         pass_row.setContentsMargins(0, 0, 0, 0)
         pass_label = QLabel("Password:")
         pass_label.setFixedWidth(150)
+        pass_label.setFixedHeight(25)
         pass_row.addWidget(pass_label)
         self.rpc_password = QLineEdit()
         self.rpc_password.setPlaceholderText("Password")
         self.rpc_password.setEchoMode(QLineEdit.EchoMode.Password)
-        self.rpc_password.setMinimumHeight(25)
+        self.rpc_password.setFixedHeight(25)
+
         self.rpc_password.returnPressed.connect(self.toggle_scan)
         pass_row.addWidget(self.rpc_password)
         layout.addWidget(self.pass_widget)
         
         # NTLM Hash widget
         self.hash_widget = QWidget()
+        self.hash_widget.setFixedHeight(25)
         hash_row = QHBoxLayout(self.hash_widget)
         hash_row.setContentsMargins(0, 0, 0, 0)
         hash_label = QLabel("NTLM Hash:")
         hash_label.setFixedWidth(150)
+        hash_label.setFixedHeight(25)
         hash_row.addWidget(hash_label)
         self.rpc_ntlm_hash = QLineEdit()
         self.rpc_ntlm_hash.setPlaceholderText("NTLM hash (alternative to password)")
-        self.rpc_ntlm_hash.setMinimumHeight(25)
+        self.rpc_ntlm_hash.setFixedHeight(25)
+
         self.rpc_ntlm_hash.returnPressed.connect(self.toggle_scan)
         hash_row.addWidget(self.rpc_ntlm_hash)
         layout.addWidget(self.hash_widget)
-        
         # Warning banner for Windows 11 issues
+        warning_widget = QWidget()
+        warning_widget.setFixedHeight(20)
+        warning_layout = QVBoxLayout(warning_widget)
+        warning_layout.setContentsMargins(0, 0, 0, 0)
+        warning_layout.setSpacing(0)
         warning_label = QLabel("⚠️ Note: Windows 11 may have RemoteRegistry disabled and UAC token filtering enabled")
-        warning_label.setStyleSheet("color: #FFAA00; font-size: 9pt; font-style: italic; margin-top: 10px;")
+        warning_label.setStyleSheet("color: #FFAA00; font-size: 9pt; font-style: italic;")
         warning_label.setWordWrap(True)
-        layout.addWidget(warning_label)
-        
-
-        
+        warning_layout.addWidget(warning_label)
+        layout.addWidget(warning_widget)
         # Set initial state
         self.toggle_rpc_auth("Anonymous")
         
@@ -808,6 +820,18 @@ class EnumerationPage(QWidget):
                 if filename.endswith(".txt"):
                     self.http_wordlist.addItem(filename, os.path.join(wordlist_dir, filename))
     
+    def populate_http_wordlists_factory(self, wordlist_combo):
+        """Populate HTTP wordlist dropdown for factory-created controls"""
+        if not wordlist_combo:
+            return
+        
+        wordlist_combo.addItem("Default directories", None)
+        wordlist_dir = os.path.join(self.main_window.project_root, "resources", "wordlists")
+        if os.path.exists(wordlist_dir):
+            for filename in os.listdir(wordlist_dir):
+                if filename.endswith(".txt"):
+                    wordlist_combo.addItem(filename, os.path.join(wordlist_dir, filename))
+    
     def create_api_controls(self):
         """Create API enumeration specific controls"""
         api_widget = QWidget()
@@ -855,6 +879,18 @@ class EnumerationPage(QWidget):
             for filename in os.listdir(wordlist_dir):
                 if filename.endswith(".txt"):
                     self.api_wordlist.addItem(filename, os.path.join(wordlist_dir, filename))
+    
+    def populate_api_wordlists_factory(self, wordlist_combo):
+        """Populate API wordlist dropdown for factory-created controls"""
+        if not wordlist_combo:
+            return
+        
+        wordlist_combo.addItem("Default API endpoints", None)
+        wordlist_dir = os.path.join(self.main_window.project_root, "resources", "wordlists")
+        if os.path.exists(wordlist_dir):
+            for filename in os.listdir(wordlist_dir):
+                if filename.endswith(".txt"):
+                    wordlist_combo.addItem(filename, os.path.join(wordlist_dir, filename))
     
     def create_ldap_controls(self):
         """Create LDAP enumeration specific controls"""
@@ -942,6 +978,101 @@ class EnumerationPage(QWidget):
         show_auth = scan_type in ["Authenticated Enum", "Full Scan"]
         self.ldap_username.setVisible(show_auth)
         self.ldap_password.setVisible(show_auth)
+        
+        # Trigger resize after visibility changes
+        if hasattr(self, 'controls_section'):
+            QTimer.singleShot(10, self.adjust_controls_size)
+    
+    def toggle_db_type_factory(self, controls, db_type):
+        """Toggle database type specific options for factory-created controls"""
+        is_oracle = (db_type == "Oracle")
+        
+        if 'oracle_sid' in controls:
+            controls['oracle_sid'].setVisible(is_oracle)
+        
+        # Update default port
+        if 'db_port' in controls:
+            if is_oracle:
+                controls['db_port'].setText("1521")
+            else:
+                controls['db_port'].setText("1433")
+        
+        # Find the DB control panel and hide/show Oracle SID row
+        db_panel = self.tool_controls.get('db')
+        if db_panel and hasattr(db_panel, 'row_widgets'):
+            if 'Oracle SID:' in db_panel.row_widgets:
+                db_panel.row_widgets['Oracle SID:'].setVisible(is_oracle)
+        
+        # Trigger resize after visibility changes
+        if hasattr(self, 'controls_section'):
+            QTimer.singleShot(10, self.adjust_controls_size)
+    
+    def toggle_db_options_factory(self, controls, scan_type):
+        """Toggle database scan options for factory-created controls"""
+        show_query = (scan_type == "Custom Query")
+        
+        if 'db_query' in controls:
+            controls['db_query'].setVisible(show_query)
+        if 'list_dbs_btn' in controls:
+            controls['list_dbs_btn'].setVisible(show_query)
+        if 'list_users_btn' in controls:
+            controls['list_users_btn'].setVisible(show_query)
+        if 'version_btn' in controls:
+            controls['version_btn'].setVisible(show_query)
+        
+        # Find the DB control panel and hide/show query-related rows
+        db_panel = self.tool_controls.get('db')
+        if db_panel and hasattr(db_panel, 'row_widgets'):
+            if 'Query:' in db_panel.row_widgets:
+                db_panel.row_widgets['Query:'].setVisible(show_query)
+            if 'Quick:' in db_panel.row_widgets:
+                db_panel.row_widgets['Quick:'].setVisible(show_query)
+        
+        # Trigger resize after visibility changes
+        if hasattr(self, 'controls_section'):
+            QTimer.singleShot(10, self.adjust_controls_size)
+    
+    def toggle_av_options_factory(self, controls, detection_type):
+        """Toggle AV/Firewall detection options for factory-created controls"""
+        show_payload = (detection_type == "AV Payload Gen")
+        
+        if 'av_payload_type' in controls:
+            controls['av_payload_type'].setVisible(show_payload)
+        
+        # Find the AV control panel and hide/show payload row
+        av_panel = self.tool_controls.get('av_firewall')
+        if av_panel and hasattr(av_panel, 'row_widgets'):
+            if 'Payload:' in av_panel.row_widgets:
+                av_panel.row_widgets['Payload:'].setVisible(show_payload)
+        
+        # Trigger resize after visibility changes
+        if hasattr(self, 'controls_section'):
+            QTimer.singleShot(10, self.adjust_controls_size)
+    
+    def toggle_ldap_ssl_factory(self, controls, state):
+        """Toggle LDAP SSL port for factory-created controls"""
+        if 'ldap_port' in controls:
+            if state == 2:  # Checked
+                controls['ldap_port'].setText("636")
+            else:
+                controls['ldap_port'].setText("389")
+    
+    def toggle_ldap_auth_factory(self, controls, scan_type):
+        """Toggle LDAP authentication fields for factory-created controls"""
+        show_auth = scan_type in ["Authenticated Enum", "Full Scan"]
+        
+        if 'ldap_username' in controls:
+            controls['ldap_username'].setVisible(show_auth)
+        if 'ldap_password' in controls:
+            controls['ldap_password'].setVisible(show_auth)
+        
+        # Find the LDAP control panel and hide/show rows
+        ldap_panel = self.tool_controls.get('ldap')
+        if ldap_panel and hasattr(ldap_panel, 'row_widgets'):
+            if 'Username:' in ldap_panel.row_widgets:
+                ldap_panel.row_widgets['Username:'].setVisible(show_auth)
+            if 'Password:' in ldap_panel.row_widgets:
+                ldap_panel.row_widgets['Password:'].setVisible(show_auth)
         
         # Trigger resize after visibility changes
         if hasattr(self, 'controls_section'):
@@ -1430,7 +1561,13 @@ class EnumerationPage(QWidget):
             "port_scan": "port", 
             "smb_enum": "smb",
             "smtp_enum": "smtp",
-            "snmp_enum": "snmp"
+            "snmp_enum": "snmp",
+            "http_enum": "http",
+            "api_enum": "api",
+            "ldap_enum": "ldap",
+            "db_enum": "db",
+            "ike_enum": "ike",
+            "av_detect": "av_firewall"
         }
         
         control_name = tool_map.get(tool_id)
@@ -1527,6 +1664,83 @@ class EnumerationPage(QWidget):
                 self.populate_smb_wordlist(controls.get('smb_wordlist'))
                 # Set initial state
                 self.toggle_smb_auth_factory(controls, "Anonymous")
+        
+        elif tool_name == 'http':
+            # Populate HTTP wordlist dropdown
+            self.populate_http_wordlists_factory(controls.get('http_wordlist'))
+            
+            # Connect button actions
+            if 'php_btn' in controls:
+                controls['php_btn'].clicked.connect(
+                    lambda: controls['http_extensions'].setText(".php,.phtml,.php3,.php4,.php5")
+                )
+            if 'asp_btn' in controls:
+                controls['asp_btn'].clicked.connect(
+                    lambda: controls['http_extensions'].setText(".asp,.aspx,.asmx,.ashx")
+                )
+            if 'jsp_btn' in controls:
+                controls['jsp_btn'].clicked.connect(
+                    lambda: controls['http_extensions'].setText(".jsp,.jsf,.jspx,.do")
+                )
+        
+        elif tool_name == 'api':
+            # Populate API wordlist dropdown
+            self.populate_api_wordlists_factory(controls.get('api_wordlist'))
+        
+        elif tool_name == 'ldap':
+            # Connect LDAP SSL checkbox
+            if 'ldap_ssl_checkbox' in controls:
+                controls['ldap_ssl_checkbox'].stateChanged.connect(
+                    lambda state: self.toggle_ldap_ssl_factory(controls, state)
+                )
+            
+            # Connect LDAP scan type combo
+            if 'ldap_scan_type' in controls:
+                controls['ldap_scan_type'].currentTextChanged.connect(
+                    lambda scan_type: self.toggle_ldap_auth_factory(controls, scan_type)
+                )
+                # Set initial state
+                self.toggle_ldap_auth_factory(controls, "Basic Info")
+        
+        elif tool_name == 'db':
+            # Connect database type combo
+            if 'db_type_combo' in controls:
+                controls['db_type_combo'].currentTextChanged.connect(
+                    lambda db_type: self.toggle_db_type_factory(controls, db_type)
+                )
+            
+            # Connect database scan type combo
+            if 'db_scan_type' in controls:
+                controls['db_scan_type'].currentTextChanged.connect(
+                    lambda scan_type: self.toggle_db_options_factory(controls, scan_type)
+                )
+            
+            # Connect quick query buttons
+            if 'list_dbs_btn' in controls:
+                controls['list_dbs_btn'].clicked.connect(
+                    lambda: controls['db_query'].setText("SELECT name FROM sys.databases")
+                )
+            if 'list_users_btn' in controls:
+                controls['list_users_btn'].clicked.connect(
+                    lambda: controls['db_query'].setText("SELECT name FROM sys.server_principals WHERE type = 'S'")
+                )
+            if 'version_btn' in controls:
+                controls['version_btn'].clicked.connect(
+                    lambda: controls['db_query'].setText("SELECT @@VERSION")
+                )
+            
+            # Set initial states
+            self.toggle_db_type_factory(controls, "MSSQL")
+            self.toggle_db_options_factory(controls, "Basic Info")
+        
+        elif tool_name == 'av_firewall':
+            # Connect AV detection type combo
+            if 'av_detection_type' in controls:
+                controls['av_detection_type'].currentTextChanged.connect(
+                    lambda detection_type: self.toggle_av_options_factory(controls, detection_type)
+                )
+                # Set initial state
+                self.toggle_av_options_factory(controls, "WAF Detection")
     
     def highlight_selected_tool(self, selected_id):
         for i, button in enumerate(self.main_tool_buttons):
@@ -2121,6 +2335,10 @@ class EnumerationPage(QWidget):
                         child.setVisible(scan_type == 'Nmap Sweep')
                     elif child.text() == 'Timing:':
                         child.setVisible(scan_type == 'Nmap Sweep')
+                
+                # Trigger resize after visibility changes
+                if hasattr(self, 'controls_section'):
+                    QTimer.singleShot(10, self.adjust_controls_size)
     
 
     
@@ -2302,8 +2520,8 @@ class EnumerationPage(QWidget):
 
 
         self.is_scanning = True
-        self.run_button.setText("Cancel")
-        self.run_button.setStyleSheet("background-color: red; color: white;")
+        self.run_button.setText("End")
+        self.pulse_timer.start(500)  # Pulse every 500ms
         self.terminal_output.clear()
         self.progress_widget.setVisible(True)
         self.status_updated.emit(f"Starting {scan_type} on {target}...")
@@ -3822,7 +4040,13 @@ class EnumerationPage(QWidget):
         natural_height = current_widget.sizeHint().height()
         
         # Add fixed padding: target row (35px) + action row (60px) + margins (25px)
-        total_height = natural_height + 120
+        # Reduce buffer for all enumeration tools to minimize bottom space
+        if self.current_submenu in ["smb_enum", "dns_enum", "smtp_enum", "snmp_enum", "http_enum", "api_enum", "ldap_enum", "db_enum", "ike_enum", "av_detect"]:
+            total_height = natural_height + 80  # Less buffer for enumeration tools
+        elif self.current_submenu == "port_scan":
+            total_height = natural_height + 80  # Standard buffer for port scanning
+        else:
+            total_height = natural_height + 120
         
         self.controls_section.setFixedHeight(total_height)
 

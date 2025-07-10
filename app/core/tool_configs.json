@@ -169,5 +169,244 @@
         ]
       }
     ]
+  },
+  "http": {
+    "rows": [
+      {
+        "label": "Scan Type:",
+        "controls": [
+          {"type": "combobox", "name": "http_scan_type", "items": ["Basic Fingerprint", "Directory Enum", "Nmap Scripts", "Nikto Scan", "Full Scan"], "width": 150}
+        ]
+      },
+      {
+        "label": "Extensions:",
+        "controls": [
+          {"type": "lineedit", "name": "http_extensions", "default": ".php,.html,.asp,.aspx,.jsp", "placeholder": "Comma-separated file extensions", "stretch": true}
+        ]
+      },
+      {
+        "label": "Wordlist:",
+        "controls": [
+          {"type": "combobox", "name": "http_wordlist", "items": [], "stretch": true}
+        ]
+      },
+      {
+        "label": "Quick:",
+        "buttons": [
+          {"text": "PHP"},
+          {"text": "ASP"},
+          {"text": "JSP"}
+        ]
+      }
+    ]
+  },
+  "api": {
+    "rows": [
+      {
+        "label": "Scan Type:",
+        "controls": [
+          {"type": "combobox", "name": "api_scan_type", "items": ["Basic Discovery", "Gobuster Enum", "HTTP Methods", "Auth Bypass", "Vulnerability Test", "Full Scan"], "width": 150}
+        ]
+      },
+      {
+        "label": "Wordlist:",
+        "controls": [
+          {"type": "combobox", "name": "api_wordlist", "items": [], "stretch": true}
+        ]
+      },
+      {
+        "label": "Patterns:",
+        "controls": [
+          {"type": "label", "name": "patterns_text", "text": "/api, /api/v1, /rest, /graphql, /swagger", "style": "color: #888; font-size: 10pt;"}
+        ]
+      }
+    ]
+  },
+  "ldap": {
+    "rows": [
+      {
+        "label": "Port:",
+        "controls": [
+          {"type": "lineedit", "name": "ldap_port", "default": "389", "width": 100},
+          {"type": "checkbox", "name": "ldap_ssl_checkbox", "text": "Use SSL/TLS (636)"}
+        ]
+      },
+      {
+        "label": "Scan Type:",
+        "controls": [
+          {"type": "combobox", "name": "ldap_scan_type", "items": ["Basic Info", "Anonymous Enum", "Authenticated Enum", "Full Scan"], "width": 150}
+        ]
+      },
+      {
+        "label": "Base DN:",
+        "controls": [
+          {"type": "lineedit", "name": "ldap_base_dn", "placeholder": "DC=domain,DC=com (auto-detected if empty)", "stretch": true}
+        ]
+      },
+      {
+        "label": "Authentication (for Authenticated Enum):",
+        "controls": [
+          {"type": "label", "name": "auth_header", "text": "", "style": "color: #87CEEB; font-weight: bold;"}
+        ]
+      },
+      {
+        "label": "Username:",
+        "controls": [
+          {"type": "lineedit", "name": "ldap_username", "placeholder": "Domain\\username or username@domain.com", "stretch": true, "visible": false}
+        ]
+      },
+      {
+        "label": "Password:",
+        "controls": [
+          {"type": "lineedit", "name": "ldap_password", "placeholder": "Password", "password": true, "stretch": true, "visible": false}
+        ]
+      }
+    ]
+  },
+  "db": {
+    "rows": [
+      {
+        "label": "DB Type:",
+        "controls": [
+          {"type": "combobox", "name": "db_type_combo", "items": ["MSSQL", "Oracle"], "width": 150}
+        ]
+      },
+      {
+        "label": "Port:",
+        "controls": [
+          {"type": "lineedit", "name": "db_port", "default": "1433", "width": 100}
+        ]
+      },
+      {
+        "label": "Scan Type:",
+        "controls": [
+          {"type": "combobox", "name": "db_scan_type", "items": ["Basic Info", "Scripts", "Custom Query", "Full Scan"], "width": 150}
+        ]
+      },
+      {
+        "label": "Oracle SID:",
+        "controls": [
+          {"type": "lineedit", "name": "oracle_sid", "default": "DB11g", "placeholder": "Oracle SID for brute force", "stretch": true, "visible": false}
+        ]
+      },
+      {
+        "label": "Query:",
+        "controls": [
+          {"type": "lineedit", "name": "db_query", "placeholder": "SELECT name FROM sys.databases", "stretch": true, "visible": false}
+        ]
+      },
+      {
+        "label": "Quick:",
+        "buttons": [
+          {"text": "List DBs", "visible": false},
+          {"text": "List Users", "visible": false},
+          {"text": "Version", "visible": false}
+        ]
+      },
+      {
+        "label": "Authentication (for Scripts/Query):",
+        "controls": [
+          {"type": "label", "name": "auth_header", "text": "", "style": "color: #87CEEB; font-weight: bold;"}
+        ]
+      },
+      {
+        "label": "Username:",
+        "controls": [
+          {"type": "lineedit", "name": "db_username", "placeholder": "sa", "stretch": true}
+        ]
+      },
+      {
+        "label": "Password:",
+        "controls": [
+          {"type": "lineedit", "name": "db_password", "placeholder": "Password", "password": true, "stretch": true}
+        ]
+      }
+    ]
+  },
+  "ike": {
+    "rows": [
+      {
+        "label": "Port:",
+        "controls": [
+          {"type": "lineedit", "name": "ike_port", "default": "500", "width": 100}
+        ]
+      },
+      {
+        "label": "Scan Type:",
+        "controls": [
+          {"type": "combobox", "name": "ike_scan_type", "items": ["Basic Info", "Detailed Scan", "Transform Enum", "Full Scan"], "width": 150}
+        ]
+      },
+      {
+        "label": "Mode:",
+        "controls": [
+          {"type": "checkbox", "name": "ike_aggressive_mode", "text": "Aggressive Mode (-M)", "checked": true}
+        ]
+      },
+      {
+        "label": "Tool:",
+        "controls": [
+          {"type": "label", "name": "tool_info", "text": "Requires ike-scan tool", "style": "color: #888; font-size: 10pt;"}
+        ]
+      },
+      {
+        "label": "IPSec Configuration Files:",
+        "controls": [
+          {"type": "label", "name": "config_label", "text": "", "style": "color: #87CEEB; font-weight: bold;"}
+        ]
+      },
+      {
+        "label": "",
+        "controls": [
+          {"type": "label", "name": "config_info", "text": "/etc/ipsec.conf, /etc/ipsec.secrets", "style": "color: #888; font-size: 9pt; margin-left: 20px;"}
+        ]
+      }
+    ]
+  },
+  "av_firewall": {
+    "rows": [
+      {
+        "label": "Detection:",
+        "controls": [
+          {"type": "combobox", "name": "av_detection_type", "items": ["WAF Detection", "Firewall Detection", "Evasion Test", "AV Payload Gen", "Full Detection"], "width": 150}
+        ]
+      },
+      {
+        "label": "Port:",
+        "controls": [
+          {"type": "lineedit", "name": "av_port", "default": "80", "width": 100}
+        ]
+      },
+      {
+        "label": "Payload:",
+        "controls": [
+          {"type": "combobox", "name": "av_payload_type", "items": ["msfvenom", "shellter"], "width": 150, "visible": false}
+        ]
+      },
+      {
+        "label": "Tool Requirements:",
+        "controls": [
+          {"type": "label", "name": "tools_label", "text": "", "style": "color: #87CEEB; font-weight: bold;"}
+        ]
+      },
+      {
+        "label": "",
+        "controls": [
+          {"type": "label", "name": "tools_info", "text": "nmap (firewall detection), msfvenom (payload generation)", "style": "color: #888; font-size: 9pt; margin-left: 20px;"}
+        ]
+      },
+      {
+        "label": "Detection Methods:",
+        "controls": [
+          {"type": "label", "name": "methods_label", "text": "", "style": "color: #87CEEB; font-weight: bold;"}
+        ]
+      },
+      {
+        "label": "",
+        "controls": [
+          {"type": "label", "name": "methods_info", "text": "WAF: HTTP headers/responses, Firewall: nmap ACK/SYN scans", "style": "color: #888; font-size: 9pt; margin-left: 20px;"}
+        ]
+      }
+    ]
   }
 }
