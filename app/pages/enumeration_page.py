@@ -7,9 +7,8 @@ from PyQt6.QtWidgets import (QWidget, QPushButton, QLabel, QLineEdit, QTextEdit,
                              QComboBox, QCheckBox, QVBoxLayout, QHBoxLayout, 
                              QFrame, QSizePolicy, QScrollArea, QStatusBar, QStackedWidget,
                              QTreeView, QToolButton)
-from PyQt6.QtCore import pyqtSignal, QSize, Qt, QThreadPool
+from PyQt6.QtCore import pyqtSignal, QSize, Qt, QThreadPool, QPropertyAnimation, QTimer
 from PyQt6.QtGui import QPixmap, QIcon, QShortcut, QKeySequence, QStandardItemModel, QStandardItem
-
 from app.tools import dns_utils
 from app.core.validators import InputValidator
 from app.core.exporter import exporter
@@ -82,6 +81,9 @@ class EnumerationPage(QWidget):
         self.setup_shortcuts()
         self.apply_theme()
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        
+        # Initial size adjustment
+        self.adjust_controls_size()
 
     def create_header(self):
         header_frame = QFrame()
@@ -190,7 +192,6 @@ class EnumerationPage(QWidget):
         from PyQt6.QtWidgets import QSpinBox, QStackedWidget
 
         controls_frame = QFrame()
-        controls_frame.setMaximumHeight(200)  # Limit height to make more room for terminal
         controls_layout = QVBoxLayout(controls_frame)
         controls_layout.setContentsMargins(10, 5, 10, 5)  # Reduce margins
         controls_layout.setSpacing(5)  # Reduce spacing
@@ -240,6 +241,13 @@ class EnumerationPage(QWidget):
         
         controls_layout.addWidget(self.controls_stack)
         
+        # Connect to adjust size when controls change
+        self.controls_stack.currentChanged.connect(lambda: QTimer.singleShot(10, self.adjust_controls_size))
+        
+        # Set size policy to allow shrinking
+        self.controls_stack.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
+        controls_frame.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
+        
         # === Actions Row ===
         action_row = QHBoxLayout()
         action_row.addStretch()
@@ -247,6 +255,11 @@ class EnumerationPage(QWidget):
         self.run_button.setFixedWidth(80)
         self.run_button.clicked.connect(self.toggle_scan)
         action_row.addWidget(self.run_button)
+        
+        # Setup pulsing animation
+        self.pulse_timer = QTimer()
+        self.pulse_timer.timeout.connect(self.pulse_button)
+        self.pulse_state = False
 
         # View selection buttons
         text_icon_path = os.path.join(self.main_window.project_root, "resources", "icons", "text.png")
@@ -336,6 +349,7 @@ class EnumerationPage(QWidget):
         self.method_combo.addItems(["Wordlist", "Bruteforce"])
         self.method_combo.setFixedWidth(150)
         self.method_combo.currentTextChanged.connect(self.toggle_method_options)
+        self.method_combo.currentTextChanged.connect(lambda: QTimer.singleShot(10, self.adjust_controls_size) if hasattr(self, 'controls_section') else None)
         method_row.addWidget(self.method_combo)
 
         self.wordlist_combo = QComboBox()
@@ -348,8 +362,7 @@ class EnumerationPage(QWidget):
         self.method_row_layout = method_row
         layout.addLayout(method_row)
         
-        # Add stretch to push everything up
-        layout.addStretch()
+
         
         self.toggle_method_options("Wordlist")
         
@@ -446,11 +459,13 @@ class EnumerationPage(QWidget):
         warning_label.setWordWrap(True)
         layout.addWidget(warning_label)
         
-        # Add stretch to push content to top
-        layout.addStretch()
+
         
         # Set initial state
         self.toggle_rpc_auth("Anonymous")
+        
+        # Connect auth combo to resize function
+        self.auth_combo.currentTextChanged.connect(lambda: QTimer.singleShot(10, self.adjust_controls_size) if hasattr(self, 'controls_section') else None)
         
         return rpc_widget
     
@@ -468,6 +483,10 @@ class EnumerationPage(QWidget):
             self.user_widget.setVisible(True)
             self.pass_widget.setVisible(False)
             self.hash_widget.setVisible(True)
+        
+        # Trigger resize after visibility changes
+        if hasattr(self, 'controls_section'):
+            QTimer.singleShot(10, self.adjust_controls_size)
     
     def create_smb_controls(self):
         """Create SMB enumeration specific controls"""
@@ -527,6 +546,9 @@ class EnumerationPage(QWidget):
         # Set initial state
         self.toggle_smb_auth("Anonymous")
         
+        # Connect auth combo to resize function
+        self.smb_auth_combo.currentTextChanged.connect(lambda: QTimer.singleShot(10, self.adjust_controls_size) if hasattr(self, 'controls_section') else None)
+        
         return smb_widget
     
     def toggle_smb_auth(self, auth_type):
@@ -534,6 +556,10 @@ class EnumerationPage(QWidget):
         show_creds = (auth_type == "Credentials")
         self.smb_user_widget.setVisible(show_creds)
         self.smb_pass_widget.setVisible(show_creds)
+        
+        # Trigger resize after visibility changes
+        if hasattr(self, 'controls_section'):
+            QTimer.singleShot(10, self.adjust_controls_size)
     
     def toggle_smb_auth_factory(self, controls, auth_type):
         """Toggle SMB authentication fields for factory-created controls"""
@@ -571,6 +597,10 @@ class EnumerationPage(QWidget):
             # Hide/show charset row
             if 'Charset:' in smb_panel.row_widgets:
                 smb_panel.row_widgets['Charset:'].setVisible(show_bruteforce)
+        
+        # Trigger resize after visibility changes
+        if hasattr(self, 'controls_section'):
+            QTimer.singleShot(10, self.adjust_controls_size)
     
     def create_smtp_controls(self):
         """Create SMTP enumeration specific controls"""
@@ -912,6 +942,10 @@ class EnumerationPage(QWidget):
         show_auth = scan_type in ["Authenticated Enum", "Full Scan"]
         self.ldap_username.setVisible(show_auth)
         self.ldap_password.setVisible(show_auth)
+        
+        # Trigger resize after visibility changes
+        if hasattr(self, 'controls_section'):
+            QTimer.singleShot(10, self.adjust_controls_size)
     
     def create_db_controls(self):
         """Create database enumeration specific controls"""
@@ -1041,6 +1075,10 @@ class EnumerationPage(QWidget):
             self.db_port.setText("1521")
         else:
             self.db_port.setText("1433")
+        
+        # Trigger resize after visibility changes
+        if hasattr(self, 'controls_section'):
+            QTimer.singleShot(10, self.adjust_controls_size)
     
     def toggle_db_options(self, scan_type):
         """Toggle database scan options"""
@@ -1049,6 +1087,10 @@ class EnumerationPage(QWidget):
         self.list_dbs_btn.setVisible(show_query)
         self.list_users_btn.setVisible(show_query)
         self.version_btn.setVisible(show_query)
+        
+        # Trigger resize after visibility changes
+        if hasattr(self, 'controls_section'):
+            QTimer.singleShot(10, self.adjust_controls_size)
     
     def create_ike_controls(self):
         """Create IKE enumeration specific controls"""
@@ -1141,18 +1183,20 @@ class EnumerationPage(QWidget):
         port_row.addStretch()
         layout.addLayout(port_row)
         
-        # Payload Type (for AV testing)
-        payload_row = QHBoxLayout()
+        # Payload Type (for AV testing) - create as widget container
+        self.av_payload_widget = QWidget()
+        payload_row = QHBoxLayout(self.av_payload_widget)
+        payload_row.setContentsMargins(0, 0, 0, 0)
         payload_label = QLabel("Payload:")
         payload_label.setFixedWidth(150)
         payload_row.addWidget(payload_label)
         self.av_payload_type = QComboBox()
         self.av_payload_type.addItems(["msfvenom", "shellter"])
         self.av_payload_type.setFixedWidth(150)
-        self.av_payload_type.setVisible(False)
         payload_row.addWidget(self.av_payload_type)
         payload_row.addStretch()
-        layout.addLayout(payload_row)
+        self.av_payload_widget.setVisible(False)
+        layout.addWidget(self.av_payload_widget)
         
         # Tool requirements info
         tools_label = QLabel("Tool Requirements:")
@@ -1177,7 +1221,11 @@ class EnumerationPage(QWidget):
     def toggle_av_options(self, detection_type):
         """Toggle AV/Firewall detection options"""
         show_payload = (detection_type == "AV Payload Gen")
-        self.av_payload_type.setVisible(show_payload)
+        self.av_payload_widget.setVisible(show_payload)
+        
+        # Trigger resize after visibility changes
+        if hasattr(self, 'controls_section'):
+            QTimer.singleShot(10, self.adjust_controls_size)
     
     def run_ike_scan(self):
         """Execute IKE enumeration scan"""
@@ -1471,6 +1519,10 @@ class EnumerationPage(QWidget):
                 controls['smb_auth_combo'].currentTextChanged.connect(
                     lambda auth_type: self.toggle_smb_auth_factory(controls, auth_type)
                 )
+                # Connect to resize function
+                controls['smb_auth_combo'].currentTextChanged.connect(
+                    lambda: QTimer.singleShot(10, self.adjust_controls_size) if hasattr(self, 'controls_section') else None
+                )
                 # Populate wordlist dropdown
                 self.populate_smb_wordlist(controls.get('smb_wordlist'))
                 # Set initial state
@@ -1576,6 +1628,10 @@ class EnumerationPage(QWidget):
         self.length_spinbox.setVisible(not is_wordlist)
         for checkbox in self.char_checkboxes.values():
             checkbox.setVisible(not is_wordlist)
+        
+        # Trigger resize after visibility changes
+        if hasattr(self, 'controls_section'):
+            QTimer.singleShot(10, self.adjust_controls_size)
 
     def toggle_scan(self):
         if self.is_scanning:
@@ -1611,6 +1667,7 @@ class EnumerationPage(QWidget):
             self.current_worker.is_running = False
         self.is_scanning = False
         self.run_button.setText("Run")
+        self.pulse_timer.stop()
         self.run_button.setStyleSheet("")
         self.progress_widget.setVisible(False)
         self.status_updated.emit("Scan cancelled")
@@ -1628,8 +1685,8 @@ class EnumerationPage(QWidget):
         if ptr_checkbox and ptr_checkbox.isEnabled() and ptr_checkbox.isChecked():
             # PTR query for IP targets - no wordlist/bruteforce needed
             self.is_scanning = True
-            self.run_button.setText("Cancel")
-            self.run_button.setStyleSheet("background-color: red; color: white;")
+            self.run_button.setText("End")
+            self.pulse_timer.start(500)  # Pulse every 500ms
             
             self.terminal_output.clear()
             self.progress_widget.setVisible(True)
@@ -1699,8 +1756,8 @@ class EnumerationPage(QWidget):
         max_length = length_spinbox.value() if length_spinbox and method == "Bruteforce" else 3
         
         self.is_scanning = True
-        self.run_button.setText("Cancel")
-        self.run_button.setStyleSheet("background-color: red; color: white;")
+        self.run_button.setText("End")
+        self.pulse_timer.start(500)  # Pulse every 500ms
         
         self.terminal_output.clear()
         self.progress_widget.setVisible(True)
@@ -1775,8 +1832,8 @@ class EnumerationPage(QWidget):
         password = self.ldap_password.text().strip() or None
         
         self.is_scanning = True
-        self.run_button.setText("Cancel")
-        self.run_button.setStyleSheet("background-color: red; color: white;")
+        self.run_button.setText("End")
+        self.pulse_timer.start(500)  # Pulse every 500ms
         
         self.terminal_output.clear()
         self.progress_widget.setVisible(True)
@@ -2534,8 +2591,8 @@ class EnumerationPage(QWidget):
         password = self.rpc_password.text().strip() if auth_combo and auth_combo.currentText() == "Credentials" else ""
         
         self.is_scanning = True
-        self.run_button.setText("Cancel")
-        self.run_button.setStyleSheet("background-color: red; color: white;")
+        self.run_button.setText("End")
+        self.pulse_timer.start(500)  # Pulse every 500ms
         self.terminal_output.clear()
         self.progress_widget.setVisible(False)
         
@@ -2601,8 +2658,8 @@ class EnumerationPage(QWidget):
             password = self.smb_password.text().strip() if smb_auth_combo and smb_auth_combo.currentText() == "Credentials" else ""
         
         self.is_scanning = True
-        self.run_button.setText("Cancel")
-        self.run_button.setStyleSheet("background-color: red; color: white;")
+        self.run_button.setText("End")
+        self.pulse_timer.start(500)  # Pulse every 500ms
         self.terminal_output.clear()
         self.progress_widget.setVisible(False)
         
@@ -2646,8 +2703,8 @@ class EnumerationPage(QWidget):
         wordlist_path = smtp_wordlist.currentData() if smtp_wordlist else None
         
         self.is_scanning = True
-        self.run_button.setText("Cancel")
-        self.run_button.setStyleSheet("background-color: red; color: white;")
+        self.run_button.setText("End")
+        self.pulse_timer.start(500)  # Pulse every 500ms
         self.terminal_output.clear()
         self.progress_widget.setVisible(True)
         
@@ -2697,8 +2754,8 @@ class EnumerationPage(QWidget):
         communities = [c.strip() for c in communities_text.split(',') if c.strip()] if communities_text else []
         
         self.is_scanning = True
-        self.run_button.setText("Cancel")
-        self.run_button.setStyleSheet("background-color: red; color: white;")
+        self.run_button.setText("End")
+        self.pulse_timer.start(500)  # Pulse every 500ms
         self.terminal_output.clear()
         self.progress_widget.setVisible(True)
         
@@ -2746,8 +2803,8 @@ class EnumerationPage(QWidget):
         wordlist_path = http_wordlist.currentData() if http_wordlist else None
         
         self.is_scanning = True
-        self.run_button.setText("Cancel")
-        self.run_button.setStyleSheet("background-color: red; color: white;")
+        self.run_button.setText("End")
+        self.pulse_timer.start(500)  # Pulse every 500ms
         self.terminal_output.clear()
         self.progress_widget.setVisible(True)
         
@@ -2792,8 +2849,8 @@ class EnumerationPage(QWidget):
         wordlist_path = api_wordlist.currentData() if api_wordlist else None
         
         self.is_scanning = True
-        self.run_button.setText("Cancel")
-        self.run_button.setStyleSheet("background-color: red; color: white;")
+        self.run_button.setText("End")
+        self.pulse_timer.start(500)  # Pulse every 500ms
         self.terminal_output.clear()
         self.progress_widget.setVisible(False)
         
@@ -2896,6 +2953,7 @@ class EnumerationPage(QWidget):
         self.status_updated.emit("Scan completed successfully")
         self.is_scanning = False
         self.run_button.setText("Run")
+        self.pulse_timer.stop()
         self.run_button.setStyleSheet("")
         self.current_worker = None
         
@@ -3742,3 +3800,29 @@ class EnumerationPage(QWidget):
         
         # Resize columns to content
         self.dns_table.resizeColumnsToContents()
+    def pulse_button(self):
+        """Pulse the run button between red states"""
+        if self.pulse_state:
+            self.run_button.setStyleSheet("background-color: #FF0000; color: white;")
+        else:
+            self.run_button.setStyleSheet("background-color: #AA0000; color: white;")
+        self.pulse_state = not self.pulse_state
+    
+    def adjust_controls_size(self):
+        """Adjust controls section height to fit visible option fields exactly"""
+        current_widget = self.controls_stack.currentWidget()
+        if not current_widget:
+            return
+
+        # Force widget to update its geometry
+        current_widget.updateGeometry()
+        current_widget.adjustSize()
+        
+        # Get the natural size hint without forcing layout changes
+        natural_height = current_widget.sizeHint().height()
+        
+        # Add fixed padding: target row (35px) + action row (60px) + margins (25px)
+        total_height = natural_height + 120
+        
+        self.controls_section.setFixedHeight(total_height)
+
