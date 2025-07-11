@@ -408,37 +408,3 @@ QProgressBar::chunk {
     margin: 2px;
 }
 
-/* ----------------------------------------
-   16. Responsive Adjustments
------------------------------------------ */
-@media (max-width: 1200px) {
-    QLabel#TitleLabel {
-        font-size: 20pt;
-    }
-    
-    QPushButton {
-        font-size: 11pt;
-        padding: 6px 12px;
-    }
-    
-    QLineEdit#TargetInput {
-        font-size: 12pt;
-        padding: 6px 10px;
-    }
-}
-
-@media (max-width: 800px) {
-    QLabel#TitleLabel {
-        font-size: 16pt;
-    }
-    
-    QPushButton {
-        font-size: 10pt;
-        padding: 4px 8px;
-    }
-    
-    QLineEdit#TargetInput {
-        font-size: 11pt;
-        padding: 4px 8px;
-    }
-}

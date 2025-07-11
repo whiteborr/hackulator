@@ -173,7 +173,7 @@ class NetworkSweepWorker(QRunnable):
                 targets = [f"{base}{i}" for i in range(1, 255)]
                 self.signals.output.emit(f"<p style='color: #87CEEB;'>Scanning subnet {self.target} (192.168.1.1-254)...</p><br>")
             elif '-' in self.target:
-                # Handle ranges like 192.168.1.100-106
+                # Handle ranges like 192.168.1.100-106 or 119.82.2.1-254
                 parts = self.target.split('-')
                 if len(parts) == 2:
                     start_ip = parts[0].strip()
@@ -186,7 +186,7 @@ class NetworkSweepWorker(QRunnable):
                         start_octet = int(ip_parts[3])
                         end_octet = int(end_part)
                         targets = [f"{base}{i}" for i in range(start_octet, end_octet + 1)]
-                        self.signals.output.emit(f"<p style='color: #87CEEB;'>Scanning range {self.target} ({len(targets)} hosts)...</p><br>")
+                        self.signals.output.emit(f"<p style='color: #87CEEB;'>Scanning range {start_ip}-{base}{end_octet} ({len(targets)} hosts)...</p><br>")
             else:
                 targets = [self.target]
                 self.signals.output.emit(f"<p style='color: #87CEEB;'>Trying ping scan for {self.target}...</p><br>")
@@ -241,7 +241,24 @@ class NetworkSweepWorker(QRunnable):
                     cmd.extend(stealth_flags)
                     cmd.append("--disable-arp-ping")
                 
-                cmd.append(self.target)
+                # Convert range format for nmap
+                if '-' in self.target and '.' in self.target:
+                    parts = self.target.split('-')
+                    if len(parts) == 2:
+                        start_ip = parts[0].strip()
+                        end_part = parts[1].strip()
+                        ip_parts = start_ip.split('.')
+                        if len(ip_parts) == 4 and end_part.isdigit():
+                            # Convert 119.82.2.1-254 to 119.82.2.1-119.82.2.254
+                            base = '.'.join(ip_parts[:3]) + '.'
+                            nmap_target = f"{start_ip}-{base}{end_part}"
+                            cmd.append(nmap_target)
+                        else:
+                            cmd.append(self.target)
+                    else:
+                        cmd.append(self.target)
+                else:
+                    cmd.append(self.target)
                 
                 process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, universal_newlines=True)
                 

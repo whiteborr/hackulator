@@ -251,15 +251,14 @@ class EnumerationPage(QWidget):
         # === Actions Row ===
         action_row = QHBoxLayout()
         action_row.addStretch()
-        self.run_button = QPushButton("Run")
+        # Use enhanced pulsing button
+        from app.ui.animations.button_animations import PulsingButton
+        self.run_button = PulsingButton("Run")
         self.run_button.setFixedWidth(80)
         self.run_button.clicked.connect(self.toggle_scan)
         action_row.addWidget(self.run_button)
         
-        # Setup pulsing animation
-        self.pulse_timer = QTimer()
-        self.pulse_timer.timeout.connect(self.pulse_button)
-        self.pulse_state = False
+        # Pulsing animation handled by enhanced button
 
         # View selection buttons
         text_icon_path = os.path.join(self.main_window.project_root, "resources", "icons", "text.png")
@@ -1881,8 +1880,7 @@ class EnumerationPage(QWidget):
             self.current_worker.is_running = False
         self.is_scanning = False
         self.run_button.setText("Run")
-        self.pulse_timer.stop()
-        self.run_button.setStyleSheet("")
+        self.run_button.stop_pulse()
         self.progress_widget.setVisible(False)
         self.status_updated.emit("Scan cancelled")
     
@@ -1900,7 +1898,7 @@ class EnumerationPage(QWidget):
             # PTR query for IP targets - no wordlist/bruteforce needed
             self.is_scanning = True
             self.run_button.setText("End")
-            self.pulse_timer.start(500)  # Pulse every 500ms
+            self.run_button.start_pulse("#FF0000")  # Red pulse for scanning
             
             self.terminal_output.clear()
             self.progress_widget.setVisible(True)
@@ -1971,7 +1969,7 @@ class EnumerationPage(QWidget):
         
         self.is_scanning = True
         self.run_button.setText("End")
-        self.pulse_timer.start(500)  # Pulse every 500ms
+        self.run_button.start_pulse("#FF0000")  # Red pulse for scanning
         
         self.terminal_output.clear()
         self.progress_widget.setVisible(True)
@@ -2047,7 +2045,7 @@ class EnumerationPage(QWidget):
         
         self.is_scanning = True
         self.run_button.setText("End")
-        self.pulse_timer.start(500)  # Pulse every 500ms
+        self.run_button.start_pulse("#FF0000")  # Red pulse for scanning
         
         self.terminal_output.clear()
         self.progress_widget.setVisible(True)
@@ -2521,7 +2519,7 @@ class EnumerationPage(QWidget):
 
         self.is_scanning = True
         self.run_button.setText("End")
-        self.pulse_timer.start(500)  # Pulse every 500ms
+        self.run_button.start_pulse("#FF0000")  # Red pulse for scanning
         self.terminal_output.clear()
         self.progress_widget.setVisible(True)
         self.status_updated.emit(f"Starting {scan_type} on {target}...")
@@ -2810,7 +2808,7 @@ class EnumerationPage(QWidget):
         
         self.is_scanning = True
         self.run_button.setText("End")
-        self.pulse_timer.start(500)  # Pulse every 500ms
+        self.run_button.start_pulse("#FF0000")  # Red pulse for scanning
         self.terminal_output.clear()
         self.progress_widget.setVisible(False)
         
@@ -2877,7 +2875,7 @@ class EnumerationPage(QWidget):
         
         self.is_scanning = True
         self.run_button.setText("End")
-        self.pulse_timer.start(500)  # Pulse every 500ms
+        self.run_button.start_pulse("#FF0000")  # Red pulse for scanning
         self.terminal_output.clear()
         self.progress_widget.setVisible(False)
         
@@ -2922,7 +2920,7 @@ class EnumerationPage(QWidget):
         
         self.is_scanning = True
         self.run_button.setText("End")
-        self.pulse_timer.start(500)  # Pulse every 500ms
+        self.run_button.start_pulse("#FF0000")  # Red pulse for scanning
         self.terminal_output.clear()
         self.progress_widget.setVisible(True)
         
@@ -2973,7 +2971,7 @@ class EnumerationPage(QWidget):
         
         self.is_scanning = True
         self.run_button.setText("End")
-        self.pulse_timer.start(500)  # Pulse every 500ms
+        self.run_button.start_pulse("#FF0000")  # Red pulse for scanning
         self.terminal_output.clear()
         self.progress_widget.setVisible(True)
         
@@ -3022,7 +3020,7 @@ class EnumerationPage(QWidget):
         
         self.is_scanning = True
         self.run_button.setText("End")
-        self.pulse_timer.start(500)  # Pulse every 500ms
+        self.run_button.start_pulse("#FF0000")  # Red pulse for scanning
         self.terminal_output.clear()
         self.progress_widget.setVisible(True)
         
@@ -3068,7 +3066,7 @@ class EnumerationPage(QWidget):
         
         self.is_scanning = True
         self.run_button.setText("End")
-        self.pulse_timer.start(500)  # Pulse every 500ms
+        self.run_button.start_pulse("#FF0000")  # Red pulse for scanning
         self.terminal_output.clear()
         self.progress_widget.setVisible(False)
         
@@ -3171,8 +3169,7 @@ class EnumerationPage(QWidget):
         self.status_updated.emit("Scan completed successfully")
         self.is_scanning = False
         self.run_button.setText("Run")
-        self.pulse_timer.stop()
-        self.run_button.setStyleSheet("")
+        self.run_button.stop_pulse()
         self.current_worker = None
         
         # Scan completed successfully
@@ -3387,6 +3384,12 @@ class EnumerationPage(QWidget):
             self.export_button.setEnabled(False)
             self.run_button.setText('Run')
             self.run_button.setStyleSheet('')
+            
+            # Reset to text view for new tools
+            self.results_stack.setCurrentIndex(0)
+            self.text_view_btn.setChecked(True)
+            self.graph_view_btn.setChecked(False)
+            self.table_view_btn.setChecked(False)
             
             # Reset progress bar animation
             if hasattr(self, 'progress_widget'):
@@ -4018,13 +4021,7 @@ class EnumerationPage(QWidget):
         
         # Resize columns to content
         self.dns_table.resizeColumnsToContents()
-    def pulse_button(self):
-        """Pulse the run button between red states"""
-        if self.pulse_state:
-            self.run_button.setStyleSheet("background-color: #FF0000; color: white;")
-        else:
-            self.run_button.setStyleSheet("background-color: #AA0000; color: white;")
-        self.pulse_state = not self.pulse_state
+
     
     def adjust_controls_size(self):
         """Adjust controls section height to fit visible option fields exactly"""

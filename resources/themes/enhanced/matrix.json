@@ -1,0 +1,23 @@
+{
+  "name": "Matrix",
+  "description": "Classic Matrix digital rain effect",
+  "license_required": "professional",
+  "colors": {
+    "background": "#000000",
+    "surface": "#001100",
+    "accent": "#00ff00",
+    "text": "#00ff00",
+    "success": "#00ff41",
+    "warning": "#ffff00",
+    "error": "#ff0000"
+  },
+  "animations": {
+    "matrix_rain": true,
+    "neon_glow": false,
+    "terminal_effects": true
+  },
+  "fonts": {
+    "primary": "Neuropol X",
+    "monospace": "Courier New"
+  }
+}

@@ -1,328 +1,377 @@
 # app/widgets/enhanced_help_panel.py
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
-                            QPushButton, QTextEdit, QComboBox)
-from PyQt6.QtCore import Qt
+                             QPushButton, QTextEdit, QTabWidget, QScrollArea,
+                             QFrame, QSplitter)
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QFont, QPixmap, QIcon
 
 class EnhancedHelpPanel(QWidget):
-    """Enhanced help panel with detailed tool information and examples"""
+    """Enhanced help panel with tool-specific documentation"""
+    
+    closed = pyqtSignal()
     
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.current_tool = None
+        self.setWindowTitle("Hackulator Help")
+        self.setWindowFlags(Qt.WindowType.Window)
+        self.resize(1000, 700)
+        
         self.setup_ui()
-        self.setup_tool_data()
+        self.load_help_content()
         
     def setup_ui(self):
+        """Setup the UI"""
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 10, 10, 10)
         
-        # Header with tool selector
+        # Header
         header_layout = QHBoxLayout()
-        header = QLabel("🛠️ Tool Help & Documentation")
-        header.setStyleSheet("color: #64C8FF; font-size: 14pt; font-weight: bold;")
         
-        self.tool_selector = QComboBox()
-        self.tool_selector.setStyleSheet("""
-            QComboBox {
-                background-color: rgba(50, 50, 50, 150);
-                color: #DCDCDC;
-                border: 1px solid #555;
-                border-radius: 4px;
-                padding: 5px;
-                min-width: 150px;
-            }
-        """)
-        self.tool_selector.currentTextChanged.connect(self.on_tool_changed)
+        title_label = QLabel("Hackulator Help & Documentation")
+        title_label.setStyleSheet("font-size: 18pt; font-weight: bold; color: #64C8FF;")
+        header_layout.addWidget(title_label)
         
-        header_layout.addWidget(header)
         header_layout.addStretch()
-        header_layout.addWidget(QLabel("Select Tool:"))
-        header_layout.addWidget(self.tool_selector)
         
-        # Main content area
-        self.content_area = QTextEdit()
-        self.content_area.setReadOnly(True)
-        self.content_area.setStyleSheet("""
-            QTextEdit {
-                background-color: rgba(0, 0, 0, 150);
-                border: 1px solid #555;
-                border-radius: 5px;
-                color: #DCDCDC;
-                font-size: 11pt;
-                padding: 10px;
-            }
-        """)
-        
-        # Close button
-        close_layout = QHBoxLayout()
-        close_button = QPushButton("✖️ Close")
-        close_button.clicked.connect(self.hide)
-        close_button.setStyleSheet("""
-            QPushButton {
-                background-color: rgba(255, 100, 100, 150);
-                color: white;
-                border: none;
-                border-radius: 4px;
-                padding: 8px 16px;
-                font-size: 10pt;
-            }
-            QPushButton:hover {
-                background-color: rgba(255, 100, 100, 200);
-            }
-        """)
-        
-        close_layout.addStretch()
-        close_layout.addWidget(close_button)
+        close_button = QPushButton("Close")
+        close_button.clicked.connect(self.close)
+        header_layout.addWidget(close_button)
         
         layout.addLayout(header_layout)
-        layout.addWidget(self.content_area)
-        layout.addLayout(close_layout)
         
-    def setup_tool_data(self):
-        """Setup comprehensive tool information"""
-        self.tool_data = {
-            "DNS Enumeration": {
-                "purpose": "Discover subdomains, DNS records, and perform zone transfers",
-                "use_cases": [
-                    "Subdomain discovery for attack surface mapping",
-                    "DNS record enumeration (A, CNAME, MX, TXT, NS)",
-                    "Reverse DNS lookups for IP ranges",
+        # Main content area
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        
+        # Left panel - Tool list
+        self.tool_list = QWidget()
+        self.tool_list.setFixedWidth(250)
+        self.setup_tool_list()
+        splitter.addWidget(self.tool_list)
+        
+        # Right panel - Help content
+        self.help_tabs = QTabWidget()
+        self.setup_help_tabs()
+        splitter.addWidget(self.help_tabs)
+        
+        layout.addWidget(splitter)
+        
+    def setup_tool_list(self):
+        """Setup the tool list"""
+        layout = QVBoxLayout(self.tool_list)
+        
+        list_label = QLabel("Tools")
+        list_label.setStyleSheet("font-size: 14pt; font-weight: bold; margin-bottom: 10px;")
+        layout.addWidget(list_label)
+        
+        # Tool buttons
+        tools = [
+            ("DNS Enumeration", "dns"),
+            ("Port Scanning", "port"),
+            ("SMB Enumeration", "smb"),
+            ("SMTP Enumeration", "smtp"),
+            ("SNMP Enumeration", "snmp"),
+            ("HTTP Enumeration", "http"),
+            ("API Enumeration", "api"),
+            ("RPC Enumeration", "rpc"),
+            ("LDAP Enumeration", "ldap"),
+            ("Database Enumeration", "db")
+        ]
+        
+        for tool_name, tool_id in tools:
+            button = QPushButton(tool_name)
+            button.setStyleSheet("""
+                QPushButton {
+                    text-align: left;
+                    padding: 8px;
+                    border: 1px solid #444;
+                    background-color: #2a2a2a;
+                    color: #FFFFFF;
+                }
+                QPushButton:hover {
+                    background-color: #3a3a3a;
+                    border-color: #64C8FF;
+                }
+                QPushButton:pressed {
+                    background-color: #1a1a1a;
+                }
+            """)
+            button.clicked.connect(lambda checked, tid=tool_id: self.show_tool_help(tid))
+            layout.addWidget(button)
+        
+        layout.addStretch()
+        
+    def setup_help_tabs(self):
+        """Setup help content tabs"""
+        # Overview tab
+        overview_widget = QScrollArea()
+        overview_content = QTextEdit()
+        overview_content.setReadOnly(True)
+        overview_content.setHtml(self.get_overview_content())
+        overview_widget.setWidget(overview_content)
+        self.help_tabs.addTab(overview_widget, "Overview")
+        
+        # Tool Help tab
+        self.tool_help_widget = QScrollArea()
+        self.tool_help_content = QTextEdit()
+        self.tool_help_content.setReadOnly(True)
+        self.tool_help_widget.setWidget(self.tool_help_content)
+        self.help_tabs.addTab(self.tool_help_widget, "Tool Help")
+        
+        # Keyboard Shortcuts tab
+        shortcuts_widget = QScrollArea()
+        shortcuts_content = QTextEdit()
+        shortcuts_content.setReadOnly(True)
+        shortcuts_content.setHtml(self.get_shortcuts_content())
+        shortcuts_widget.setWidget(shortcuts_content)
+        self.help_tabs.addTab(shortcuts_widget, "Shortcuts")
+        
+        # Tips & Tricks tab
+        tips_widget = QScrollArea()
+        tips_content = QTextEdit()
+        tips_content.setReadOnly(True)
+        tips_content.setHtml(self.get_tips_content())
+        tips_widget.setWidget(tips_content)
+        self.help_tabs.addTab(tips_widget, "Tips & Tricks")
+        
+    def load_help_content(self):
+        """Load help content"""
+        self.help_data = {
+            "dns": {
+                "title": "DNS Enumeration",
+                "description": "Comprehensive DNS reconnaissance and subdomain discovery",
+                "features": [
+                    "Subdomain enumeration with wordlists",
+                    "Bruteforce subdomain discovery",
+                    "Multiple DNS record types (A, CNAME, MX, TXT, NS, SRV)",
+                    "PTR record enumeration for IP ranges",
                     "Zone transfer attempts",
-                    "Wildcard DNS detection"
+                    "Custom DNS server support"
                 ],
-                "commands": [
-                    "dnsrecon -d example.com -t std",
-                    "dnsrecon -d example.com -D subdomain_list.txt -t brt",
-                    "dnsenum example.com",
-                    "dig axfr domain.com @<DNS IP>",
-                    "for ip in $(cat wordlist.txt); do host $ip.example.com; done"
+                "usage": [
+                    "1. Enter target domain (e.g., example.com)",
+                    "2. Select record types to query",
+                    "3. Choose enumeration method (Wordlist or Bruteforce)",
+                    "4. Configure DNS server (optional)",
+                    "5. Click Run to start enumeration"
                 ],
-                "options": {
-                    "Record Types": "A, AAAA, CNAME, MX, TXT, NS, PTR",
-                    "Methods": "Wordlist enumeration, Bruteforce generation",
-                    "DNS Server": "Custom DNS server (optional)",
-                    "Wordlists": "Custom subdomain wordlists"
-                }
+                "tips": [
+                    "Use different wordlists for different target types",
+                    "PTR enumeration works best with IP ranges",
+                    "SRV records reveal service information",
+                    "Zone transfers are rare but valuable"
+                ]
             },
-            "Port Scanning": {
-                "purpose": "Discover open ports and running services on target systems",
-                "use_cases": [
-                    "Network reconnaissance and service discovery",
-                    "TCP connect scans for service identification",
-                    "Network sweeps for host discovery",
-                    "Banner grabbing and service fingerprinting",
-                    "Vulnerability assessment preparation"
+            "port": {
+                "title": "Port Scanning",
+                "description": "Network port discovery and service identification",
+                "features": [
+                    "TCP connect and SYN stealth scans",
+                    "UDP port scanning",
+                    "Service version detection",
+                    "OS fingerprinting",
+                    "Network sweep capabilities",
+                    "Custom port ranges"
                 ],
-                "commands": [
-                    "nmap -sS <target>",
-                    "nmap -sT <target>",
-                    "nmap -sV -sT -A <target>",
-                    "nmap -v -sn x.x.x.1-254 -oG ping-sweep.txt",
-                    "nmap -sT -A --top-ports=20 x.x.x.1-254"
+                "usage": [
+                    "1. Enter target IP or range",
+                    "2. Select scan type",
+                    "3. Configure port range",
+                    "4. Enable additional options (OS/Service detection)",
+                    "5. Start scan"
                 ],
-                "options": {
-                    "Scan Types": "TCP Connect, Network Sweep",
-                    "Port Ranges": "Custom ports, common ports, top 100/1000",
-                    "Service Detection": "Banner grabbing and version detection",
-                    "Threading": "Concurrent scanning for performance"
-                }
+                "tips": [
+                    "SYN scans are stealthier but require privileges",
+                    "UDP scans take longer but find different services",
+                    "Service detection provides valuable information",
+                    "Use timing options to avoid detection"
+                ]
             },
-            "SMB Enumeration": {
-                "purpose": "Enumerate SMB shares, users, and detect SMB vulnerabilities",
-                "use_cases": [
-                    "SMB share discovery and enumeration",
+            "smb": {
+                "title": "SMB Enumeration",
+                "description": "Windows SMB/NetBIOS service enumeration",
+                "features": [
+                    "Share enumeration and permissions",
+                    "OS and version detection",
                     "NetBIOS information gathering",
-                    "OS fingerprinting via SMB",
-                    "Vulnerability scanning (MS17-010, MS08-067)",
-                    "Anonymous and authenticated enumeration"
+                    "Vulnerability scanning (MS17-010, etc.)",
+                    "Anonymous and authenticated access",
+                    "Domain information extraction"
                 ],
-                "commands": [
-                    "nmap --script=smb2-security-mode.nse -p139,445 <target>",
-                    "nmap -p139,445 --script=smb-enum* <target>",
-                    "smbclient -L \\\\\\\\<target ip>",
-                    "crackmapexec smb <target> -u '' -p '' --shares",
-                    "nmap --script=smb-vulns*.nse -p139,445 <target>"
+                "usage": [
+                    "1. Enter target IP or hostname",
+                    "2. Select scan type",
+                    "3. Configure authentication (if needed)",
+                    "4. Run enumeration"
                 ],
-                "options": {
-                    "Scan Types": "Basic Info, Share Enumeration, Vulnerability Scan",
-                    "Authentication": "Anonymous or credential-based access",
-                    "Ports": "139 (NetBIOS), 445 (SMB)",
-                    "Tools": "smbclient, nbtscan, nmap SMB scripts"
-                }
-            },
-            "SMTP Enumeration": {
-                "purpose": "Enumerate valid email addresses and users via SMTP",
-                "use_cases": [
-                    "User enumeration for password attacks",
-                    "Email address validation",
-                    "Mail server reconnaissance",
-                    "SMTP service fingerprinting",
-                    "Phishing campaign preparation"
-                ],
-                "commands": [
-                    "nc -nv <target> 25",
-                    "VRFY root",
-                    "EXPN <username>",
-                    "RCPT TO:<user@domain.com>",
-                    "smtp-user-enum -M VRFY -U users.txt -t <target>"
-                ],
-                "options": {
-                    "Methods": "VRFY, EXPN, RCPT TO with automatic fallback",
-                    "Port": "25 (default), custom ports supported",
-                    "Domain": "Target domain for RCPT TO testing",
-                    "Wordlists": "Username lists for enumeration"
-                }
-            },
-            "SNMP Enumeration": {
-                "purpose": "Extract system information via SNMP community strings",
-                "use_cases": [
-                    "System information gathering",
-                    "Network device enumeration",
-                    "User account discovery",
-                    "Process and software enumeration",
-                    "Network interface discovery"
-                ],
-                "commands": [
-                    "snmpwalk -c public -v1 <target>",
-                    "snmpwalk -c public -v1 <target> 1.3.6.1.4.1.77.1.2.25",
-                    "onesixtyone -c community.txt <target>",
-                    "snmp-check <target>",
-                    "nmap -sU --script snmp-* <target>"
-                ],
-                "options": {
-                    "Versions": "SNMPv1, v2c, v3 support",
-                    "Communities": "public, private, custom strings",
-                    "Scan Types": "Basic Info, Users, Processes, Software, Network",
-                    "MIB Objects": "Specific OID queries for targeted information"
-                }
-            },
-            "HTTP Enumeration": {
-                "purpose": "Web server fingerprinting and directory enumeration",
-                "use_cases": [
-                    "Web server identification and versioning",
-                    "Directory and file discovery",
-                    "SSL/TLS certificate analysis",
-                    "Security header assessment",
-                    "Technology stack detection"
-                ],
-                "commands": [
-                    "nmap --script http-headers <target>",
-                    "gobuster dir -u http://<target> -w wordlist.txt",
-                    "nikto -h <target>",
-                    "dirb http://<target> wordlist.txt",
-                    "whatweb <target>"
-                ],
-                "options": {
-                    "Scan Types": "Basic Fingerprint, Directory Enum, Nmap Scripts, Nikto",
-                    "Extensions": "File extensions (.php, .asp, .jsp, etc.)",
-                    "Wordlists": "Directory and file wordlists",
-                    "SSL Analysis": "Certificate details and cipher analysis"
-                }
-            },
-            "API Enumeration": {
-                "purpose": "Discover and test API endpoints for security vulnerabilities",
-                "use_cases": [
-                    "REST API endpoint discovery",
-                    "GraphQL schema enumeration",
-                    "HTTP method testing",
-                    "Authentication bypass attempts",
-                    "API vulnerability assessment"
-                ],
-                "commands": [
-                    "gobuster dir -u http://<target>/api -w api-wordlist.txt",
-                    "curl -X OPTIONS http://<target>/api/",
-                    "wfuzz -c -z file,wordlist.txt http://<target>/api/FUZZ",
-                    "ffuf -w wordlist.txt -u http://<target>/api/FUZZ",
-                    "arjun -u http://<target>/api/endpoint"
-                ],
-                "options": {
-                    "Scan Types": "Basic Discovery, Gobuster Enum, HTTP Methods, Auth Bypass",
-                    "API Types": "REST, GraphQL, Swagger/OpenAPI",
-                    "Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-                    "Wordlists": "API-specific endpoint wordlists"
-                }
+                "tips": [
+                    "Try anonymous access first",
+                    "Check for null sessions",
+                    "Look for writable shares",
+                    "Enumerate users and groups when possible"
+                ]
             }
         }
         
-        # Populate tool selector
-        self.tool_selector.addItems(list(self.tool_data.keys()))
-        self.tool_selector.setCurrentText("DNS Enumeration")
-        self.on_tool_changed("DNS Enumeration")
-        
-    def on_tool_changed(self, tool_name):
-        """Update content when tool selection changes"""
-        if tool_name in self.tool_data:
-            self.current_tool = tool_name
-            self.update_content(self.tool_data[tool_name])
+    def show_tool_help(self, tool_id):
+        """Show help for specific tool"""
+        if tool_id in self.help_data:
+            help_info = self.help_data[tool_id]
             
-    def update_content(self, tool_info):
-        """Update the content area with tool information"""
-        html_content = f"""
-        <h2 style='color: #64C8FF; border-bottom: 2px solid #64C8FF; padding-bottom: 5px;'>
-            {self.current_tool}
-        </h2>
-        
-        <h3 style='color: #00FF41; margin-top: 20px;'>🎯 Purpose</h3>
-        <p style='color: #DCDCDC; margin-left: 15px; line-height: 1.4;'>
-            {tool_info['purpose']}
-        </p>
-        
-        <h3 style='color: #00FF41; margin-top: 20px;'>📋 Common Use Cases</h3>
-        <ul style='color: #DCDCDC; margin-left: 15px; line-height: 1.4;'>
-        """
-        
-        for use_case in tool_info['use_cases']:
-            html_content += f"<li>{use_case}</li>"
+            html_content = f"""
+            <h2 style="color: #64C8FF;">{help_info['title']}</h2>
+            <p style="font-size: 12pt; margin-bottom: 20px;">{help_info['description']}</p>
             
-        html_content += """
+            <h3 style="color: #87CEEB;">Features</h3>
+            <ul>
+            """
+            
+            for feature in help_info['features']:
+                html_content += f"<li>{feature}</li>"
+            
+            html_content += """
+            </ul>
+            
+            <h3 style="color: #87CEEB;">Usage</h3>
+            <ol>
+            """
+            
+            for step in help_info['usage']:
+                html_content += f"<li>{step}</li>"
+            
+            html_content += """
+            </ol>
+            
+            <h3 style="color: #87CEEB;">Tips</h3>
+            <ul>
+            """
+            
+            for tip in help_info['tips']:
+                html_content += f"<li>{tip}</li>"
+            
+            html_content += "</ul>"
+            
+            self.tool_help_content.setHtml(html_content)
+            self.help_tabs.setCurrentIndex(1)  # Switch to Tool Help tab
+        
+    def get_overview_content(self):
+        """Get overview content"""
+        return """
+        <h2 style="color: #64C8FF;">Hackulator Overview</h2>
+        <p>Hackulator is a comprehensive penetration testing toolkit with advanced enumeration capabilities.</p>
+        
+        <h3 style="color: #87CEEB;">Main Features</h3>
+        <ul>
+            <li><strong>DNS Enumeration:</strong> Subdomain discovery and DNS reconnaissance</li>
+            <li><strong>Port Scanning:</strong> Network service discovery and identification</li>
+            <li><strong>SMB Enumeration:</strong> Windows share and service enumeration</li>
+            <li><strong>SMTP Enumeration:</strong> Email server user enumeration</li>
+            <li><strong>SNMP Enumeration:</strong> Network device information gathering</li>
+            <li><strong>HTTP Enumeration:</strong> Web server fingerprinting and directory discovery</li>
+            <li><strong>API Enumeration:</strong> REST API endpoint discovery</li>
+            <li><strong>Advanced Reporting:</strong> Professional PDF and HTML reports</li>
         </ul>
         
-        <h3 style='color: #00FF41; margin-top: 20px;'>⚙️ Configuration Options</h3>
-        <table style='width: 100%; border-collapse: collapse; margin-left: 15px;'>
+        <h3 style="color: #87CEEB;">Getting Started</h3>
+        <ol>
+            <li>Select an enumeration tool from the left panel</li>
+            <li>Enter your target (IP, domain, or range)</li>
+            <li>Configure scan options</li>
+            <li>Click Run to start the scan</li>
+            <li>Export results when complete</li>
+        </ol>
+        
+        <h3 style="color: #87CEEB;">Best Practices</h3>
+        <ul>
+            <li>Always ensure you have permission to scan targets</li>
+            <li>Start with passive reconnaissance</li>
+            <li>Use appropriate timing to avoid detection</li>
+            <li>Document all findings thoroughly</li>
+            <li>Verify results with multiple tools</li>
+        </ul>
         """
         
-        for option, description in tool_info['options'].items():
-            html_content += f"""
-            <tr>
-                <td style='color: #87CEEB; font-weight: bold; padding: 5px; width: 150px; vertical-align: top;'>
-                    {option}:
-                </td>
-                <td style='color: #DCDCDC; padding: 5px;'>{description}</td>
+    def get_shortcuts_content(self):
+        """Get keyboard shortcuts content"""
+        return """
+        <h2 style="color: #64C8FF;">Keyboard Shortcuts</h2>
+        
+        <h3 style="color: #87CEEB;">Global Shortcuts</h3>
+        <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse;">
+            <tr style="background-color: #2a2a2a;">
+                <th>Shortcut</th>
+                <th>Action</th>
             </tr>
-            """
-            
-        html_content += """
+            <tr><td>F1</td><td>Show this help panel</td></tr>
+            <tr><td>F5</td><td>Run current scan</td></tr>
+            <tr><td>F11</td><td>Toggle fullscreen</td></tr>
+            <tr><td>Ctrl+E</td><td>Export results</td></tr>
+            <tr><td>Ctrl+L</td><td>Clear output</td></tr>
+            <tr><td>Ctrl+M</td><td>Minimize to tray</td></tr>
+            <tr><td>Ctrl+Q</td><td>Quit application</td></tr>
+            <tr><td>Ctrl+T</td><td>Open theme selector</td></tr>
+            <tr><td>Escape</td><td>Go back/Cancel</td></tr>
         </table>
         
-        <h3 style='color: #00FF41; margin-top: 20px;'>💻 Example Commands</h3>
-        <div style='background-color: rgba(0, 0, 0, 200); border: 1px solid #555; border-radius: 5px; padding: 10px; margin-left: 15px;'>
+        <h3 style="color: #87CEEB;">Enumeration Shortcuts</h3>
+        <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse;">
+            <tr style="background-color: #2a2a2a;">
+                <th>Shortcut</th>
+                <th>Action</th>
+            </tr>
+            <tr><td>Enter</td><td>Start scan (when in input field)</td></tr>
+            <tr><td>Ctrl+Shift+R</td><td>Show running scans</td></tr>
+            <tr><td>Ctrl+Shift+S</td><td>Open session manager</td></tr>
+            <tr><td>Ctrl+R</td><td>Generate reports</td></tr>
+        </table>
         """
         
-        for i, command in enumerate(tool_info['commands'], 1):
-            html_content += f"""
-            <p style='color: #90EE90; font-family: monospace; margin: 5px 0;'>
-                <span style='color: #FFD700;'>{i}.</span> {command}
-            </p>
-            """
-            
-        html_content += """
-        </div>
+    def get_tips_content(self):
+        """Get tips and tricks content"""
+        return """
+        <h2 style="color: #64C8FF;">Tips & Tricks</h2>
         
-        <div style='background-color: rgba(255, 165, 0, 50); border: 1px solid #FFA500; border-radius: 5px; padding: 10px; margin: 20px 15px;'>
-            <p style='color: #FFA500; font-weight: bold; margin: 0;'>⚠️ Important Notes:</p>
-            <ul style='color: #DCDCDC; margin: 5px 0 0 20px;'>
-                <li>Always ensure you have proper authorization before scanning</li>
-                <li>Use rate limiting to avoid overwhelming target systems</li>
-                <li>Some tools may require additional software installation</li>
-                <li>Results may vary based on target configuration and security measures</li>
-            </ul>
-        </div>
+        <h3 style="color: #87CEEB;">DNS Enumeration Tips</h3>
+        <ul>
+            <li><strong>Wordlist Selection:</strong> Use targeted wordlists for better results</li>
+            <li><strong>Bruteforce Length:</strong> Start with 3-4 characters, increase if needed</li>
+            <li><strong>Record Types:</strong> Always check SRV records for service discovery</li>
+            <li><strong>PTR Records:</strong> Use IP ranges like 192.168.1.0 for reverse lookups</li>
+        </ul>
+        
+        <h3 style="color: #87CEEB;">Port Scanning Tips</h3>
+        <ul>
+            <li><strong>Scan Types:</strong> Use SYN scans for stealth, TCP connect for reliability</li>
+            <li><strong>Timing:</strong> Slower scans avoid detection but take longer</li>
+            <li><strong>UDP Scanning:</strong> Takes time but finds different services</li>
+            <li><strong>Service Detection:</strong> Provides valuable version information</li>
+        </ul>
+        
+        <h3 style="color: #87CEEB;">SMB Enumeration Tips</h3>
+        <ul>
+            <li><strong>Anonymous Access:</strong> Try null sessions first</li>
+            <li><strong>Share Permissions:</strong> Look for writable shares</li>
+            <li><strong>Vulnerabilities:</strong> Check for MS17-010 and other SMB exploits</li>
+            <li><strong>Domain Info:</strong> Extract user and group information</li>
+        </ul>
+        
+        <h3 style="color: #87CEEB;">General Tips</h3>
+        <ul>
+            <li><strong>Multiple Views:</strong> Use text, graph, and table views for different perspectives</li>
+            <li><strong>Export Options:</strong> Choose appropriate format for your needs</li>
+            <li><strong>Session Management:</strong> Organize scans by project or target</li>
+            <li><strong>Advanced Reporting:</strong> Generate professional reports for clients</li>
+            <li><strong>Themes:</strong> Customize the interface to your preference</li>
+        </ul>
+        
+        <h3 style="color: #87CEEB;">Performance Tips</h3>
+        <ul>
+            <li><strong>Threading:</strong> Adjust thread count based on target capacity</li>
+            <li><strong>Timeouts:</strong> Increase timeouts for slow networks</li>
+            <li><strong>Rate Limiting:</strong> Use slower rates to avoid detection</li>
+            <li><strong>Memory Usage:</strong> Monitor memory usage during large scans</li>
+        </ul>
         """
         
-        self.content_area.setHtml(html_content)
-        
-    def show_tool_help(self, tool_name):
-        """Show help for specific tool"""
-        if tool_name in self.tool_data:
-            self.tool_selector.setCurrentText(tool_name)
-            self.show()
+    def closeEvent(self, event):
+        """Handle close event"""
+        self.closed.emit()
+        event.accept()

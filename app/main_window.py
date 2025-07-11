@@ -5,7 +5,8 @@ from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtGui import QFontDatabase, QAction, QKeySequence
 from PyQt6.QtWidgets import QApplication
 
-from app.core.unified_theme_manager import get_theme_manager
+from app.ui.themes.enhanced_theme_manager import get_enhanced_theme_manager
+from app.ui.animations.background_effects import BackgroundEffectManager
 from app.widgets.animated_stacked_widget import AnimatedStackedWidget
 from app.pages.home_page import HomePage
 from app.pages.enumeration_page import EnumerationPage
@@ -35,8 +36,12 @@ class MainWindow(QMainWindow):
         self.setWindowFlags(Qt.WindowType.Window)
         
         self.load_custom_font()
-        self.theme_manager = get_theme_manager(self.project_root)
+        self.theme_manager = get_enhanced_theme_manager(self.project_root)
         self.theme_manager.theme_changed.connect(self.on_theme_changed)
+        self.theme_manager.theme_locked.connect(self.show_theme_upgrade_dialog)
+        
+        # Initialize background effects manager
+        self.background_effects = BackgroundEffectManager(self)
         
         # Create menu bar
         self.create_menu_bar()
@@ -213,7 +218,16 @@ class MainWindow(QMainWindow):
         # Theme submenu
         theme_menu = view_menu.addMenu('&Themes')
         
-        # Quick theme actions
+        # Theme selector action
+        theme_selector_action = QAction('&Theme Selector...', self)
+        theme_selector_action.setShortcut(QKeySequence('Ctrl+T'))
+        theme_selector_action.setStatusTip('Open enhanced theme selector')
+        theme_selector_action.triggered.connect(self.open_theme_selector)
+        theme_menu.addAction(theme_selector_action)
+        
+        theme_menu.addSeparator()
+        
+        # Quick theme actions (available themes only)
         for theme_key, theme_name in self.theme_manager.get_available_themes():
             action = QAction(f'&{theme_name}', self)
             action.triggered.connect(lambda checked, key=theme_key: self.theme_manager.set_theme(key))
@@ -322,6 +336,12 @@ class MainWindow(QMainWindow):
         forensics_action.setStatusTip('Log clearing and evasion techniques')
         forensics_action.triggered.connect(self.open_anti_forensics)
         pro_menu.addAction(forensics_action)
+        
+        # VPN action
+        vpn_action = QAction('&VPN Connection', self)
+        vpn_action.setStatusTip('Manage VPN connections')
+        vpn_action.triggered.connect(self.open_vpn_manager)
+        pro_menu.addAction(vpn_action)
         
         # Help menu
         help_menu = menubar.addMenu('&Help')
@@ -546,6 +566,10 @@ class MainWindow(QMainWindow):
             # Update status bar with current size
             size = event.size()
             self.status_bar.showMessage(f"Window size: {size.width()}x{size.height()}")
+            
+            # Resize background effects
+            if hasattr(self, 'background_effects'):
+                self.background_effects.resize_effect(size)
             
     def update_status_bar(self, message):
         """Update status bar with message from child widgets"""
@@ -917,7 +941,63 @@ class MainWindow(QMainWindow):
         self.status_bar.showMessage("Anti-Forensics opened")
         dialog.exec()
     
+    def open_vpn_manager(self):
+        """Open VPN connection manager"""
+        from app.widgets.vpn_widget import VPNWidget
+        from PyQt6.QtWidgets import QDialog, QVBoxLayout
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("VPN Connection Manager")
+        dialog.setModal(True)
+        dialog.resize(600, 500)
+        
+        layout = QVBoxLayout(dialog)
+        vpn_widget = VPNWidget(dialog)
+        layout.addWidget(vpn_widget)
+        
+        self.status_bar.showMessage("VPN Manager opened")
+        dialog.exec()
+    
     def on_theme_changed(self, theme_name):
         """Handle theme change event"""
-        theme_display_name = self.theme_manager.get_theme_colors(theme_name)['name']
+        theme_display_name = self.theme_manager.get_theme_colors(theme_name).get('name', theme_name)
         self.status_bar.showMessage(f"Theme changed to: {theme_display_name}")
+        
+        # Update background effects based on theme
+        animations = self.theme_manager.get_theme_animations(theme_name)
+        if animations.get('matrix_rain'):
+            self.background_effects.set_effect('matrix_rain')
+        elif animations.get('neon_glow'):
+            self.background_effects.set_effect('neon_glow')
+        elif animations.get('wave_effects'):
+            self.background_effects.set_effect('wave_effects')
+        elif animations.get('terminal_effects'):
+            self.background_effects.set_effect('terminal_effects')
+        elif animations.get('particle_field'):
+            self.background_effects.set_effect('particle_field')
+        else:
+            self.background_effects.remove_effect()
+    
+    def open_theme_selector(self):
+        """Open enhanced theme selector dialog"""
+        from app.widgets.enhanced_theme_selector import ThemeSelectionDialog
+        
+        dialog = ThemeSelectionDialog(self.theme_manager, self)
+        dialog.exec()
+        
+    def show_theme_upgrade_dialog(self, theme_name, message):
+        """Show theme upgrade dialog"""
+        from PyQt6.QtWidgets import QMessageBox
+        
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle("Premium Theme")
+        msg_box.setIcon(QMessageBox.Icon.Information)
+        msg_box.setText(f"Theme '{theme_name}' is locked.")
+        msg_box.setInformativeText(message)
+        
+        upgrade_btn = msg_box.addButton("Upgrade License", QMessageBox.ButtonRole.AcceptRole)
+        msg_box.addButton("Cancel", QMessageBox.ButtonRole.RejectRole)
+        
+        result = msg_box.exec()
+        if msg_box.clickedButton() == upgrade_btn:
+            self.open_license_manager()
