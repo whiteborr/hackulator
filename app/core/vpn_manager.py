@@ -35,14 +35,8 @@ class VPNManager(QObject):
             parser = OVPNConfigParser(config_file)
             cert_files = parser.extract_embedded_blocks()
 
-            # Load cert, private key, and CA cert
-            from app.core.openvpn_tls_correct import load_cert_key
-            cert, private_key, ca_cert = load_cert_key(
-                cert_files['cert'],
-                cert_files['key'],
-                cert_files['ca']
-            )
-            print("Loaded certs successfully!")
+            # Certificates are handled by official OpenVPN client
+            print("Using official OpenVPN client for certificate handling")
 
             # Example hardcoded values (you should get these dynamically!)
             server_ip = "38.46.226.73"
@@ -51,15 +45,15 @@ class VPNManager(QObject):
             command_id = 0x1178636e
             payload_key = 0x104bed3b
 
-            # Create OpenVPNClient with correct arguments
-            self.openvpn_client = OpenVPNClient(
-                server_ip=server_ip,
-                server_port=server_port,
-                session_id=session_id,
-                command_id=command_id,
-                payload_key=payload_key,
-                private_key=private_key
+            # Create OpenVPN config object
+            from app.core.openvpn_client import OpenVPNConfig
+            config = OpenVPNConfig(
+                remote_host=server_ip,
+                remote_port=server_port
             )
+            
+            # Create OpenVPNClient with config file path
+            self.openvpn_client = OpenVPNClient(config_file)
             print(f"Using command_id: {hex(command_id)}, payload_key: {hex(payload_key)}")
 
             # Start connection in separate thread
@@ -142,9 +136,12 @@ verb 3
         """Run the Python OpenVPN client"""
         try:
             # Attempt connection
-            self.openvpn_client.run_handshake()
-            self.is_connected = True
-            self.connection_status_changed.emit("connected", "VPN handshake completed")
+            success = self.openvpn_client.connect()
+            if success:
+                self.is_connected = True
+                self.connection_status_changed.emit("connected", "VPN handshake completed")
+            else:
+                raise Exception("Handshake failed")
             
             # Keep connection alive for a while
             time.sleep(30)

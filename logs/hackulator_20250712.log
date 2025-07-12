@@ -1,0 +1,95 @@
+2025-07-12 01:17:21 - hackulator - WARNING - Loaded license is invalid: License expired
+2025-07-12 01:17:21 - hackulator - INFO - Using default configuration
+2025-07-12 01:17:22 - hackulator - INFO - Application starting...
+2025-07-12 01:17:55 - hackulator - ERROR - OpenVPN connection failed: OpenVPNClient.__init__() missing 1 required positional argument: 'config'
+2025-07-12 01:19:16 - hackulator - WARNING - Loaded license is invalid: License expired
+2025-07-12 01:19:16 - hackulator - INFO - Using default configuration
+2025-07-12 01:19:16 - hackulator - INFO - Application starting...
+2025-07-12 01:19:24 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 01:20:15 - hackulator - WARNING - Loaded license is invalid: License expired
+2025-07-12 01:20:15 - hackulator - INFO - Using default configuration
+2025-07-12 01:20:15 - hackulator - INFO - Application starting...
+2025-07-12 01:20:22 - hackulator - INFO - License saved successfully
+2025-07-12 01:21:46 - hackulator - INFO - License saved successfully
+2025-07-12 01:21:57 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 01:22:41 - hackulator - INFO - License saved successfully
+2025-07-12 01:22:41 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 01:22:41 - hackulator - INFO - Using default configuration
+2025-07-12 01:22:42 - hackulator - INFO - Application starting...
+2025-07-12 01:22:48 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 01:24:09 - hackulator - INFO - License saved successfully
+2025-07-12 01:24:09 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 01:24:09 - hackulator - INFO - Using default configuration
+2025-07-12 01:24:09 - hackulator - INFO - Application starting...
+2025-07-12 01:24:15 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 12:10:25 - hackulator - INFO - License saved successfully
+2025-07-12 12:10:25 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 12:10:25 - hackulator - INFO - Using default configuration
+2025-07-12 12:10:25 - hackulator - INFO - Application starting...
+2025-07-12 12:10:34 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 12:11:14 - hackulator - INFO - License saved successfully
+2025-07-12 12:11:14 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 12:11:14 - hackulator - INFO - Using default configuration
+2025-07-12 12:11:14 - hackulator - INFO - Application starting...
+2025-07-12 12:15:59 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 12:22:01 - hackulator - INFO - License saved successfully
+2025-07-12 12:22:01 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 12:22:01 - hackulator - INFO - Using default configuration
+2025-07-12 12:22:01 - hackulator - INFO - Application starting...
+2025-07-12 12:22:08 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 12:26:06 - hackulator - INFO - License saved successfully
+2025-07-12 12:26:06 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 12:26:06 - hackulator - INFO - Using default configuration
+2025-07-12 12:26:06 - hackulator - INFO - Application starting...
+2025-07-12 12:26:21 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 12:29:33 - hackulator - INFO - License saved successfully
+2025-07-12 12:29:33 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 12:29:33 - hackulator - INFO - Using default configuration
+2025-07-12 12:29:33 - hackulator - INFO - Application starting...
+2025-07-12 12:29:39 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 12:30:58 - hackulator - INFO - License saved successfully
+2025-07-12 12:30:58 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 12:30:58 - hackulator - INFO - Using default configuration
+2025-07-12 12:30:58 - hackulator - INFO - Application starting...
+2025-07-12 12:31:03 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 12:39:30 - hackulator - INFO - License saved successfully
+2025-07-12 12:39:30 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 12:39:30 - hackulator - INFO - Using default configuration
+2025-07-12 12:39:30 - hackulator - INFO - Application starting...
+2025-07-12 12:39:37 - hackulator - ERROR - OpenVPN connection failed: cannot import name 'OpenVPNConfig' from 'app.core.openvpn_client' (C:\Users\allie\Coding Projects\hackulator\app\core\openvpn_client.py)
+2025-07-12 12:45:05 - hackulator - INFO - License saved successfully
+2025-07-12 12:45:05 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 12:45:05 - hackulator - INFO - Using default configuration
+2025-07-12 12:45:05 - hackulator - INFO - Application starting...
+2025-07-12 12:45:12 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 12:46:08 - hackulator - INFO - License saved successfully
+2025-07-12 12:46:08 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 12:46:08 - hackulator - INFO - Using default configuration
+2025-07-12 12:46:08 - hackulator - INFO - Application starting...
+2025-07-12 12:46:14 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 12:48:16 - hackulator - INFO - License saved successfully
+2025-07-12 12:48:16 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 12:48:16 - hackulator - INFO - Using default configuration
+2025-07-12 12:48:16 - hackulator - INFO - Application starting...
+2025-07-12 12:48:22 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 13:00:17 - hackulator - INFO - Using default configuration
+2025-07-12 13:00:17 - hackulator - INFO - Application starting...
+2025-07-12 13:01:53 - hackulator - INFO - Using default configuration
+2025-07-12 13:01:53 - hackulator - INFO - Application starting...
+2025-07-12 13:01:53 - hackulator - INFO - License saved successfully
+2025-07-12 13:01:53 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 13:06:02 - hackulator - INFO - Using default configuration
+2025-07-12 13:06:02 - hackulator - INFO - Application starting...
+2025-07-12 13:06:02 - hackulator - INFO - License saved successfully
+2025-07-12 13:06:02 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 13:06:38 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 13:07:49 - hackulator - INFO - Using default configuration
+2025-07-12 13:07:49 - hackulator - INFO - Application starting...
+2025-07-12 13:07:49 - hackulator - INFO - License saved successfully
+2025-07-12 13:07:49 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 13:08:03 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 13:11:41 - hackulator - INFO - Using default configuration
+2025-07-12 13:11:41 - hackulator - INFO - Application starting...
+2025-07-12 13:11:41 - hackulator - INFO - License saved successfully
+2025-07-12 13:11:41 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 13:12:03 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn

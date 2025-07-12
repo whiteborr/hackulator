@@ -5,7 +5,7 @@ from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtGui import QFontDatabase, QAction, QKeySequence
 from PyQt6.QtWidgets import QApplication
 
-from app.ui.themes.enhanced_theme_manager import get_enhanced_theme_manager
+from app.core.unified_theme_manager import get_theme_manager
 from app.ui.animations.background_effects import BackgroundEffectManager
 from app.widgets.animated_stacked_widget import AnimatedStackedWidget
 from app.pages.home_page import HomePage
@@ -36,9 +36,9 @@ class MainWindow(QMainWindow):
         self.setWindowFlags(Qt.WindowType.Window)
         
         self.load_custom_font()
-        self.theme_manager = get_enhanced_theme_manager(self.project_root)
+        self.theme_manager = get_theme_manager(self.project_root)
         self.theme_manager.theme_changed.connect(self.on_theme_changed)
-        self.theme_manager.theme_locked.connect(self.show_theme_upgrade_dialog)
+        # self.theme_manager.theme_locked.connect(self.show_theme_upgrade_dialog)  # Removed - not needed
         
         # Initialize background effects manager
         self.background_effects = BackgroundEffectManager(self)

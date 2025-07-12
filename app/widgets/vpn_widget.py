@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
 from app.core.vpn_manager import vpn_manager
-from app.core.python_vpn import python_vpn
+# from app.core.python_vpn import python_vpn  # Removed - using official OpenVPN
 
 class VPNWidget(QWidget):
     """VPN connection management widget"""
@@ -68,8 +68,7 @@ class VPNWidget(QWidget):
         # Manual connection tab
         self.setup_manual_tab()
         
-        # Python VPN tab
-        self.setup_python_vpn_tab()
+        # Python VPN tab removed - using official OpenVPN only
         
         layout.addWidget(self.tabs)
         
@@ -227,7 +226,7 @@ class VPNWidget(QWidget):
     def connect_signals(self):
         """Connect VPN manager signals"""
         vpn_manager.connection_status_changed.connect(self.on_status_changed)
-        python_vpn.connection_status_changed.connect(self.on_status_changed)
+        # python_vpn.connection_status_changed.connect(self.on_status_changed)  # Removed
     
     def browse_config_file(self):
         """Browse for OpenVPN config file"""
@@ -284,12 +283,8 @@ class VPNWidget(QWidget):
             password = self.python_password.text().strip()
             connection_type = self.python_connection_type.currentText()
             
-            if connection_type == "SSL/TLS Tunnel":
-                result = python_vpn.connect_ssl_vpn(server, port, username, password)
-            elif connection_type == "TCP Tunnel":
-                result = python_vpn.connect_tcp_tunnel(server, port, username, password)
-            else:  # SOCKS5 Proxy
-                result = python_vpn.connect_socks_proxy(server, port, username, password)
+            self.log_message("Python VPN removed - use OpenVPN config tab")
+            return
         else:
             self.log_message("Unknown tab selected")
             return
@@ -305,7 +300,7 @@ class VPNWidget(QWidget):
         """Disconnect VPN"""
         # Try disconnecting both VPN types
         result1 = vpn_manager.disconnect()
-        result2 = python_vpn.disconnect()
+        result2 = {"success": True, "message": ""}
         
         # Use the successful result or the first error
         result = result1 if result1["success"] else result2
@@ -323,7 +318,7 @@ class VPNWidget(QWidget):
         
         # Test both VPN types
         result1 = vpn_manager.test_connectivity()
-        result2 = python_vpn.test_connection()
+        result2 = {"success": False, "error": "Python VPN removed"}
         
         # Use the successful result
         result = result1 if result1["success"] else result2
@@ -341,7 +336,7 @@ class VPNWidget(QWidget):
         """Update connection status display"""
         # Check both VPN types
         openvpn_status = vpn_manager.get_status()
-        python_status = python_vpn.get_status()
+        python_status = {"connected": False}
         
         # Use whichever is connected
         status = openvpn_status if openvpn_status["connected"] else python_status
