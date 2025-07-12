@@ -331,10 +331,17 @@ class EnumerationPage(QWidget):
         dns_label = QLabel("DNS:")
         dns_label.setFixedWidth(150)
         dns_row.addWidget(dns_label)
-        self.dns_input = QLineEdit()
-        self.dns_input.setPlaceholderText("DNS Server (optional)")
+        self.dns_input = QComboBox()
+        self.dns_input.setEditable(True)
+        self.dns_input.addItem("Default DNS")
+        self.dns_input.addItem("LocalDNS")
+        self.dns_input.addItem("8.8.8.8")
+        self.dns_input.addItem("1.1.1.1")
+        self.dns_input.addItem("9.9.9.9")
+        self.dns_input.addItem("208.67.222.222")
+        self.dns_input.setCurrentText("")
         self.dns_input.setFixedWidth(400)
-        self.dns_input.returnPressed.connect(self.toggle_scan)
+        self.dns_input.lineEdit().setPlaceholderText("DNS Server (IP/FQDN) - Use 'LocalDNS' for local server")
         dns_row.addWidget(self.dns_input)
         dns_row.addStretch()
         layout.addLayout(dns_row)
@@ -1891,7 +1898,9 @@ class EnumerationPage(QWidget):
             return
         
         dns_input = getattr(self, 'dns_input', None)
-        dns_server = dns_input.text().strip() or None if dns_input else None
+        dns_server = dns_input.currentText().strip() or None if dns_input else None
+        if dns_server == "Default DNS":
+            dns_server = None
         
         ptr_checkbox = getattr(self, 'ptr_checkbox', None)
         if ptr_checkbox and ptr_checkbox.isEnabled() and ptr_checkbox.isChecked():
@@ -3187,7 +3196,9 @@ class EnumerationPage(QWidget):
             
             target = self.target_input.text().strip()
             dns_server = getattr(self, 'dns_input', None)
-            dns_server = dns_server.text().strip() or None if dns_server else None
+            dns_server = dns_server.currentText().strip() or None if dns_server else None
+            if dns_server == "Default DNS":
+                dns_server = None
             
             # Run SRV scan with srv_wordlist.txt
             srv_wordlist_path = os.path.join(self.main_window.project_root, "resources", "wordlists", "srv_wordlist.txt")
@@ -3245,7 +3256,7 @@ class EnumerationPage(QWidget):
                 # Scroll to bottom and add export message
                 scrollbar = self.terminal_output.verticalScrollBar()
                 scrollbar.setValue(scrollbar.maximum())
-                self.append_terminal_output(f"<p style='color: #00FF41;'>[EXPORT] Results exported to {filepath}</p><br>")
+                self.append_terminal_output(f"<br><p style='color: #00FF41;'>[EXPORT] Results exported to {filepath}</p><br>")
                 
                 # Add to Advanced Reporting history
                 self.add_to_reporting_history(filepath, target, export_format)
@@ -3253,13 +3264,13 @@ class EnumerationPage(QWidget):
                 # Scroll to bottom and add error message
                 scrollbar = self.terminal_output.verticalScrollBar()
                 scrollbar.setValue(scrollbar.maximum())
-                self.append_terminal_output(f"<p style='color: #FF4500;'>[EXPORT ERROR] {message}</p><br>")
+                self.append_terminal_output(f"<br><p style='color: #FF4500;'>[EXPORT ERROR] {message}</p><br>")
                 
         except Exception as e:
             # Scroll to bottom and add error message
             scrollbar = self.terminal_output.verticalScrollBar()
             scrollbar.setValue(scrollbar.maximum())
-            self.append_terminal_output(f"<p style='color: #FF4500;'>[EXPORT ERROR] Export failed: {str(e)}</p><br>")
+            self.append_terminal_output(f"<br><p style='color: #FF4500;'>[EXPORT ERROR] Export failed: {str(e)}</p><br>")
     
     def open_advanced_reporting(self):
         """Open advanced reporting dialog"""

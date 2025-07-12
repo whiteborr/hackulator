@@ -14,6 +14,7 @@ This document outlines the professional features available in Hackulator's paid 
 - 🔥 **Stealth Mode** - Advanced evasion techniques
 - 🔗 **ProxyChains** - Multi-proxy traffic routing
 - ⚡ **Basic Hacking Mode** - Limited exploit execution
+- 🌐 **Local DNS Server** - Custom DNS record management
 - 📞 Priority support
 - 📊 Advanced reporting templates
 
@@ -46,6 +47,34 @@ This document outlines the professional features available in Hackulator's paid 
 - Automatic nmap stealth flag generation
 - Seamless integration with all enumeration tools
 - Real-time evasion status monitoring
+
+---
+
+## 🌐 Local DNS Server
+
+### Custom DNS Records
+- **A Records**: IPv4 address resolution for custom domains
+- **AAAA Records**: IPv6 address resolution support
+- **CNAME Records**: Canonical name aliases and redirections
+- **Auto-persistence**: Records automatically saved and restored
+
+### Testing Capabilities
+- **DNS Spoofing Simulation**: Override legitimate domain resolution
+- **Subdomain Testing**: Create custom subdomains for enumeration testing
+- **Load Balancing Simulation**: Multiple A records for same domain
+- **Development Environment**: Local domain resolution for testing
+
+### Tool Integration
+- **Universal Support**: Use 'LocalDNS' in any DNS enumeration tool
+- **Seamless Operation**: Automatic query routing to local server
+- **Port 5353**: Dedicated local DNS server on localhost
+- **Management Interface**: User-friendly record management GUI
+
+### Use Cases
+- **Penetration Testing**: Simulate DNS environments and responses
+- **Application Testing**: Test application behavior with custom DNS
+- **Training Scenarios**: Create controlled DNS environments
+- **Development**: Local domain resolution without system DNS changes
 
 ---
 

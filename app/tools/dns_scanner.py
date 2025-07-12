@@ -1,5 +1,6 @@
 # app/tools/dns_scanner.py
 import dns.resolver
+import socket
 from collections import defaultdict
 
 def run_dns_scan(target, wordlist_path=None, record_types=None, dns_server=None):
@@ -14,7 +15,23 @@ def run_dns_scan(target, wordlist_path=None, record_types=None, dns_server=None)
     
     resolver = dns.resolver.Resolver()
     if dns_server:
-        resolver.nameservers = [dns_server]
+        if dns_server.lower() == 'localdns':
+            from app.core.local_dns_server import local_dns_server
+            resolver.nameservers = ['127.0.0.1']
+            resolver.port = local_dns_server.port if local_dns_server.running else 53530
+        else:
+            # Resolve FQDN to IP if needed
+            import socket
+            import re
+            ip_pattern = r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'
+            if re.match(ip_pattern, dns_server):
+                resolver.nameservers = [dns_server]
+            else:
+                try:
+                    dns_ip = socket.gethostbyname(dns_server)
+                    resolver.nameservers = [dns_ip]
+                except socket.gaierror:
+                    resolver.nameservers = [dns_server]
     
     results = defaultdict(lambda: defaultdict(list))
     

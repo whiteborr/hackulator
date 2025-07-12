@@ -107,12 +107,36 @@ class HostWordlistWorker(QRunnable):
         """Configure DNS resolver"""
         resolver = dns.resolver.Resolver()
         if self.dns_server:
-            resolver.nameservers = [self.dns_server]
+            if self.dns_server.lower() == 'localdns':
+                from app.core.local_dns_server import local_dns_server
+                resolver.nameservers = ['127.0.0.1']
+                resolver.port = local_dns_server.port if local_dns_server.running else 53530
+            else:
+                # Resolve FQDN to IP if needed
+                dns_ip = self._resolve_dns_server(self.dns_server)
+                resolver.nameservers = [dns_ip]
         
         dns_config = config.get_dns_config()
         resolver.timeout = dns_config.get('timeout', 3)
         resolver.lifetime = dns_config.get('lifetime', 10)
         return resolver
+    
+    def _resolve_dns_server(self, dns_server):
+        """Resolve DNS server FQDN to IP address"""
+        import socket
+        import re
+        
+        # Check if it's already an IP address
+        ip_pattern = r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'
+        if re.match(ip_pattern, dns_server):
+            return dns_server
+        
+        # Resolve FQDN to IP
+        try:
+            return socket.gethostbyname(dns_server)
+        except socket.gaierror:
+            # If resolution fails, return original (let DNS library handle the error)
+            return dns_server
     
     def _get_max_workers(self):
         """Determine optimal worker count"""
@@ -293,7 +317,14 @@ class PTRWorker(QRunnable):
         resolver.timeout = 2
         resolver.lifetime = 5
         if self.dns_server:
-            resolver.nameservers = [self.dns_server]
+            if self.dns_server.lower() == 'localdns':
+                from app.core.local_dns_server import local_dns_server
+                resolver.nameservers = ['127.0.0.1']
+                resolver.port = local_dns_server.port if local_dns_server.running else 53530
+            else:
+                # Resolve FQDN to IP if needed
+                dns_ip = self._resolve_dns_server(self.dns_server)
+                resolver.nameservers = [dns_ip]
         
         results = {}
         try:
@@ -406,6 +437,23 @@ class PTRWorker(QRunnable):
             self.signals.output.emit(f"<p style='color: red;'>[ERROR] PTR query failed: {str(e)}</p>")
         finally:
             self.signals.finished.emit()
+    
+    def _resolve_dns_server(self, dns_server):
+        """Resolve DNS server FQDN to IP address"""
+        import socket
+        import re
+        
+        # Check if it's already an IP address
+        ip_pattern = r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'
+        if re.match(ip_pattern, dns_server):
+            return dns_server
+        
+        # Resolve FQDN to IP
+        try:
+            return socket.gethostbyname(dns_server)
+        except socket.gaierror:
+            # If resolution fails, return original (let DNS library handle the error)
+            return dns_server
 
 class SRVOnlyWorker(QRunnable):
     """Dedicated SRV record scanner that only checks wordlist entries"""
@@ -421,10 +469,34 @@ class SRVOnlyWorker(QRunnable):
     def _setup_resolver(self):
         resolver = dns.resolver.Resolver()
         if self.dns_server:
-            resolver.nameservers = [self.dns_server]
+            if self.dns_server.lower() == 'localdns':
+                from app.core.local_dns_server import local_dns_server
+                resolver.nameservers = ['127.0.0.1']
+                resolver.port = local_dns_server.port if local_dns_server.running else 53530
+            else:
+                # Resolve FQDN to IP if needed
+                dns_ip = self._resolve_dns_server(self.dns_server)
+                resolver.nameservers = [dns_ip]
         resolver.timeout = 3
         resolver.lifetime = 10
         return resolver
+    
+    def _resolve_dns_server(self, dns_server):
+        """Resolve DNS server FQDN to IP address"""
+        import socket
+        import re
+        
+        # Check if it's already an IP address
+        ip_pattern = r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'
+        if re.match(ip_pattern, dns_server):
+            return dns_server
+        
+        # Resolve FQDN to IP
+        try:
+            return socket.gethostbyname(dns_server)
+        except socket.gaierror:
+            # If resolution fails, return original (let DNS library handle the error)
+            return dns_server
     
     def run(self):
         try:

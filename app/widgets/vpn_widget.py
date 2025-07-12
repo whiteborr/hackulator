@@ -14,7 +14,8 @@ class VPNWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("VPN Connection Manager")
-        self.resize(600, 500)
+        self.resize(1024, 600)
+        self.setMinimumSize(900, 500)
         
         self.setup_ui()
         self.connect_signals()

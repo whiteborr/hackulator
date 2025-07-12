@@ -8,11 +8,12 @@ from app.tools.dns_scanner import run_dns_scan
 class EnhancedDNSWorker(QRunnable):
     """Enhanced DNS worker with scan registry integration"""
     
-    def __init__(self, target, wordlist_path=None, record_types=None):
+    def __init__(self, target, wordlist_path=None, record_types=None, dns_server=None):
         super().__init__()
         self.target = target
         self.wordlist_path = wordlist_path
         self.record_types = record_types or ['A']
+        self.dns_server = dns_server
         self.signals = DNSWorkerSignals()
         
         # Create scan controller
@@ -128,7 +129,8 @@ class EnhancedDNSWorker(QRunnable):
             results = run_dns_scan(
                 domain.split('.', 1)[-1] if '.' in domain else domain,
                 wordlist_path=None,  # Single domain scan
-                record_types=self.record_types
+                record_types=self.record_types,
+                dns_server=self.dns_server
             )
             
             # Filter results for this specific domain

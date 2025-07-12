@@ -112,7 +112,23 @@ def query_direct_records(target, record_types, dns_server, output_callback, resu
     """Query MX, NS, TXT, PTR records directly on the target domain"""
     resolver = dns.resolver.Resolver()
     if dns_server:
-        resolver.nameservers = [dns_server]
+        if dns_server.lower() == 'localdns':
+            from app.core.local_dns_server import local_dns_server
+            resolver.nameservers = ['127.0.0.1']
+            resolver.port = local_dns_server.port if local_dns_server.running else 53530
+        else:
+            # Resolve FQDN to IP if needed
+            import socket
+            import re
+            ip_pattern = r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'
+            if re.match(ip_pattern, dns_server):
+                resolver.nameservers = [dns_server]
+            else:
+                try:
+                    dns_ip = socket.gethostbyname(dns_server)
+                    resolver.nameservers = [dns_ip]
+                except socket.gaierror:
+                    resolver.nameservers = [dns_server]
     
     all_results = {target: {}}
     for rtype in record_types:

@@ -343,6 +343,12 @@ class MainWindow(QMainWindow):
         vpn_action.triggered.connect(self.open_vpn_manager)
         pro_menu.addAction(vpn_action)
         
+        # Local DNS Server action
+        local_dns_action = QAction('&Local DNS Server', self)
+        local_dns_action.setStatusTip('Manage local DNS server for custom domain records')
+        local_dns_action.triggered.connect(self.open_local_dns_manager)
+        pro_menu.addAction(local_dns_action)
+        
         # Help menu
         help_menu = menubar.addMenu('&Help')
         
@@ -956,6 +962,32 @@ class MainWindow(QMainWindow):
         layout.addWidget(vpn_widget)
         
         self.status_bar.showMessage("VPN Manager opened")
+        dialog.exec()
+    
+    def open_local_dns_manager(self):
+        """Open local DNS server manager"""
+        from app.core.license_manager import license_manager
+        from PyQt6.QtWidgets import QMessageBox
+        
+        if not license_manager.is_feature_enabled('local_dns_server'):
+            QMessageBox.warning(self, "Professional Feature", 
+                              "Local DNS Server requires Professional or Enterprise license.\n\n"
+                              "Visit License Manager to upgrade.")
+            return
+            
+        from app.widgets.local_dns_widget import LocalDNSWidget
+        from PyQt6.QtWidgets import QDialog, QVBoxLayout
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Local DNS Server Manager")
+        dialog.setModal(True)
+        dialog.resize(1080, 900)
+        
+        layout = QVBoxLayout(dialog)
+        dns_widget = LocalDNSWidget()
+        layout.addWidget(dns_widget)
+        
+        self.status_bar.showMessage("Local DNS Server Manager opened")
         dialog.exec()
     
     def on_theme_changed(self, theme_name):

@@ -69,6 +69,20 @@ The implementation supports these common .ovpn directives:
 - `verb <level>`
 - `remote-cert-tls server`
 
+## Professional Features
+
+### Local DNS Server (Professional/Enterprise)
+
+The application includes a built-in DNS server for Professional and Enterprise license holders:
+
+- **Custom DNS Records**: Create A, AAAA, and CNAME records
+- **Testing Environment**: Simulate DNS environments for penetration testing
+- **Tool Integration**: Use 'LocalDNS' in any DNS tool to query the local server
+- **Management Interface**: User-friendly interface for record management
+- **Auto-persistence**: Records are automatically saved and restored
+
+Access via: **Professional Features → Local DNS Server**
+
 ### Inline Certificates
 Supports inline certificates/keys:
 ```

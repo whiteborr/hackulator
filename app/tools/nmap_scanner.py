@@ -417,13 +417,18 @@ def scan_syn(target: str, full: bool = True, stealth_mode: bool = False, decoy_i
         
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
         
+        # Replace specific ethernet device error with VPN-friendly message
+        error_msg = result.stderr if result.returncode != 0 else ""
+        if "Only ethernet devices can be used for raw scans on Windows" in error_msg:
+            error_msg = "Only ethernet devices can be used for raw scans on Windows and will not work over VPN connections. QUITTING!"
+        
         return {
             "scan_type": "syn_stealth",
             "target": target,
             "full_scan": full,
             "success": result.returncode == 0,
             "output": result.stdout,
-            "error": result.stderr if result.returncode != 0 else ""
+            "error": error_msg
         }
     except ValueError as e:
         return {
@@ -732,6 +737,11 @@ def scan_targeted(target: str, scan_type: str, ports: str = "80,443") -> Dict:
         
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
         
+        # Replace specific ethernet device error with VPN-friendly message
+        error_msg = result.stderr if result.returncode != 0 else ""
+        if "Only ethernet devices can be used for raw scans on Windows" in error_msg:
+            error_msg = "Only ethernet devices can be used for raw scans on Windows and will not work over VPN connections. QUITTING!"
+        
         return {
             "scan_type": "targeted_scan",
             "target_scan_type": scan_type,
@@ -739,7 +749,7 @@ def scan_targeted(target: str, scan_type: str, ports: str = "80,443") -> Dict:
             "ports": ports if "OS detection" not in scan_type else "N/A",
             "success": result.returncode == 0,
             "output": result.stdout,
-            "error": result.stderr if result.returncode != 0 else ""
+            "error": error_msg
         }
         
     except ValueError as e:

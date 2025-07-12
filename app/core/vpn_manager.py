@@ -4,6 +4,7 @@ import os
 import time
 import threading
 import sys
+import json
 from typing import Dict, Optional, List
 from PyQt6.QtCore import QObject, pyqtSignal
 from app.core.logger import logger
@@ -19,47 +20,33 @@ class VPNManager(QObject):
     
     def __init__(self):
         super().__init__()
+        self.state_file = "vpn_state.json"
         self.current_connection = None
         self.openvpn_process = None
         self.openvpn_client = None
         self.connection_thread = None
         self.is_connected = False
+        self._load_state()
         
     def connect_openvpn(self, config_file: str, username: str = "", password: str = "") -> Dict:
-        """Connect using OpenVPN config file with Python implementation"""
+        """Connect using OpenVPN config file with official OpenVPN client"""
         try:
             if not os.path.exists(config_file):
                 return {"success": False, "error": "Config file not found"}
 
-            # Parse OpenVPN configuration to get embedded certs
-            parser = OVPNConfigParser(config_file)
-            cert_files = parser.extract_embedded_blocks()
+            # Use specific OpenVPN executable path
+            openvpn_exe = r"C:\Program Files\OpenVPN\bin\openvpn.exe"
+            if not os.path.exists(openvpn_exe):
+                return {"success": False, "error": "OpenVPN not found at expected location"}
 
-            # Certificates are handled by official OpenVPN client
-            print("Using official OpenVPN client for certificate handling")
-
-            # Example hardcoded values (you should get these dynamically!)
-            server_ip = "38.46.226.73"
-            server_port = 1337
-            session_id = "8834c31d403239ab"
-            command_id = 0x1178636e
-            payload_key = 0x104bed3b
-
-            # Create OpenVPN config object
-            from app.core.openvpn_client import OpenVPNConfig
-            config = OpenVPNConfig(
-                remote_host=server_ip,
-                remote_port=server_port
+            # Start OpenVPN process
+            cmd = [openvpn_exe, "--config", config_file]
+            self.openvpn_process = subprocess.Popen(
+                cmd, 
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.STDOUT, 
+                text=True
             )
-            
-            # Create OpenVPNClient with config file path
-            self.openvpn_client = OpenVPNClient(config_file)
-            print(f"Using command_id: {hex(command_id)}, payload_key: {hex(payload_key)}")
-
-            # Start connection in separate thread
-            self.connection_thread = threading.Thread(target=self._run_python_openvpn)
-            self.connection_thread.daemon = True
-            self.connection_thread.start()
 
             self.current_connection = {
                 "type": "openvpn",
@@ -67,8 +54,14 @@ class VPNManager(QObject):
                 "username": username
             }
 
+            # Start monitoring thread
+            self.connection_thread = threading.Thread(target=self._monitor_openvpn)
+            self.connection_thread.daemon = True
+            self.connection_thread.start()
+
             self.connection_status_changed.emit("connecting", "Establishing VPN connection...")
             logger.info(f"OpenVPN connection started with config: {config_file}")
+            self._save_state()
 
             return {"success": True, "message": "VPN connection initiated"}
 
@@ -107,9 +100,6 @@ verb 3
     def disconnect(self) -> Dict:
         """Disconnect VPN"""
         try:
-            if hasattr(self, 'openvpn_client') and self.openvpn_client:
-                self.openvpn_client = None
-            
             if self.openvpn_process:
                 self.openvpn_process.terminate()
                 self.openvpn_process.wait(timeout=10)
@@ -125,6 +115,7 @@ verb 3
             
             self.connection_status_changed.emit("disconnected", "VPN disconnected")
             logger.info("VPN connection terminated")
+            self._save_state()
             
             return {"success": True, "message": "VPN disconnected"}
             
@@ -132,35 +123,34 @@ verb 3
             logger.error(f"VPN disconnect failed: {e}")
             return {"success": False, "error": str(e)}
     
-    def _run_python_openvpn(self):
-        """Run the Python OpenVPN client"""
+    def _monitor_openvpn(self):
+        """Monitor OpenVPN process output"""
         try:
-            # Attempt connection
-            success = self.openvpn_client.connect()
-            if success:
-                self.is_connected = True
-                self.connection_status_changed.emit("connected", "VPN handshake completed")
-            else:
-                raise Exception("Handshake failed")
-            
-            # Keep connection alive for a while
-            time.sleep(30)
+            for line in self.openvpn_process.stdout:
+                line = line.strip()
+                if "Initialization Sequence Completed" in line:
+                    self.is_connected = True
+                    self.connection_status_changed.emit("connected", "VPN connection established")
+                    self._save_state()
+                elif "AUTH_FAILED" in line or "TLS Error" in line:
+                    self.connection_status_changed.emit("error", "Authentication failed")
+                    break
+                    
+            # Process ended
+            self.openvpn_process.wait()
                 
         except Exception as e:
             self.connection_status_changed.emit("error", f"Connection error: {str(e)}")
         finally:
             self.is_connected = False
             self.connection_status_changed.emit("disconnected", "VPN connection terminated")
+            self._save_state()
     
 
     
     def get_status(self) -> Dict:
         """Get current VPN status"""
-        process_running = False
-        if hasattr(self, 'openvpn_client') and self.openvpn_client:
-            process_running = True  # Client exists
-        elif self.openvpn_process:
-            process_running = self.openvpn_process.poll() is None
+        process_running = self.openvpn_process and self.openvpn_process.poll() is None
             
         return {
             "connected": self.is_connected,
@@ -220,6 +210,52 @@ verb 3
                 return exe_path
         
         return None
+    
+    def _save_state(self):
+        """Save VPN state to file"""
+        try:
+            state = {
+                "is_connected": self.is_connected,
+                "current_connection": self.current_connection,
+                "process_pid": self.openvpn_process.pid if self.openvpn_process else None
+            }
+            with open(self.state_file, 'w') as f:
+                json.dump(state, f)
+        except Exception as e:
+            logger.error(f"Failed to save VPN state: {e}")
+    
+    def _load_state(self):
+        """Load VPN state from file"""
+        try:
+            if os.path.exists(self.state_file):
+                with open(self.state_file, 'r') as f:
+                    state = json.load(f)
+                
+                self.is_connected = state.get("is_connected", False)
+                self.current_connection = state.get("current_connection")
+                
+                # Check if process is still running
+                if self.is_connected and state.get("process_pid"):
+                    try:
+                        import psutil
+                        if psutil.pid_exists(state["process_pid"]):
+                            # Process still exists, try to reconnect to it
+                            logger.info("Restored VPN connection state")
+                        else:
+                            # Process died, reset state
+                            self.is_connected = False
+                            self.current_connection = None
+                            self._save_state()
+                    except ImportError:
+                        # psutil not available, assume disconnected for safety
+                        self.is_connected = False
+                        self.current_connection = None
+                        self._save_state()
+                        
+        except Exception as e:
+            logger.error(f"Failed to load VPN state: {e}")
+            self.is_connected = False
+            self.current_connection = None
 
 # Global VPN manager instance
 vpn_manager = VPNManager()

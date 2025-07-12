@@ -30,7 +30,8 @@ class LicenseManager(QObject):
             'wireless_security': False,
             'social_engineering': False,
             'anti_forensics': False,
-            'api_integrations': False
+            'api_integrations': False,
+            'local_dns_server': False
         }
         self.license_file = "hackulator.lic"
         self.load_license()
@@ -108,6 +109,7 @@ class LicenseManager(QObject):
         # Auto-enable features based on license type
         if 'Professional' in license_type or 'Enterprise' in license_type:
             self.features_enabled['web_scanner'] = True
+            self.features_enabled['local_dns_server'] = True
         if 'Enterprise' in license_type:
             self.features_enabled['ad_enumeration'] = True
             self.features_enabled['enhanced_reporting'] = True
@@ -297,6 +299,11 @@ class LicenseManager(QObject):
                 'name': 'API Integrations',
                 'description': 'Shodan, VirusTotal, threat intelligence feeds, custom APIs',
                 'tier': 'Enterprise'
+            },
+            'local_dns_server': {
+                'name': 'Local DNS Server',
+                'description': 'Custom DNS server for domain record management and testing',
+                'tier': 'Professional'
             }
         }
         
