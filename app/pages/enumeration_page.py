@@ -326,25 +326,7 @@ class EnumerationPage(QWidget):
         record_row.addStretch()
         layout.addLayout(record_row)
 
-        # DNS Server - moved up
-        dns_row = QHBoxLayout()
-        dns_label = QLabel("DNS:")
-        dns_label.setFixedWidth(150)
-        dns_row.addWidget(dns_label)
-        self.dns_input = QComboBox()
-        self.dns_input.setEditable(True)
-        self.dns_input.addItem("Default DNS")
-        self.dns_input.addItem("LocalDNS")
-        self.dns_input.addItem("8.8.8.8")
-        self.dns_input.addItem("1.1.1.1")
-        self.dns_input.addItem("9.9.9.9")
-        self.dns_input.addItem("208.67.222.222")
-        self.dns_input.setCurrentText("")
-        self.dns_input.setFixedWidth(400)
-        self.dns_input.lineEdit().setPlaceholderText("DNS Server (IP/FQDN) - Use 'LocalDNS' for local server")
-        dns_row.addWidget(self.dns_input)
-        dns_row.addStretch()
-        layout.addLayout(dns_row)
+        # DNS Server field removed - using global DNS settings
 
         # Method & Wordlist/Bruteforce - moved up
         method_row = QHBoxLayout()
@@ -768,7 +750,7 @@ class EnumerationPage(QWidget):
         scan_type_row.addWidget(scan_type_label)
         self.http_scan_type = QComboBox()
         self.http_scan_type.addItems(["Basic Fingerprint", "Directory Enum", "Nmap Scripts", "Nikto Scan", "Full Scan"])
-        self.http_scan_type.setFixedWidth(150)
+        self.http_scan_type.setFixedWidth(200)
         scan_type_row.addWidget(self.http_scan_type)
         scan_type_row.addStretch()
         layout.addLayout(scan_type_row)
@@ -1898,7 +1880,11 @@ class EnumerationPage(QWidget):
             return
         
         dns_input = getattr(self, 'dns_input', None)
-        dns_server = dns_input.currentText().strip() or None if dns_input else None
+        # Use global DNS settings
+        from app.core.dns_settings import dns_settings
+        dns_server = dns_settings.get_current_dns()
+        if dns_server == "Default DNS":
+            dns_server = None
         if dns_server == "Default DNS":
             dns_server = None
         
@@ -3010,6 +2996,15 @@ class EnumerationPage(QWidget):
             self.show_error("Please enter a target")
             return
         
+        # Get DNS server setting from HTTP controls
+        dns_server = None
+        if 'http' in self.tool_controls:
+            control_panel = self.tool_controls['http']
+            if hasattr(control_panel, 'controls') and 'http_dns' in control_panel.controls:
+                dns_server = control_panel.controls['http_dns'].currentText().strip()
+                if not dns_server or dns_server == "Default DNS":
+                    dns_server = None
+        
         scan_type_map = {
             "Basic Fingerprint": "basic",
             "Directory Enum": "directories",
@@ -3017,15 +3012,40 @@ class EnumerationPage(QWidget):
             "Nikto Scan": "nikto",
             "Full Scan": "full"
         }
-        http_scan_type = getattr(self, 'http_scan_type', None)
-        scan_type = scan_type_map[http_scan_type.currentText()] if http_scan_type else "basic"
         
-        http_extensions = getattr(self, 'http_extensions', None)
-        extensions_text = http_extensions.text().strip() if http_extensions else ""
-        extensions = [ext.strip() for ext in extensions_text.split(',') if ext.strip()] if extensions_text else None
+        # Get scan type from factory controls or legacy controls
+        scan_type = "basic"
+        extensions = None
+        wordlist_path = None
         
-        http_wordlist = getattr(self, 'http_wordlist', None)
-        wordlist_path = http_wordlist.currentData() if http_wordlist else None
+        if 'http' in self.tool_controls:
+            control_panel = self.tool_controls['http']
+            if hasattr(control_panel, 'controls'):
+                controls = control_panel.controls
+                
+                # Get scan type
+                if 'http_scan_type' in controls:
+                    scan_type = scan_type_map.get(controls['http_scan_type'].currentText(), "basic")
+                
+                # Get extensions
+                if 'http_extensions' in controls:
+                    extensions_text = controls['http_extensions'].text().strip()
+                    extensions = [ext.strip() for ext in extensions_text.split(',') if ext.strip()] if extensions_text else None
+                
+                # Get wordlist
+                if 'http_wordlist' in controls:
+                    wordlist_path = controls['http_wordlist'].currentData()
+        else:
+            # Fallback to legacy controls
+            http_scan_type = getattr(self, 'http_scan_type', None)
+            scan_type = scan_type_map[http_scan_type.currentText()] if http_scan_type else "basic"
+            
+            http_extensions = getattr(self, 'http_extensions', None)
+            extensions_text = http_extensions.text().strip() if http_extensions else ""
+            extensions = [ext.strip() for ext in extensions_text.split(',') if ext.strip()] if extensions_text else None
+            
+            http_wordlist = getattr(self, 'http_wordlist', None)
+            wordlist_path = http_wordlist.currentData() if http_wordlist else None
         
         self.is_scanning = True
         self.run_button.setText("End")
@@ -3042,6 +3062,7 @@ class EnumerationPage(QWidget):
             scan_type=scan_type,
             wordlist_path=wordlist_path,
             extensions=extensions,
+            dns_server=dns_server,
             output_callback=self.append_terminal_output,
             status_callback=self.update_status_bar_text,
             finished_callback=self.on_scan_finished,
@@ -3059,6 +3080,15 @@ class EnumerationPage(QWidget):
             self.show_error("Please enter a target")
             return
         
+        # Get DNS server setting from API controls
+        dns_server = None
+        if 'api' in self.tool_controls:
+            control_panel = self.tool_controls['api']
+            if hasattr(control_panel, 'controls') and 'api_dns' in control_panel.controls:
+                dns_server = control_panel.controls['api_dns'].currentText().strip()
+                if not dns_server or dns_server == "Default DNS":
+                    dns_server = None
+        
         scan_type_map = {
             "Basic Discovery": "basic",
             "Gobuster Enum": "gobuster",
@@ -3067,11 +3097,30 @@ class EnumerationPage(QWidget):
             "Vulnerability Test": "vulns",
             "Full Scan": "full"
         }
-        api_scan_type = getattr(self, 'api_scan_type', None)
-        scan_type = scan_type_map[api_scan_type.currentText()] if api_scan_type else "basic"
         
-        api_wordlist = getattr(self, 'api_wordlist', None)
-        wordlist_path = api_wordlist.currentData() if api_wordlist else None
+        # Get scan type and wordlist from factory controls or legacy controls
+        scan_type = "basic"
+        wordlist_path = None
+        
+        if 'api' in self.tool_controls:
+            control_panel = self.tool_controls['api']
+            if hasattr(control_panel, 'controls'):
+                controls = control_panel.controls
+                
+                # Get scan type
+                if 'api_scan_type' in controls:
+                    scan_type = scan_type_map.get(controls['api_scan_type'].currentText(), "basic")
+                
+                # Get wordlist
+                if 'api_wordlist' in controls:
+                    wordlist_path = controls['api_wordlist'].currentData()
+        else:
+            # Fallback to legacy controls
+            api_scan_type = getattr(self, 'api_scan_type', None)
+            scan_type = scan_type_map[api_scan_type.currentText()] if api_scan_type else "basic"
+            
+            api_wordlist = getattr(self, 'api_wordlist', None)
+            wordlist_path = api_wordlist.currentData() if api_wordlist else None
         
         self.is_scanning = True
         self.run_button.setText("End")
@@ -3087,6 +3136,7 @@ class EnumerationPage(QWidget):
             target=target,
             scan_type=scan_type,
             wordlist_path=wordlist_path,
+            dns_server=dns_server,
             output_callback=self.append_terminal_output,
             status_callback=self.update_status_bar_text,
             finished_callback=self.on_scan_finished,
@@ -3195,7 +3245,11 @@ class EnumerationPage(QWidget):
             self.append_terminal_output("<p style='color: #00BFFF;'>Starting SRV enumeration...</p><br>")
             
             target = self.target_input.text().strip()
-            dns_server = getattr(self, 'dns_input', None)
+            # Use global DNS settings
+            from app.core.dns_settings import dns_settings
+            dns_server = dns_settings.get_current_dns()
+            if dns_server == "Default DNS":
+                dns_server = None
             dns_server = dns_server.currentText().strip() or None if dns_server else None
             if dns_server == "Default DNS":
                 dns_server = None

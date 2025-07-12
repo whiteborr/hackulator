@@ -17,6 +17,8 @@ class VPNWidget(QWidget):
         self.resize(1024, 600)
         self.setMinimumSize(900, 500)
         
+        self.is_connecting = False
+        
         self.setup_ui()
         self.connect_signals()
         self.update_status()
@@ -243,6 +245,14 @@ class VPNWidget(QWidget):
     
     def connect_vpn(self):
         """Connect VPN based on current tab"""
+        # Set status to connecting immediately
+        self.is_connecting = True
+        self.status_label.setText("Connecting...")
+        self.status_label.setStyleSheet("color: #FFAA00; font-weight: bold; font-size: 14pt;")
+        self.status_details.setText("Establishing VPN connection...")
+        self.connect_btn.setEnabled(False)
+        self.disconnect_btn.setEnabled(True)
+        
         current_tab = self.tabs.currentIndex()
         
         if current_tab == 0:  # OpenVPN config
@@ -335,6 +345,10 @@ class VPNWidget(QWidget):
     
     def update_status(self):
         """Update connection status display"""
+        # Skip updates while connecting
+        if self.is_connecting:
+            return
+            
         # Check both VPN types
         openvpn_status = vpn_manager.get_status()
         python_status = {"connected": False}
@@ -374,15 +388,25 @@ class VPNWidget(QWidget):
         if status == "connecting":
             self.status_label.setText("Connecting...")
             self.status_label.setStyleSheet("color: #FFAA00; font-weight: bold; font-size: 14pt;")
+            self.status_details.setText(message)
+            self.connect_btn.setEnabled(False)
+            self.disconnect_btn.setEnabled(True)
         elif status == "connected":
+            self.is_connecting = False
             self.status_label.setText("Connected")
             self.status_label.setStyleSheet("color: #00AA00; font-weight: bold; font-size: 14pt;")
         elif status == "error":
+            self.is_connecting = False
             self.status_label.setText("Error")
             self.status_label.setStyleSheet("color: #FF4444; font-weight: bold; font-size: 14pt;")
+            self.status_details.setText(message)
         elif status == "disconnected":
+            self.is_connecting = False
             self.status_label.setText("Disconnected")
             self.status_label.setStyleSheet("color: #FF4444; font-weight: bold; font-size: 14pt;")
+            self.status_details.setText("No active VPN connection")
+            self.connect_btn.setEnabled(True)
+            self.disconnect_btn.setEnabled(False)
     
     def log_message(self, message):
         """Add message to output log"""

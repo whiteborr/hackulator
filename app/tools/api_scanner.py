@@ -15,18 +15,117 @@ class APISignals(QObject):
 
 class APIEnumWorker(QRunnable):
     """API enumeration and testing worker"""
-    
-    def __init__(self, target, scan_type="basic", wordlist_path=None):
+    import base64
+    import codecs
+
+    def __init__(self, target, scan_type="basic", wordlist_path=None, dns_server=None):
         super().__init__()
         self.signals = APISignals()
         self.target = target
         self.scan_type = scan_type
         self.wordlist_path = wordlist_path
+        self.dns_server = dns_server
         self.is_running = True
         self.results = {}
         self.session = requests.Session()
         self.session.timeout = 10
         self.session.headers.update({'User-Agent': 'Mozilla/5.0 API Scanner'})
+        
+        # Setup custom DNS resolution using global settings
+        from app.core.dns_settings import dns_settings
+        self.dns_server = dns_settings.get_current_dns()
+        if self.dns_server and self.dns_server != "Default DNS":
+            self.setup_custom_dns()
+    
+    def setup_custom_dns(self):
+        """Setup custom DNS resolution"""
+        import socket
+        
+        # Store original getaddrinfo
+        self.original_getaddrinfo = socket.getaddrinfo
+        
+        def custom_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+            """Custom DNS resolution using specified DNS server"""
+            try:
+                if self.dns_server == "LocalDNS":
+                    # Query LocalDNS server directly
+                    ip = self.query_local_dns(host)
+                    if ip:
+                        return [(family, type, proto, '', (ip, port))]
+                    return self.original_getaddrinfo(host, port, family, type, proto, flags)
+                else:
+                    return self.original_getaddrinfo(host, port, family, type, proto, flags)
+            except:
+                return self.original_getaddrinfo(host, port, family, type, proto, flags)
+        
+        # Monkey patch socket.getaddrinfo
+        socket.getaddrinfo = custom_getaddrinfo
+    
+    def query_local_dns(self, hostname):
+        """Query LocalDNS server for hostname resolution"""
+        try:
+            import socket as sock
+            import struct
+            
+            # Create DNS query packet
+            query_id = 0x1234
+            flags = 0x0100  # Standard query
+            questions = 1
+            
+            # Build DNS header
+            header = struct.pack('!HHHHHH', query_id, flags, questions, 0, 0, 0)
+            
+            # Build question section
+            question = b''
+            for part in hostname.split('.'):
+                question += bytes([len(part)]) + part.encode()
+            question += b'\x00'  # End of domain
+            question += struct.pack('!HH', 1, 1)  # Type A, Class IN
+            
+            query = header + question
+            
+            # Send query to LocalDNS server
+            dns_socket = sock.socket(sock.AF_INET, sock.SOCK_DGRAM)
+            dns_socket.settimeout(5)
+            dns_socket.sendto(query, ('127.0.0.1', 53530))
+            
+            # Receive response
+            response, _ = dns_socket.recvfrom(512)
+            dns_socket.close()
+            
+            # Parse response to extract IP
+            if len(response) > 12:
+                # Skip header and question, find answer
+                offset = 12
+                # Skip question section
+                while offset < len(response) and response[offset] != 0:
+                    length = response[offset]
+                    offset += 1 + length
+                offset += 5  # Skip null terminator and question type/class
+                
+                # Parse answer section
+                if offset + 12 <= len(response):
+                    # Skip name pointer, type, class, TTL
+                    offset += 10
+                    data_len = struct.unpack('!H', response[offset:offset+2])[0]
+                    offset += 2
+                    
+                    if data_len == 4 and offset + 4 <= len(response):
+                        # Extract IP address
+                        ip_bytes = response[offset:offset+4]
+                        ip = '.'.join(str(b) for b in ip_bytes)
+                        return ip
+            
+            return None
+            
+        except Exception:
+            return None
+        
+    def restore_dns(self):
+        """Restore original DNS resolution"""
+        if hasattr(self, 'original_getaddrinfo'):
+            import socket
+            socket.getaddrinfo = self.original_getaddrinfo
         
         # Common API patterns
         self.api_patterns = [
@@ -112,6 +211,44 @@ class APIEnumWorker(QRunnable):
         
         return found_endpoints
     
+    def recursive_api_discovery(self, base_url, starting_path="/api/"):
+        """Recursively discover API endpoints by parsing JSON responses."""
+        self.signals.output.emit("<br><p style='color: #00BFFF;'>Starting recursive API discovery...</p>")
+    
+        endpoints_found = []
+        scan_queue = [starting_path]
+        scanned_paths = set()
+
+        while scan_queue:
+            path = scan_queue.pop(0)
+            if path in scanned_paths:
+                continue
+        
+            scanned_paths.add(path)
+            full_url = urljoin(base_url, path)
+
+            try:
+                # Use the existing session to maintain state (like cookies)
+                response = self.session.get(full_url, verify=False, timeout=10)
+
+                if response.status_code == 200 and 'application/json' in response.headers.get('Content-Type', ''):
+                    self.signals.output.emit(f"<p style='color: #00FF41;'>[+] Discovered Endpoint: {path}</p>")
+                    endpoints_found.append(path)
+                
+                    # Try to find new paths in the JSON response
+                    data = response.json()
+                    for key, value in data.items():
+                        if isinstance(value, str) and value.startswith('/') and value not in scanned_paths:
+                            scan_queue.append(value)
+                        elif isinstance(value, dict): # Handle nested objects
+                            for sub_key, sub_value in value.items():
+                                if isinstance(sub_value, str) and sub_value.startswith('/') and sub_value not in scanned_paths:
+                                    scan_queue.append(sub_value)
+            except Exception as e:
+                self.signals.output.emit(f"<p style='color: #FF4500;'>[!] Error scanning {path}: {e}</p>")
+            
+        self.results['recursive_endpoints'] = endpoints_found
+
     def enumerate_with_gobuster(self, base_url):
         """Use gobuster for API endpoint enumeration"""
         found_endpoints = []
@@ -246,6 +383,26 @@ class APIEnumWorker(QRunnable):
         
         return vuln_tests
     
+    def intelligent_decode(self, response_json):
+        """Attempts to decode data based on hints in the JSON response."""
+        try:
+            # Check for ROT13 format from the guide [cite: 157]
+            if 'enctype' in response_json and response_json['enctype'] == 'ROT13' and 'data' in response_json:
+                decoded = codecs.decode(response_json['data'], 'rot_13')
+                self.signals.output.emit(f"<p style='color: #90EE90;'>&nbsp;&nbsp;&nbsp;→ Decoded ROT13: {decoded}</p>")
+                return decoded
+
+            # Check for Base64 format from the guide [cite: 173, 177]
+            if 'format' in response_json and response_json['format'] == 'encoded' and 'data' in response_json:
+                decoded = base64.b64decode(response_json['data']).decode('utf-8')
+                self.signals.output.emit(f"<p style='color: #90EE90;'>&nbsp;&nbsp;&nbsp;→ Decoded Base64: {decoded}</p>")
+                return decoded
+            
+        except Exception as e:
+            self.signals.output.emit(f"<p style='color: #FF4500;'>[!] Decoding failed: {e}</p>")
+        
+        return None
+
     def run(self):
         try:
             self.signals.status.emit(f"Starting API enumeration on {self.target}...")
@@ -325,4 +482,6 @@ class APIEnumWorker(QRunnable):
             self.signals.output.emit(f"<p style='color: #FF4500;'>[ERROR] API enumeration failed: {str(e)}</p>")
             self.signals.status.emit("API enumeration error")
         finally:
+            # Restore original DNS resolution
+            self.restore_dns()
             self.signals.finished.emit()

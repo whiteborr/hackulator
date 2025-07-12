@@ -1,0 +1,249 @@
+2025-07-12 18:15:24 - hackulator - INFO - Using default configuration
+2025-07-12 18:15:24 - hackulator - INFO - Application starting...
+2025-07-12 18:15:25 - hackulator - INFO - License saved successfully
+2025-07-12 18:15:25 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 18:15:53 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 18:17:36 - hackulator - INFO - VPN connection terminated
+2025-07-12 18:17:46 - hackulator - INFO - Using default configuration
+2025-07-12 18:17:46 - hackulator - INFO - Application starting...
+2025-07-12 18:17:46 - hackulator - INFO - License saved successfully
+2025-07-12 18:17:46 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 18:17:56 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 18:18:31 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 18:19:30 - hackulator - INFO - Using default configuration
+2025-07-12 18:19:30 - hackulator - INFO - Application starting...
+2025-07-12 18:19:30 - hackulator - INFO - License saved successfully
+2025-07-12 18:19:30 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 18:19:47 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 18:20:37 - hackulator - INFO - Using default configuration
+2025-07-12 18:20:37 - hackulator - INFO - Application starting...
+2025-07-12 18:20:37 - hackulator - INFO - License saved successfully
+2025-07-12 18:20:37 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 18:20:45 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 18:22:54 - hackulator - INFO - Using default configuration
+2025-07-12 18:22:54 - hackulator - INFO - Application starting...
+2025-07-12 18:22:54 - hackulator - INFO - License saved successfully
+2025-07-12 18:22:54 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 18:22:58 - hackulator - INFO - Restored VPN connection state
+2025-07-12 18:23:07 - hackulator - INFO - VPN connection terminated
+2025-07-12 18:23:15 - hackulator - INFO - VPN connection terminated
+2025-07-12 18:23:25 - hackulator - INFO - Using default configuration
+2025-07-12 18:23:25 - hackulator - INFO - Application starting...
+2025-07-12 18:23:25 - hackulator - INFO - License saved successfully
+2025-07-12 18:23:25 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 18:23:34 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 18:24:01 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 18:24:30 - hackulator - INFO - Using default configuration
+2025-07-12 18:24:30 - hackulator - INFO - Application starting...
+2025-07-12 18:24:30 - hackulator - INFO - License saved successfully
+2025-07-12 18:24:30 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 18:24:39 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 18:25:31 - hackulator - INFO - VPN connection terminated
+2025-07-12 18:27:25 - hackulator - INFO - Using default configuration
+2025-07-12 18:27:25 - hackulator - INFO - Application starting...
+2025-07-12 18:27:25 - hackulator - INFO - License saved successfully
+2025-07-12 18:27:25 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 18:27:34 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 18:28:12 - hackulator - INFO - Results exported to exports\scan_results_10.10.11.221_1752308892.json
+2025-07-12 18:30:16 - hackulator - INFO - VPN connection terminated
+2025-07-12 18:30:29 - hackulator - INFO - Using default configuration
+2025-07-12 18:30:29 - hackulator - INFO - Application starting...
+2025-07-12 18:30:29 - hackulator - INFO - License saved successfully
+2025-07-12 18:30:29 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 18:31:55 - hackulator - INFO - Using default configuration
+2025-07-12 18:31:55 - hackulator - INFO - Application starting...
+2025-07-12 18:31:56 - hackulator - INFO - License saved successfully
+2025-07-12 18:31:56 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 18:33:43 - hackulator - INFO - Using default configuration
+2025-07-12 18:33:43 - hackulator - INFO - Application starting...
+2025-07-12 18:33:43 - hackulator - INFO - License saved successfully
+2025-07-12 18:33:43 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 18:34:43 - hackulator - INFO - Using default configuration
+2025-07-12 18:34:43 - hackulator - INFO - Application starting...
+2025-07-12 18:34:43 - hackulator - INFO - License saved successfully
+2025-07-12 18:34:43 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 18:35:00 - hackulator - INFO - Using default configuration
+2025-07-12 18:35:00 - hackulator - INFO - Application starting...
+2025-07-12 18:35:00 - hackulator - INFO - License saved successfully
+2025-07-12 18:35:00 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 18:35:16 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 18:36:32 - hackulator - INFO - Added DNS record: 2million.htb A 10.10.11.221
+2025-07-12 18:36:40 - hackulator - INFO - Local DNS server started on port 53530
+2025-07-12 18:37:51 - hackulator - INFO - VPN connection terminated
+2025-07-12 18:37:57 - hackulator - INFO - Local DNS server stopped
+2025-07-12 18:38:37 - hackulator - INFO - Using default configuration
+2025-07-12 18:38:37 - hackulator - INFO - Application starting...
+2025-07-12 18:38:37 - hackulator - INFO - License saved successfully
+2025-07-12 18:38:37 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 18:38:48 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 18:38:57 - hackulator - INFO - Local DNS server started on port 53530
+2025-07-12 18:49:24 - hackulator - INFO - VPN connection terminated
+2025-07-12 18:49:30 - hackulator - INFO - Local DNS server stopped
+2025-07-12 18:52:07 - hackulator - INFO - Using default configuration
+2025-07-12 18:52:07 - hackulator - INFO - Application starting...
+2025-07-12 18:52:07 - hackulator - INFO - License saved successfully
+2025-07-12 18:52:07 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 18:52:13 - hackulator - INFO - Using default configuration
+2025-07-12 18:52:13 - hackulator - INFO - Application starting...
+2025-07-12 18:52:13 - hackulator - INFO - License saved successfully
+2025-07-12 18:52:13 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 18:52:24 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 18:52:39 - hackulator - INFO - Local DNS server started on port 53530
+2025-07-12 19:05:16 - hackulator - INFO - Using default configuration
+2025-07-12 19:05:16 - hackulator - INFO - Application starting...
+2025-07-12 19:05:16 - hackulator - INFO - License saved successfully
+2025-07-12 19:05:16 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 19:05:36 - hackulator - INFO - Using default configuration
+2025-07-12 19:05:36 - hackulator - INFO - Application starting...
+2025-07-12 19:05:36 - hackulator - INFO - License saved successfully
+2025-07-12 19:05:36 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 19:11:30 - hackulator - INFO - Using default configuration
+2025-07-12 19:11:30 - hackulator - INFO - Application starting...
+2025-07-12 19:11:30 - hackulator - INFO - License saved successfully
+2025-07-12 19:11:30 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 19:11:34 - hackulator - INFO - Restored VPN connection state
+2025-07-12 19:11:47 - hackulator - INFO - Local DNS server started on port 53530
+2025-07-12 20:25:47 - hackulator - INFO - Using default configuration
+2025-07-12 20:25:47 - hackulator - INFO - Application starting...
+2025-07-12 20:25:47 - hackulator - INFO - License saved successfully
+2025-07-12 20:25:47 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 20:25:55 - hackulator - INFO - Using default configuration
+2025-07-12 20:25:55 - hackulator - INFO - Application starting...
+2025-07-12 20:25:55 - hackulator - INFO - License saved successfully
+2025-07-12 20:25:55 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 20:25:59 - hackulator - INFO - Restored VPN connection state
+2025-07-12 20:26:04 - hackulator - INFO - Local DNS server started on port 53530
+2025-07-12 20:30:09 - hackulator - INFO - Local DNS server stopped
+2025-07-12 20:30:13 - hackulator - INFO - Local DNS server started on port 53530
+2025-07-12 20:30:37 - hackulator - INFO - Local DNS server stopped
+2025-07-12 20:30:44 - hackulator - INFO - Using default configuration
+2025-07-12 20:30:44 - hackulator - INFO - Application starting...
+2025-07-12 20:30:45 - hackulator - INFO - License saved successfully
+2025-07-12 20:30:45 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 20:30:54 - hackulator - INFO - Local DNS server started on port 53530
+2025-07-12 20:37:24 - hackulator - INFO - Using default configuration
+2025-07-12 20:37:24 - hackulator - INFO - Application starting...
+2025-07-12 20:37:25 - hackulator - INFO - License saved successfully
+2025-07-12 20:37:25 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 20:37:50 - hackulator - INFO - Using default configuration
+2025-07-12 20:37:50 - hackulator - INFO - Application starting...
+2025-07-12 20:37:50 - hackulator - INFO - License saved successfully
+2025-07-12 20:37:50 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 20:45:30 - hackulator - INFO - Using default configuration
+2025-07-12 20:45:30 - hackulator - INFO - Application starting...
+2025-07-12 20:45:30 - hackulator - INFO - License saved successfully
+2025-07-12 20:45:30 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 20:45:53 - hackulator - INFO - Local DNS server started on port 53530
+2025-07-12 20:46:02 - hackulator - INFO - DNS server changed to: LocalDNS
+2025-07-12 20:46:25 - hackulator - INFO - Local DNS server stopped
+2025-07-12 20:47:42 - hackulator - INFO - Using default configuration
+2025-07-12 20:47:42 - hackulator - INFO - Application starting...
+2025-07-12 20:47:42 - hackulator - INFO - License saved successfully
+2025-07-12 20:47:42 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 20:53:43 - hackulator - INFO - Using default configuration
+2025-07-12 20:53:43 - hackulator - INFO - Application starting...
+2025-07-12 20:53:43 - hackulator - INFO - License saved successfully
+2025-07-12 20:53:43 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 20:57:59 - hackulator - INFO - Using default configuration
+2025-07-12 20:57:59 - hackulator - INFO - Application starting...
+2025-07-12 20:57:59 - hackulator - INFO - License saved successfully
+2025-07-12 20:57:59 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 21:02:48 - hackulator - INFO - Using default configuration
+2025-07-12 21:02:48 - hackulator - INFO - Application starting...
+2025-07-12 21:02:49 - hackulator - INFO - License saved successfully
+2025-07-12 21:02:49 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 21:03:03 - hackulator - INFO - Local DNS server started on port 53530
+2025-07-12 21:03:09 - hackulator - INFO - DNS server changed to: LocalDNS
+2025-07-12 21:05:07 - hackulator - INFO - DNS server changed to: LocalDNS
+2025-07-12 21:12:12 - hackulator - INFO - Using default configuration
+2025-07-12 21:12:12 - hackulator - INFO - Application starting...
+2025-07-12 21:12:12 - hackulator - INFO - License saved successfully
+2025-07-12 21:12:12 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 21:12:53 - hackulator - INFO - Local DNS server started on port 53530
+2025-07-12 21:12:57 - hackulator - INFO - DNS server changed to: LocalDNS
+2025-07-12 21:13:22 - hackulator - INFO - Restored VPN connection state
+2025-07-12 21:17:10 - hackulator - INFO - Using default configuration
+2025-07-12 21:17:10 - hackulator - INFO - Application starting...
+2025-07-12 21:17:10 - hackulator - INFO - License saved successfully
+2025-07-12 21:17:10 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 21:17:14 - hackulator - INFO - Restored VPN connection state
+2025-07-12 21:17:15 - hackulator - INFO - VPN connection terminated
+2025-07-12 21:17:24 - hackulator - INFO - Local DNS server started on port 53530
+2025-07-12 21:17:25 - hackulator - INFO - Local DNS server stopped
+2025-07-12 21:29:13 - hackulator - INFO - Using default configuration
+2025-07-12 21:29:13 - hackulator - INFO - License saved successfully
+2025-07-12 21:29:13 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 21:29:13 - hackulator - INFO - Application starting...
+2025-07-12 21:29:46 - hackulator - INFO - DNS scan started - Target: example.com, Wordlist: subdomains-top1000.txt, Types: ['A', 'AAAA']
+2025-07-12 21:29:55 - hackulator - INFO - DNS scan completed - Target: example.com, Results: 2
+2025-07-12 21:32:25 - hackulator - INFO - DNS server changed to: LocalDNS
+2025-07-12 21:32:41 - hackulator - INFO - DNS scan started - Target: hotmail.com, Wordlist: subdomains-top1000.txt, Types: ['A', 'AAAA']
+2025-07-12 21:32:56 - hackulator - INFO - DNS scan completed - Target: hotmail.com, Results: 5
+2025-07-12 21:33:04 - hackulator - INFO - Local DNS server started on port 53530
+2025-07-12 21:33:07 - hackulator - INFO - DNS server changed to: LocalDNS
+2025-07-12 21:33:11 - hackulator - INFO - DNS scan started - Target: hotmail.com, Wordlist: subdomains-top1000.txt, Types: ['A', 'AAAA']
+2025-07-12 21:33:12 - hackulator - INFO - DNS scan completed - Target: hotmail.com, Results: 5
+2025-07-12 21:33:25 - hackulator - INFO - Local DNS server stopped
+2025-07-12 21:33:25 - hackulator - INFO - Local DNS server stopped
+2025-07-12 21:33:29 - hackulator - INFO - Using default configuration
+2025-07-12 21:33:29 - hackulator - INFO - License saved successfully
+2025-07-12 21:33:29 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 21:33:30 - hackulator - INFO - Application starting...
+2025-07-12 21:34:00 - hackulator - INFO - DNS server changed to: 192.168.1.106
+2025-07-12 21:34:09 - hackulator - INFO - DNS scan started - Target: example.com, Wordlist: subdomains-top1000.txt, Types: ['A', 'AAAA']
+2025-07-12 21:49:26 - hackulator - INFO - Using default configuration
+2025-07-12 21:49:26 - hackulator - INFO - License saved successfully
+2025-07-12 21:49:26 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 21:49:26 - hackulator - INFO - Application starting...
+2025-07-12 21:49:43 - hackulator - INFO - DNS scan started - Target: example.com, Wordlist: subdomains-top1000.txt, Types: ['A', 'AAAA']
+2025-07-12 21:50:14 - hackulator - INFO - DNS server changed to: Default DNS
+2025-07-12 21:50:18 - hackulator - INFO - DNS scan started - Target: example.com, Wordlist: subdomains-top1000.txt, Types: ['A', 'AAAA']
+2025-07-12 21:50:40 - hackulator - INFO - DNS server changed to: 192.168.1.106
+2025-07-12 21:50:44 - hackulator - INFO - DNS scan started - Target: example.com, Wordlist: subdomains-top1000.txt, Types: ['A', 'AAAA']
+2025-07-12 21:53:23 - hackulator - INFO - DNS scan started - Target: example.com, Wordlist: subdomains-top1000.txt, Types: ['A', 'AAAA']
+2025-07-12 21:53:40 - hackulator - INFO - DNS server changed to: 192.168.1.106
+2025-07-12 22:00:56 - hackulator - INFO - Using default configuration
+2025-07-12 22:00:56 - hackulator - INFO - License saved successfully
+2025-07-12 22:00:56 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 22:00:56 - hackulator - INFO - Application starting...
+2025-07-12 22:01:05 - hackulator - INFO - Using default configuration
+2025-07-12 22:01:05 - hackulator - INFO - License saved successfully
+2025-07-12 22:01:05 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 22:01:05 - hackulator - INFO - Application starting...
+2025-07-12 22:01:16 - hackulator - INFO - DNS scan started - Target: example.com, Wordlist: subdomains-top1000.txt, Types: ['A', 'AAAA']
+2025-07-12 22:01:17 - hackulator - INFO - DNS scan completed - Target: example.com, Results: 2
+2025-07-12 22:01:31 - hackulator - INFO - Using default configuration
+2025-07-12 22:01:31 - hackulator - INFO - License saved successfully
+2025-07-12 22:01:31 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 22:01:31 - hackulator - INFO - Application starting...
+2025-07-12 22:01:37 - hackulator - INFO - DNS server changed to: Default DNS
+2025-07-12 22:05:41 - hackulator - INFO - Using default configuration
+2025-07-12 22:05:41 - hackulator - INFO - License saved successfully
+2025-07-12 22:05:41 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 22:05:41 - hackulator - INFO - Application starting...
+2025-07-12 22:05:59 - hackulator - INFO - DNS scan started - Target: example.com, Wordlist: subdomains-top1000.txt, Types: ['A', 'AAAA']
+2025-07-12 22:06:14 - hackulator - INFO - DNS server changed to: 192.168.1.106
+2025-07-12 22:06:18 - hackulator - INFO - DNS scan started - Target: example.com, Wordlist: subdomains-top1000.txt, Types: ['A', 'AAAA']
+2025-07-12 22:06:19 - hackulator - INFO - DNS scan completed - Target: example.com, Results: 2
+2025-07-12 22:06:27 - hackulator - INFO - DNS server changed to: LocalDNS
+2025-07-12 22:06:31 - hackulator - INFO - DNS scan started - Target: example.com, Wordlist: subdomains-top1000.txt, Types: ['A', 'AAAA']
+2025-07-12 22:06:31 - hackulator - DEBUG - DNS error for cnj7vqyn4xby.example.com: All nameservers failed to answer the query cnj7vqyn4xby.example.com. IN A: Server Do53:127.0.0.1@53530 answered [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-07-12 22:06:31 - hackulator - DEBUG - DNS error for he6sjkz7nb0b.example.com: All nameservers failed to answer the query he6sjkz7nb0b.example.com. IN A: Server Do53:127.0.0.1@53530 answered [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-07-12 22:06:31 - hackulator - DEBUG - DNS error for 8cs1lti64n6l.example.com: All nameservers failed to answer the query 8cs1lti64n6l.example.com. IN A: Server Do53:127.0.0.1@53530 answered [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-07-12 22:07:13 - hackulator - INFO - DNS scan started - Target: hotmail.com, Wordlist: subdomains-top1000.txt, Types: ['A', 'AAAA']
+2025-07-12 22:07:13 - hackulator - DEBUG - DNS error for q43am4b7p44e.hotmail.com: All nameservers failed to answer the query q43am4b7p44e.hotmail.com. IN A: Server Do53:127.0.0.1@53530 answered [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-07-12 22:07:13 - hackulator - DEBUG - DNS error for 0898qnzffro5.hotmail.com: All nameservers failed to answer the query 0898qnzffro5.hotmail.com. IN A: Server Do53:127.0.0.1@53530 answered [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-07-12 22:07:13 - hackulator - DEBUG - DNS error for 3t0n83c3v1ei.hotmail.com: All nameservers failed to answer the query 3t0n83c3v1ei.hotmail.com. IN A: Server Do53:127.0.0.1@53530 answered [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-07-12 22:07:41 - hackulator - INFO - DNS scan completed - Target: hotmail.com, Results: 0
+2025-07-12 22:08:28 - hackulator - INFO - DNS scan started - Target: www.hotmail.com, Wordlist: subdomains-top1000.txt, Types: ['A', 'AAAA']
+2025-07-12 22:08:28 - hackulator - DEBUG - DNS error for zx4mfts9h1af.www.hotmail.com: All nameservers failed to answer the query zx4mfts9h1af.www.hotmail.com. IN A: Server Do53:127.0.0.1@53530 answered [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-07-12 22:08:28 - hackulator - DEBUG - DNS error for q7xi8wgn0kmi.www.hotmail.com: All nameservers failed to answer the query q7xi8wgn0kmi.www.hotmail.com. IN A: Server Do53:127.0.0.1@53530 answered [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-07-12 22:08:28 - hackulator - DEBUG - DNS error for 65vimz13b32l.www.hotmail.com: All nameservers failed to answer the query 65vimz13b32l.www.hotmail.com. IN A: Server Do53:127.0.0.1@53530 answered [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-07-12 22:10:58 - hackulator - INFO - Using default configuration
+2025-07-12 22:10:58 - hackulator - INFO - License saved successfully
+2025-07-12 22:10:58 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 22:10:58 - hackulator - INFO - Application starting...
+2025-07-12 22:11:09 - hackulator - INFO - Local DNS server started on port 53530
+2025-07-12 22:11:23 - hackulator - INFO - DNS scan started - Target: hotmail.com, Wordlist: subdomains-top1000.txt, Types: ['A', 'AAAA']
+2025-07-12 22:12:24 - hackulator - INFO - Local DNS server stopped
+2025-07-12 22:12:24 - hackulator - INFO - Local DNS server stopped

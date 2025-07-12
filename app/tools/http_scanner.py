@@ -17,18 +17,115 @@ class HTTPSignals(QObject):
 class HTTPEnumWorker(QRunnable):
     """HTTP/S enumeration and fingerprinting worker"""
     
-    def __init__(self, target, scan_type="basic", wordlist_path=None, extensions=None):
+    def __init__(self, target, scan_type="basic", wordlist_path=None, extensions=None, dns_server=None):
         super().__init__()
         self.signals = HTTPSignals()
         self.target = target
         self.scan_type = scan_type
         self.wordlist_path = wordlist_path
         self.extensions = extensions or ['.php', '.html', '.asp', '.aspx', '.jsp']
+        self.dns_server = dns_server
         self.is_running = True
         self.results = {}
         self.session = requests.Session()
         self.session.timeout = 10
         self.session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'})
+        
+        # Setup custom DNS resolution using global settings
+        from app.core.dns_settings import dns_settings
+        self.dns_server = dns_settings.get_current_dns()
+        if self.dns_server and self.dns_server != "Default DNS":
+            self.setup_custom_dns()
+    
+    def setup_custom_dns(self):
+        """Setup custom DNS resolution"""
+        import socket
+        
+        # Store original getaddrinfo
+        self.original_getaddrinfo = socket.getaddrinfo
+        
+        def custom_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+            """Custom DNS resolution using specified DNS server"""
+            try:
+                if self.dns_server == "LocalDNS":
+                    # Query LocalDNS server directly
+                    ip = self.query_local_dns(host)
+                    if ip:
+                        return [(family, type, proto, '', (ip, port))]
+                    return self.original_getaddrinfo(host, port, family, type, proto, flags)
+                else:
+                    return self.original_getaddrinfo(host, port, family, type, proto, flags)
+            except:
+                return self.original_getaddrinfo(host, port, family, type, proto, flags)
+        
+        # Monkey patch socket.getaddrinfo
+        socket.getaddrinfo = custom_getaddrinfo
+    
+    def query_local_dns(self, hostname):
+        """Query LocalDNS server for hostname resolution"""
+        try:
+            import socket as sock
+            import struct
+            
+            # Create DNS query packet
+            query_id = 0x1234
+            flags = 0x0100  # Standard query
+            questions = 1
+            
+            # Build DNS header
+            header = struct.pack('!HHHHHH', query_id, flags, questions, 0, 0, 0)
+            
+            # Build question section
+            question = b''
+            for part in hostname.split('.'):
+                question += bytes([len(part)]) + part.encode()
+            question += b'\x00'  # End of domain
+            question += struct.pack('!HH', 1, 1)  # Type A, Class IN
+            
+            query = header + question
+            
+            # Send query to LocalDNS server
+            dns_socket = sock.socket(sock.AF_INET, sock.SOCK_DGRAM)
+            dns_socket.settimeout(5)
+            dns_socket.sendto(query, ('127.0.0.1', 53530))
+            
+            # Receive response
+            response, _ = dns_socket.recvfrom(512)
+            dns_socket.close()
+            
+            # Parse response to extract IP
+            if len(response) > 12:
+                # Skip header and question, find answer
+                offset = 12
+                # Skip question section
+                while offset < len(response) and response[offset] != 0:
+                    length = response[offset]
+                    offset += 1 + length
+                offset += 5  # Skip null terminator and question type/class
+                
+                # Parse answer section
+                if offset + 12 <= len(response):
+                    # Skip name pointer, type, class, TTL
+                    offset += 10
+                    data_len = struct.unpack('!H', response[offset:offset+2])[0]
+                    offset += 2
+                    
+                    if data_len == 4 and offset + 4 <= len(response):
+                        # Extract IP address
+                        ip_bytes = response[offset:offset+4]
+                        ip = '.'.join(str(b) for b in ip_bytes)
+                        return ip
+            
+            return None
+            
+        except Exception:
+            return None
+        
+    def restore_dns(self):
+        """Restore original DNS resolution"""
+        if hasattr(self, 'original_getaddrinfo'):
+            import socket
+            socket.getaddrinfo = self.original_getaddrinfo
         
     def normalize_url(self, url):
         """Ensure URL has proper scheme"""
@@ -304,4 +401,6 @@ class HTTPEnumWorker(QRunnable):
             self.signals.output.emit(f"<p style='color: #FF4500;'>[ERROR] HTTP enumeration failed: {str(e)}</p>")
             self.signals.status.emit("HTTP enumeration error")
         finally:
+            # Restore original DNS resolution
+            self.restore_dns()
             self.signals.finished.emit()

@@ -21,6 +21,7 @@ from app.pages.owasp_api_page import OWASPAPIPage
 from app.pages.scripts_page import ScriptsPage
 from app.pages.running_scans_page import RunningScansPage
 from app.core.system_tray import SystemTrayManager
+from app.core.logger import logger
 
 class MainWindow(QMainWindow):
     def __init__(self, project_root):
@@ -343,11 +344,11 @@ class MainWindow(QMainWindow):
         vpn_action.triggered.connect(self.open_vpn_manager)
         pro_menu.addAction(vpn_action)
         
-        # Local DNS Server action
-        local_dns_action = QAction('&Local DNS Server', self)
-        local_dns_action.setStatusTip('Manage local DNS server for custom domain records')
-        local_dns_action.triggered.connect(self.open_local_dns_manager)
-        pro_menu.addAction(local_dns_action)
+        # DNS Settings action
+        dns_settings_action = QAction('&DNS Settings', self)
+        dns_settings_action.setStatusTip('Configure global DNS settings and local DNS server')
+        dns_settings_action.triggered.connect(self.open_dns_settings)
+        pro_menu.addAction(dns_settings_action)
         
         # Help menu
         help_menu = menubar.addMenu('&Help')
@@ -644,6 +645,10 @@ class MainWindow(QMainWindow):
                 return
                 
         self.status_bar.showMessage("Closing application...")
+        
+        # Cleanup services before exit
+        self._cleanup_services()
+        
         # Stop memory monitoring
         from app.core.memory_manager import memory_manager
         memory_manager.stop_monitoring()
@@ -653,6 +658,28 @@ class MainWindow(QMainWindow):
             self.tray_manager.hide_tray()
             
         event.accept()
+    
+    def cleanup_services(self):
+        """Public method to cleanup running services"""
+        self._cleanup_services()
+    
+    def _cleanup_services(self):
+        """Cleanup running services before application exit"""
+        try:
+            # Stop local DNS server if running
+            from app.core.local_dns_server import local_dns_server
+            if hasattr(local_dns_server, 'running') and local_dns_server.running:
+                local_dns_server.stop_server()
+                logger.info("Local DNS server stopped")
+            
+            # Disconnect VPN if connected
+            from app.core.vpn_manager import vpn_manager
+            if hasattr(vpn_manager, 'is_connected') and vpn_manager.is_connected:
+                vpn_manager.disconnect()
+                logger.info("VPN disconnected")
+                
+        except Exception as e:
+            logger.error(f"Error during service cleanup: {e}")
         
     def open_reports_dialog(self):
         """Open advanced reports dialog"""
@@ -964,30 +991,21 @@ class MainWindow(QMainWindow):
         self.status_bar.showMessage("VPN Manager opened")
         dialog.exec()
     
-    def open_local_dns_manager(self):
-        """Open local DNS server manager"""
-        from app.core.license_manager import license_manager
-        from PyQt6.QtWidgets import QMessageBox
-        
-        if not license_manager.is_feature_enabled('local_dns_server'):
-            QMessageBox.warning(self, "Professional Feature", 
-                              "Local DNS Server requires Professional or Enterprise license.\n\n"
-                              "Visit License Manager to upgrade.")
-            return
-            
-        from app.widgets.local_dns_widget import LocalDNSWidget
+    def open_dns_settings(self):
+        """Open DNS settings manager"""
+        from app.widgets.dns_settings_widget import DNSSettingsWidget
         from PyQt6.QtWidgets import QDialog, QVBoxLayout
         
         dialog = QDialog(self)
-        dialog.setWindowTitle("Local DNS Server Manager")
+        dialog.setWindowTitle("DNS Settings")
         dialog.setModal(True)
-        dialog.resize(1080, 900)
+        dialog.resize(900, 800)
         
         layout = QVBoxLayout(dialog)
-        dns_widget = LocalDNSWidget()
+        dns_widget = DNSSettingsWidget()
         layout.addWidget(dns_widget)
         
-        self.status_bar.showMessage("Local DNS Server Manager opened")
+        self.status_bar.showMessage("DNS Settings opened")
         dialog.exec()
     
     def on_theme_changed(self, theme_name):

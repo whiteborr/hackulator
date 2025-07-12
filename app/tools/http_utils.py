@@ -2,9 +2,16 @@
 from PyQt6.QtCore import QThreadPool
 from .http_scanner import HTTPEnumWorker
 
-def run_http_enumeration(target, scan_type="basic", wordlist_path=None, extensions=None, output_callback=None, status_callback=None, finished_callback=None, results_callback=None, progress_callback=None, progress_start_callback=None):
-    """Run HTTP enumeration on target"""
-    worker = HTTPEnumWorker(target, scan_type, wordlist_path, extensions)
+def run_http_enumeration(target, scan_type="basic", wordlist_path=None, extensions=None, dns_server=None, output_callback=None, status_callback=None, finished_callback=None, results_callback=None, progress_callback=None, progress_start_callback=None):
+    """Run enhanced HTTP enumeration on target"""
+    # Use global DNS settings if not specified
+    if dns_server is None:
+        from app.core.dns_settings import dns_settings
+        dns_server = dns_settings.get_current_dns()
+        if dns_server == "Default DNS":
+            dns_server = None
+    
+    worker = HTTPEnumWorker(target, scan_type, wordlist_path, extensions, dns_server)
     
     # Connect signals
     if output_callback:

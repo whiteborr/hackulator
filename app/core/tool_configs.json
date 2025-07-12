@@ -175,9 +175,10 @@
       {
         "label": "Scan Type:",
         "controls": [
-          {"type": "combobox", "name": "http_scan_type", "items": ["Basic Fingerprint", "Directory Enum", "Nmap Scripts", "Nikto Scan", "Full Scan"], "width": 150}
+          {"type": "combobox", "name": "http_scan_type", "items": ["Basic Fingerprint", "Directory Enum", "Nmap Scripts", "Nikto Scan", "Full Scan"], "width": 220}
         ]
       },
+
       {
         "label": "Extensions:",
         "controls": [
@@ -205,9 +206,10 @@
       {
         "label": "Scan Type:",
         "controls": [
-          {"type": "combobox", "name": "api_scan_type", "items": ["Basic Discovery", "Gobuster Enum", "HTTP Methods", "Auth Bypass", "Vulnerability Test", "Full Scan"], "width": 150}
+          {"type": "combobox", "name": "api_scan_type", "items": ["Basic Discovery", "Gobuster Enum", "HTTP Methods", "Auth Bypass", "Vulnerability Test", "Full Scan"], "width": 220}
         ]
       },
+
       {
         "label": "Wordlist:",
         "controls": [

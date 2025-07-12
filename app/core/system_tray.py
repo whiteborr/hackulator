@@ -70,7 +70,7 @@ class SystemTrayManager(QObject):
         
         # Quit action
         quit_action = QAction("Quit", self.main_window)
-        quit_action.triggered.connect(self.quit_application.emit)
+        quit_action.triggered.connect(self.force_quit_application)
         tray_menu.addAction(quit_action)
         
         self.tray_icon.setContextMenu(tray_menu)
@@ -107,3 +107,13 @@ class SystemTrayManager(QObject):
     def is_available(self):
         """Check if system tray is available"""
         return QSystemTrayIcon.isSystemTrayAvailable()
+    
+    def force_quit_application(self):
+        """Force quit application with cleanup"""
+        # Trigger cleanup in main window
+        if hasattr(self.main_window, 'cleanup_services'):
+            self.main_window.cleanup_services()
+        
+        # Force close without tray dialog
+        self.main_window.tray_manager = None  # Disable tray dialog
+        self.quit_application.emit()
