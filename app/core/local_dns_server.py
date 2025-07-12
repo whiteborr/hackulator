@@ -93,63 +93,86 @@ class LocalDNSServer(QObject):
     def _handle_query(self, data: bytes) -> Optional[bytes]:
         """Handle DNS query and return response"""
         try:
+            if len(data) < 12:
+                return None
+                
             # Parse DNS header
             header = struct.unpack('!HHHHHH', data[:12])
             query_id = header[0]
             flags = header[1]
+            qdcount = header[2]
             
             # Only handle standard queries
-            if (flags >> 15) != 0:  # Not a query
+            if (flags >> 15) != 0 or qdcount != 1:
                 return None
                 
             # Parse question section
             offset = 12
             domain_parts = []
+            
             while offset < len(data):
+                if offset >= len(data):
+                    break
                 length = data[offset]
                 if length == 0:
                     offset += 1
                     break
-                domain_parts.append(data[offset+1:offset+1+length].decode())
+                if offset + 1 + length > len(data):
+                    break
+                domain_parts.append(data[offset+1:offset+1+length].decode('utf-8', errors='ignore'))
                 offset += 1 + length
             
-            domain = '.'.join(domain_parts)
-            qtype = struct.unpack('!H', data[offset:offset+2])[0]
-            
-            # Check if we have a record for this domain
-            record = self.records.get(domain.lower())
-            if not record:
+            if offset + 4 > len(data):
                 return None
                 
+            domain = '.'.join(domain_parts).lower()
+            qtype = struct.unpack('!H', data[offset:offset+2])[0]
+            qclass = struct.unpack('!H', data[offset+2:offset+4])[0]
+            
+            # Check if we have a record for this domain
+            record = self.records.get(domain)
+            if not record:
+                return self._build_nxdomain_response(data, query_id)
+                
             # Build response
-            response = bytearray(data[:12])  # Copy header
+            response = bytearray()
             
-            # Set response flags
-            response[2] = 0x81  # Response, authoritative
-            response[3] = 0x80  # No error
+            # DNS Header
+            response.extend(struct.pack('!HHHHHH', 
+                query_id,     # ID
+                0x8180,       # Flags: Response, Authoritative, No error
+                1,            # Questions
+                1,            # Answers
+                0,            # Authority RRs
+                0             # Additional RRs
+            ))
             
-            # Add question section
+            # Question section (copy from original)
             response.extend(data[12:offset+4])
             
-            # Add answer section
+            # Answer section
+            answer_added = False
             if qtype == 1 and 'A' in record:  # A record
-                for ip in record['A']:
-                    response.extend(self._build_answer(domain, 1, ip))
+                ip = record['A'][0]  # Use first A record
+                response.extend(self._build_answer(domain, 1, ip))
+                answer_added = True
             elif qtype == 28 and 'AAAA' in record:  # AAAA record
-                for ip in record['AAAA']:
-                    response.extend(self._build_answer(domain, 28, ip))
+                ip = record['AAAA'][0]  # Use first AAAA record
+                response.extend(self._build_answer(domain, 28, ip))
+                answer_added = True
             elif qtype == 5 and 'CNAME' in record:  # CNAME record
-                response.extend(self._build_answer(domain, 5, record['CNAME'][0]))
+                cname = record['CNAME'][0]  # Use first CNAME record
+                response.extend(self._build_answer(domain, 5, cname))
+                answer_added = True
             
-            # Update answer count
-            answer_count = len(record.get('A', [])) + len(record.get('AAAA', [])) + len(record.get('CNAME', []))
-            struct.pack_into('!H', response, 6, answer_count)
+            if not answer_added:
+                return self._build_nxdomain_response(data, query_id)
             
             return bytes(response)
             
         except Exception as e:
             logger.error(f"Error handling DNS query: {e}")
-            return None
+            return self._build_nxdomain_response(data, query_id) if 'query_id' in locals() else None
     
     def _build_answer(self, domain: str, qtype: int, value: str) -> bytes:
         """Build DNS answer section"""
@@ -158,16 +181,24 @@ class LocalDNSServer(QObject):
         # Domain name (compressed pointer to question)
         answer.extend(b'\xc0\x0c')
         
-        # Type, class, TTL
-        answer.extend(struct.pack('!HHIH', qtype, 1, 300, 0))
-        
+        # Type, class, TTL, data length placeholder
         if qtype == 1:  # A record
-            ip_bytes = socket.inet_aton(value)
-            answer[-2:] = struct.pack('!H', 4)  # Data length
-            answer.extend(ip_bytes)
+            try:
+                ip_bytes = socket.inet_aton(value)
+                answer.extend(struct.pack('!HHIH', qtype, 1, 300, 4))
+                answer.extend(ip_bytes)
+            except:
+                return b''
+        elif qtype == 28:  # AAAA record
+            try:
+                ip_bytes = socket.inet_pton(socket.AF_INET6, value)
+                answer.extend(struct.pack('!HHIH', qtype, 1, 300, 16))
+                answer.extend(ip_bytes)
+            except:
+                return b''
         elif qtype == 5:  # CNAME record
             cname_bytes = self._encode_domain(value)
-            answer[-2:] = struct.pack('!H', len(cname_bytes))
+            answer.extend(struct.pack('!HHIH', qtype, 1, 300, len(cname_bytes)))
             answer.extend(cname_bytes)
             
         return bytes(answer)
@@ -176,10 +207,42 @@ class LocalDNSServer(QObject):
         """Encode domain name for DNS"""
         encoded = bytearray()
         for part in domain.split('.'):
+            if len(part) > 63:  # DNS label length limit
+                part = part[:63]
             encoded.append(len(part))
-            encoded.extend(part.encode())
+            encoded.extend(part.encode('utf-8', errors='ignore'))
         encoded.append(0)
         return bytes(encoded)
+    
+    def _build_nxdomain_response(self, original_query: bytes, query_id: int) -> bytes:
+        """Build NXDOMAIN response for non-existent domains"""
+        try:
+            # Find end of question section
+            offset = 12
+            while offset < len(original_query):
+                length = original_query[offset]
+                if length == 0:
+                    offset += 5  # Skip null byte + qtype + qclass
+                    break
+                offset += 1 + length
+            
+            response = bytearray()
+            # DNS Header with NXDOMAIN
+            response.extend(struct.pack('!HHHHHH',
+                query_id,     # ID
+                0x8183,       # Flags: Response, Authoritative, NXDOMAIN
+                1,            # Questions
+                0,            # Answers
+                0,            # Authority RRs
+                0             # Additional RRs
+            ))
+            
+            # Copy question section
+            response.extend(original_query[12:offset])
+            
+            return bytes(response)
+        except:
+            return b''
     
     def add_record(self, domain: str, record_type: str, value: str) -> bool:
         """Add DNS record"""

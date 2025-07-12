@@ -263,8 +263,20 @@ class DNSSettingsWidget(QWidget):
         # Records table
         self.records_table = QTableWidget()
         self.records_table.setColumnCount(3)
-        self.records_table.setHorizontalHeaderLabels(["Domain", "Type", "Value"])
-        self.records_table.horizontalHeader().setStretchLastSection(True)
+        self.records_table.setHorizontalHeaderLabels(["Domain/Host", "Type", "Value"])
+        # Set column widths
+        self.records_table.horizontalHeader().setStretchLastSection(False)
+        from PyQt6.QtWidgets import QHeaderView
+        from PyQt6.QtGui import QFontMetrics
+        
+        # Calculate width for 30 characters
+        font_metrics = QFontMetrics(self.records_table.font())
+        char_width = font_metrics.averageCharWidth()
+        domain_width = char_width * 30
+        
+        self.records_table.setColumnWidth(0, domain_width)
+        self.records_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        self.records_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.records_table.setMaximumHeight(150)
         self.records_table.setStyleSheet("""
             QTableWidget {

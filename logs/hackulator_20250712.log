@@ -247,3 +247,91 @@
 2025-07-12 22:11:23 - hackulator - INFO - DNS scan started - Target: hotmail.com, Wordlist: subdomains-top1000.txt, Types: ['A', 'AAAA']
 2025-07-12 22:12:24 - hackulator - INFO - Local DNS server stopped
 2025-07-12 22:12:24 - hackulator - INFO - Local DNS server stopped
+2025-07-12 22:15:40 - hackulator - INFO - Using default configuration
+2025-07-12 22:15:40 - hackulator - INFO - License saved successfully
+2025-07-12 22:15:40 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 22:15:40 - hackulator - INFO - Application starting...
+2025-07-12 22:15:57 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 22:19:44 - hackulator - INFO - Local DNS server started on port 53530
+2025-07-12 22:21:48 - hackulator - INFO - Local DNS server stopped
+2025-07-12 22:21:48 - hackulator - INFO - Local DNS server stopped
+2025-07-12 22:21:48 - hackulator - INFO - VPN connection terminated
+2025-07-12 22:21:48 - hackulator - INFO - VPN disconnected
+2025-07-12 22:39:38 - hackulator - INFO - Using default configuration
+2025-07-12 22:39:38 - hackulator - INFO - License saved successfully
+2025-07-12 22:39:38 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 22:39:38 - hackulator - INFO - Application starting...
+2025-07-12 22:39:49 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 22:39:57 - hackulator - INFO - Local DNS server started on port 53530
+2025-07-12 22:43:10 - hackulator - INFO - DNS server changed to: LocalDNS
+2025-07-12 22:44:39 - hackulator - INFO - Local DNS server stopped
+2025-07-12 22:44:39 - hackulator - INFO - Local DNS server stopped
+2025-07-12 22:44:39 - hackulator - INFO - VPN connection terminated
+2025-07-12 22:44:39 - hackulator - INFO - VPN disconnected
+2025-07-12 22:46:03 - hackulator - INFO - Using default configuration
+2025-07-12 22:46:03 - hackulator - INFO - License saved successfully
+2025-07-12 22:46:03 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 22:46:03 - hackulator - INFO - Application starting...
+2025-07-12 22:47:29 - hackulator - INFO - Using default configuration
+2025-07-12 22:47:29 - hackulator - INFO - License saved successfully
+2025-07-12 22:47:29 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 22:47:29 - hackulator - INFO - Application starting...
+2025-07-12 22:47:43 - hackulator - INFO - Local DNS server started on port 53530
+2025-07-12 22:47:48 - hackulator - INFO - DNS server changed to: LocalDNS
+2025-07-12 22:48:00 - hackulator - INFO - OpenVPN connection started with config: C:/Users/allie/Coding Projects/hackulator/lab_whiteborr.ovpn
+2025-07-12 22:49:34 - hackulator - INFO - Local DNS server stopped
+2025-07-12 22:49:34 - hackulator - INFO - Local DNS server stopped
+2025-07-12 22:49:34 - hackulator - INFO - VPN connection terminated
+2025-07-12 22:49:34 - hackulator - INFO - VPN disconnected
+2025-07-12 22:57:24 - hackulator - INFO - Using default configuration
+2025-07-12 22:57:24 - hackulator - INFO - License saved successfully
+2025-07-12 22:57:24 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 22:57:24 - hackulator - INFO - Application starting...
+2025-07-12 22:57:34 - hackulator - INFO - Local DNS server started on port 53530
+2025-07-12 22:57:37 - hackulator - INFO - DNS server changed to: LocalDNS
+2025-07-12 23:02:41 - hackulator - INFO - Local DNS server stopped
+2025-07-12 23:02:41 - hackulator - INFO - Local DNS server stopped
+2025-07-12 23:06:36 - hackulator - INFO - Using default configuration
+2025-07-12 23:06:36 - hackulator - INFO - License saved successfully
+2025-07-12 23:06:36 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 23:06:36 - hackulator - INFO - Application starting...
+2025-07-12 23:06:44 - hackulator - INFO - Local DNS server started on port 53530
+2025-07-12 23:06:48 - hackulator - INFO - DNS server changed to: LocalDNS
+2025-07-12 23:19:14 - hackulator - INFO - Local DNS server stopped
+2025-07-12 23:19:14 - hackulator - INFO - Local DNS server stopped
+2025-07-12 23:19:27 - hackulator - INFO - Using default configuration
+2025-07-12 23:19:27 - hackulator - INFO - License saved successfully
+2025-07-12 23:19:27 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 23:19:27 - hackulator - INFO - Application starting...
+2025-07-12 23:19:33 - hackulator - INFO - Local DNS server started on port 53530
+2025-07-12 23:19:34 - hackulator - INFO - DNS server changed to: LocalDNS
+2025-07-12 23:23:44 - hackulator - INFO - Local DNS server stopped
+2025-07-12 23:23:44 - hackulator - INFO - Local DNS server stopped
+2025-07-12 23:24:56 - hackulator - INFO - Using default configuration
+2025-07-12 23:24:56 - hackulator - INFO - License saved successfully
+2025-07-12 23:24:56 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 23:24:56 - hackulator - INFO - Application starting...
+2025-07-12 23:25:03 - hackulator - INFO - Local DNS server started on port 53530
+2025-07-12 23:25:04 - hackulator - INFO - DNS server changed to: LocalDNS
+2025-07-12 23:25:55 - hackulator - INFO - DNS server changed to: Default DNS
+2025-07-12 23:26:38 - hackulator - INFO - Local DNS server stopped
+2025-07-12 23:26:38 - hackulator - INFO - Local DNS server stopped
+2025-07-12 23:27:33 - hackulator - INFO - Using default configuration
+2025-07-12 23:27:33 - hackulator - INFO - License saved successfully
+2025-07-12 23:27:33 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 23:27:33 - hackulator - INFO - Application starting...
+2025-07-12 23:32:08 - hackulator - INFO - Using default configuration
+2025-07-12 23:32:09 - hackulator - INFO - License saved successfully
+2025-07-12 23:32:09 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 23:32:09 - hackulator - INFO - Application starting...
+2025-07-12 23:32:18 - hackulator - INFO - Local DNS server started on port 53530
+2025-07-12 23:32:22 - hackulator - INFO - DNS server changed to: LocalDNS
+2025-07-12 23:33:53 - hackulator - INFO - Local DNS server stopped
+2025-07-12 23:33:53 - hackulator - INFO - Local DNS server stopped
+2025-07-12 23:38:25 - hackulator - INFO - Using default configuration
+2025-07-12 23:38:25 - hackulator - INFO - License saved successfully
+2025-07-12 23:38:25 - hackulator - INFO - License loaded and validated successfully
+2025-07-12 23:38:25 - hackulator - INFO - Application starting...
+2025-07-12 23:38:31 - hackulator - INFO - Local DNS server started on port 53530
+2025-07-12 23:38:32 - hackulator - INFO - DNS server changed to: LocalDNS
+2025-07-12 23:39:12 - hackulator - INFO - Local DNS server stopped

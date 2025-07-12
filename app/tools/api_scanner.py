@@ -126,7 +126,9 @@ class APIEnumWorker(QRunnable):
         if hasattr(self, 'original_getaddrinfo'):
             import socket
             socket.getaddrinfo = self.original_getaddrinfo
-        
+    
+    def setup_api_patterns(self):
+        """Setup API patterns and endpoints"""
         # Common API patterns
         self.api_patterns = [
             '/api', '/api/v1', '/api/v2', '/api/v3',
@@ -410,8 +412,11 @@ class APIEnumWorker(QRunnable):
             base_url = self.normalize_url(self.target)
             self.signals.output.emit(f"<p style='color: #00BFFF;'>Enumerating API endpoints on {base_url}...</p><br>")
             
+            # Setup API patterns
+            self.setup_api_patterns()
+            
             # Discover API endpoints
-            self.signals.output.emit("<p style='color: #00BFFF;'>Discovering API endpoints...</p>")
+            self.signals.output.emit("<p style='color: #00BFFF;'>Discovering API endpoints...</p><br>")
             endpoints = self.discover_api_endpoints(base_url)
             
             if endpoints:

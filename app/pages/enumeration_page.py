@@ -2697,6 +2697,9 @@ class EnumerationPage(QWidget):
                 # Get target scan type
                 target_scan_type = controls.get('target_scan_combo', {}).currentText() if hasattr(controls.get('target_scan_combo', {}), 'currentText') else "TCP connect"
                 
+                # Resolve hostname using global DNS settings before scanning
+                resolved_target = self._resolve_target(target)
+                
                 # Map UI scan types to nmap_scanner scan types and use scan_targeted for all
                 scan_type_mapping = {
                     "SYN scan": "SYN stealth scan",
@@ -2708,7 +2711,7 @@ class EnumerationPage(QWidget):
                 }
                 
                 mapped_scan_type = scan_type_mapping.get(target_scan_type, "TCP connect scan")
-                result = scan_targeted(target, mapped_scan_type, ports_text or "22,80,443")
+                result = scan_targeted(resolved_target, mapped_scan_type, ports_text or "22,80,443")
                 
                 if result['success']:
                     self.append_terminal_output(f"<p style='color: #87CEEB; font-family: Neuropol X;'>Starting {target_scan_type} on {target}...</p><br>")
@@ -2996,14 +2999,11 @@ class EnumerationPage(QWidget):
             self.show_error("Please enter a target")
             return
         
-        # Get DNS server setting from HTTP controls
-        dns_server = None
-        if 'http' in self.tool_controls:
-            control_panel = self.tool_controls['http']
-            if hasattr(control_panel, 'controls') and 'http_dns' in control_panel.controls:
-                dns_server = control_panel.controls['http_dns'].currentText().strip()
-                if not dns_server or dns_server == "Default DNS":
-                    dns_server = None
+        # Use global DNS settings
+        from app.core.dns_settings import dns_settings
+        dns_server = dns_settings.get_current_dns()
+        if dns_server == "Default DNS":
+            dns_server = None
         
         scan_type_map = {
             "Basic Fingerprint": "basic",
@@ -3080,14 +3080,11 @@ class EnumerationPage(QWidget):
             self.show_error("Please enter a target")
             return
         
-        # Get DNS server setting from API controls
-        dns_server = None
-        if 'api' in self.tool_controls:
-            control_panel = self.tool_controls['api']
-            if hasattr(control_panel, 'controls') and 'api_dns' in control_panel.controls:
-                dns_server = control_panel.controls['api_dns'].currentText().strip()
-                if not dns_server or dns_server == "Default DNS":
-                    dns_server = None
+        # Use global DNS settings
+        from app.core.dns_settings import dns_settings
+        dns_server = dns_settings.get_current_dns()
+        if dns_server == "Default DNS":
+            dns_server = None
         
         scan_type_map = {
             "Basic Discovery": "basic",
@@ -3884,6 +3881,41 @@ class EnumerationPage(QWidget):
         
         # Resize columns to content
         self.results_table.resizeColumnsToContents()
+    
+    def _resolve_target(self, target: str) -> str:
+        """Resolve target hostname using global DNS settings"""
+        import re
+        import socket
+        
+        # If target is already an IP address, return as-is
+        ip_pattern = r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'
+        if re.match(ip_pattern, target):
+            return target
+        
+        # Try to resolve using global DNS settings
+        try:
+            from app.core.dns_settings import dns_settings
+            dns_server = dns_settings.get_current_dns()
+            
+            if dns_server == "LocalDNS":
+                # Use LocalDNS server
+                from app.core.local_dns_server import local_dns_server
+                if local_dns_server.running:
+                    records = local_dns_server.get_records()
+                    domain_records = records.get(target.lower(), {})
+                    if 'A' in domain_records and domain_records['A']:
+                        resolved_ip = domain_records['A'][0]
+                        self.append_terminal_output(f"<p style='color: #00BFFF;'>Resolved {target} to {resolved_ip} via LocalDNS</p><br>")
+                        return resolved_ip
+            
+            # Fall back to system DNS resolution
+            resolved_ip = socket.gethostbyname(target)
+            self.append_terminal_output(f"<p style='color: #00BFFF;'>Resolved {target} to {resolved_ip} via system DNS</p><br>")
+            return resolved_ip
+            
+        except Exception as e:
+            self.append_terminal_output(f"<p style='color: #FFAA00;'>Could not resolve {target}: {str(e)}</p><br>")
+            return target  # Return original target if resolution fails
     
     def populate_rpc_tree(self, rpc_results):
         """Populate RPC tree with organized sections"""

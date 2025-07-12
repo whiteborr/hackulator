@@ -11,7 +11,7 @@ def run_api_enumeration(target, scan_type="basic", wordlist_path=None, dns_serve
         if dns_server == "Default DNS":
             dns_server = None
     
-    worker = APIEnumWorker(target, scan_type, wordlist_path, dns_server, auth_cookie)
+    worker = APIEnumWorker(target, scan_type, wordlist_path, dns_server)
     
     # Connect signals
     if output_callback:

@@ -64,57 +64,14 @@ class HTTPEnumWorker(QRunnable):
     def query_local_dns(self, hostname):
         """Query LocalDNS server for hostname resolution"""
         try:
-            import socket as sock
-            import struct
+            from app.core.local_dns_server import local_dns_server
             
-            # Create DNS query packet
-            query_id = 0x1234
-            flags = 0x0100  # Standard query
-            questions = 1
-            
-            # Build DNS header
-            header = struct.pack('!HHHHHH', query_id, flags, questions, 0, 0, 0)
-            
-            # Build question section
-            question = b''
-            for part in hostname.split('.'):
-                question += bytes([len(part)]) + part.encode()
-            question += b'\x00'  # End of domain
-            question += struct.pack('!HH', 1, 1)  # Type A, Class IN
-            
-            query = header + question
-            
-            # Send query to LocalDNS server
-            dns_socket = sock.socket(sock.AF_INET, sock.SOCK_DGRAM)
-            dns_socket.settimeout(5)
-            dns_socket.sendto(query, ('127.0.0.1', 53530))
-            
-            # Receive response
-            response, _ = dns_socket.recvfrom(512)
-            dns_socket.close()
-            
-            # Parse response to extract IP
-            if len(response) > 12:
-                # Skip header and question, find answer
-                offset = 12
-                # Skip question section
-                while offset < len(response) and response[offset] != 0:
-                    length = response[offset]
-                    offset += 1 + length
-                offset += 5  # Skip null terminator and question type/class
-                
-                # Parse answer section
-                if offset + 12 <= len(response):
-                    # Skip name pointer, type, class, TTL
-                    offset += 10
-                    data_len = struct.unpack('!H', response[offset:offset+2])[0]
-                    offset += 2
-                    
-                    if data_len == 4 and offset + 4 <= len(response):
-                        # Extract IP address
-                        ip_bytes = response[offset:offset+4]
-                        ip = '.'.join(str(b) for b in ip_bytes)
-                        return ip
+            # Check if LocalDNS server is running and has the record
+            if local_dns_server.running:
+                records = local_dns_server.get_records()
+                domain_records = records.get(hostname.lower(), {})
+                if 'A' in domain_records and domain_records['A']:
+                    return domain_records['A'][0]
             
             return None
             
@@ -128,16 +85,44 @@ class HTTPEnumWorker(QRunnable):
             socket.getaddrinfo = self.original_getaddrinfo
         
     def normalize_url(self, url):
-        """Ensure URL has proper scheme"""
+        """Ensure URL has proper scheme and resolve hostname"""
         if not url.startswith(('http://', 'https://')):
+            # Resolve hostname first if using LocalDNS
+            resolved_target = self.resolve_hostname(url)
+            
             # Try HTTPS first, fallback to HTTP
             try:
-                test_url = f"https://{url}"
+                test_url = f"https://{resolved_target}"
                 response = self.session.head(test_url, timeout=5, verify=False)
                 return test_url
             except:
-                return f"http://{url}"
+                return f"http://{resolved_target}"
+        else:
+            # Extract hostname from URL and resolve if needed
+            from urllib.parse import urlparse
+            parsed = urlparse(url)
+            resolved_hostname = self.resolve_hostname(parsed.hostname)
+            if resolved_hostname != parsed.hostname:
+                return url.replace(parsed.hostname, resolved_hostname)
         return url
+    
+    def resolve_hostname(self, hostname):
+        """Resolve hostname using global DNS settings"""
+        import re
+        
+        # If already an IP address, return as-is
+        ip_pattern = r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'
+        if re.match(ip_pattern, hostname):
+            return hostname
+        
+        # Try LocalDNS resolution
+        if self.dns_server == "LocalDNS":
+            resolved_ip = self.query_local_dns(hostname)
+            if resolved_ip:
+                return resolved_ip
+        
+        # Return original hostname if no resolution
+        return hostname
     
     def run_command(self, cmd, timeout=60):
         """Execute command and return output"""
